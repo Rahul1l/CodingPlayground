@@ -530,35 +530,38 @@ footer {
 
 /* Fix visibility issues for manage pages */
 .table-container table {
-    color: var(--text-color);
+    color: var(--text-color) !important;
+    background-color: var(--card-bg) !important;
 }
 
 .table-container th,
 .table-container td {
-    color: var(--text-color);
-    border-color: var(--border-color);
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+    background-color: transparent !important;
 }
 
 .table-container th {
-    background-color: var(--card-bg);
+    background-color: var(--card-bg) !important;
     font-weight: 600;
+    color: var(--text-color) !important;
 }
 
 .table-container tr:nth-child(even) {
-    background-color: var(--bg-color);
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .table-container tr:hover {
-    background-color: var(--hover-bg);
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Ensure all text is visible */
 .card h2, .card h3, .card h4 {
-    color: var(--text-color);
+    color: var(--text-color) !important;
 }
 
 .card p, .card span {
-    color: var(--text-color);
+    color: var(--text-color) !important;
 }
 
 .muted {
@@ -574,6 +577,83 @@ footer {
 .difficulty-easy { background-color: #28a745; }
 .difficulty-medium { background-color: #ffc107; color: #000 !important; }
 .difficulty-hard { background-color: #dc3545; }
+
+/* Role badge styling */
+.role-badge {
+    color: white !important;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.role-classroom { background-color: #007bff; }
+.role-test { background-color: #6f42c1; }
+.role-both { background-color: #fd7e14; }
+
+/* University section styling */
+.university-section h3 {
+    color: var(--text-color) !important;
+    margin-bottom: 1rem;
+}
+
+/* Button visibility */
+.btn {
+    color: white !important;
+}
+
+.btn.secondary {
+    background-color: var(--secondary-color) !important;
+    color: white !important;
+}
+
+.btn.secondary:hover {
+    background-color: var(--secondary-hover) !important;
+    color: white !important;
+}
+
+/* Form elements visibility */
+input, textarea, select {
+    color: var(--text-color) !important;
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Links visibility */
+a {
+    color: var(--link-color) !important;
+}
+
+a:hover {
+    color: var(--link-hover) !important;
+}
+
+/* Ensure all manage page content is visible */
+.manage-page .card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+.manage-page .card h2,
+.manage-page .card h3,
+.manage-page .card h4 {
+    color: var(--text-color) !important;
+}
+
+.manage-page .card p {
+    color: var(--text-color) !important;
+}
+
+/* Export button styling */
+.export-btn {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.export-btn:hover {
+    background-color: #218838 !important;
+    color: white !important;
+}
 </style>
 </head>
 <body>
@@ -724,6 +804,7 @@ footer {
 
 		{# Admin Classroom Activities View #}
 		{% if view == 'admin_classroom_activities' %}
+			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
 					<h2>🎯 Try Classroom Activities</h2>
@@ -764,16 +845,42 @@ footer {
 				<h2>🎯 {{ activity.subject }} - Admin Preview</h2>
 				<div>
 					<a href="/admin/classroom-activities" class="btn secondary">← Back to Activities</a>
-					<a href="/admin/dashboard" class="btn secondary">Dashboard</a>
-				</div>
+				<a href="/admin/dashboard" class="btn secondary">Dashboard</a>
 			</div>
+		</div>
+		
+		{% if questions %}
+			{# Question Navigation #}
+			{% if questions|length > 1 %}
+			<section class="card">
+				<div class="question-navigation">
+					<h4>📋 Question Navigation:</h4>
+					<div class="nav-buttons">
+						{% for question in questions %}
+						<button class="btn secondary nav-btn" data-question="{{ loop.index }}" onclick="showQuestion({{ loop.index }})">
+							Question {{ loop.index }}
+						</button>
+						{% endfor %}
+					</div>
+				</div>
+			</section>
+			{% endif %}
 			
-			{% if questions %}
-				{% for question in questions %}
-				<section class="card question-card">
+			{% for question in questions %}
+				<section class="card question-card" id="question-{{ loop.index }}" {% if loop.index > 1 %}style="display: none;"{% endif %}>
 					<div class="question-header">
-						<h3>Question {{ loop.index }}: {{ question.title }}</h3>
-						<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
+						<h3>Question {{ loop.index }}: {{ question.title }} ({{ loop.index }}/{{ questions|length }})</h3>
+						<div class="question-controls">
+							<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
+							{% if questions|length > 1 %}
+								{% if loop.index > 1 %}
+								<button class="btn secondary" onclick="showQuestion({{ loop.index - 1 }})">← Previous</button>
+								{% endif %}
+								{% if loop.index < questions|length %}
+								<button class="btn" onclick="showQuestion({{ loop.index + 1 }})">Next →</button>
+								{% endif %}
+							{% endif %}
+						</div>
 					</div>
 					
 					<div class="question-content">
@@ -834,10 +941,12 @@ footer {
 					</details>
 				</section>
 			{% endif %}
+			</div>
 		{% endif %}
 
 		{# Admin Users Management #}
 		{% if view == 'admin_users' %}
+			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
 					<h2>User Management</h2>
@@ -947,10 +1056,12 @@ footer {
 				</div>
 				{% endif %}
 			</section>
+			</div>
 		{% endif %}
 
 		{# Admin Tests Management #}
 		{% if view == 'admin_tests' %}
+			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
 					<h2>Tests Management</h2>
@@ -1003,6 +1114,7 @@ footer {
 				</div>
 				{% endif %}
 			</section>
+			</div>
 		{% endif %}
 
 		{# User Login #}
