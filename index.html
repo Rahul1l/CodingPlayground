@@ -710,6 +710,180 @@ pre, code {
     background-color: var(--input-bg) !important;
     border-color: var(--border-color) !important;
 }
+
+/* HERO SECTION STYLING */
+.hero-section {
+    text-align: center;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+}
+
+.hero-content h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6, #1d4ed8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.2rem;
+    color: var(--muted-color);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* LOGIN OPTIONS STYLING */
+.login-options {
+    margin-top: 2rem;
+}
+
+.login-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+.login-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: #3b82f6;
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.login-card h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.login-card p {
+    color: var(--muted-color);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.card-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.feature {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* BUTTON STYLING */
+.admin-btn, .user-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+}
+
+.admin-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+.user-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.user-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+}
+
+.admin-btn svg, .user-btn svg {
+    transition: transform 0.3s ease;
+}
+
+.admin-btn:hover svg, .user-btn:hover svg {
+    transform: translateX(3px);
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+    
+    .login-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .login-card {
+        padding: 1.5rem;
+    }
+    
+    .card-features {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .feature {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
 </style>
 </head>
 <body>
@@ -731,16 +905,48 @@ pre, code {
 	<main class="container">
 		{# Home View #}
 		{% if view == 'home' %}
-			<section class="grid">
-				<div class="card">
-					<h2>Admin</h2>
-					<p>Manage users, classroom activities, and tests.</p>
-					<a class="btn" href="/admin/login">Admin Login</a>
+			<section class="hero-section">
+				<div class="hero-content">
+					<h1>🎓 Coding Playground</h1>
+					<p class="hero-subtitle">Interactive coding education platform for students and educators</p>
 				</div>
-				<div class="card">
-					<h2>User</h2>
-					<p>Access your classroom activities or scheduled tests.</p>
-					<a class="btn" href="/user/login">User Login</a>
+			</section>
+			
+			<section class="login-options">
+				<div class="login-grid">
+					<div class="login-card admin-card">
+						<div class="card-icon">👨‍💼</div>
+						<h2>Admin Portal</h2>
+						<p>Manage users, create classroom activities, and schedule coding tests for your students.</p>
+						<div class="card-features">
+							<span class="feature">👥 User Management</span>
+							<span class="feature">📚 Activity Creation</span>
+							<span class="feature">📝 Test Scheduling</span>
+						</div>
+						<a class="btn admin-btn" href="/admin/login">
+							<span>Admin Login</span>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M5 12h14M12 5l7 7-7 7"/>
+							</svg>
+						</a>
+					</div>
+					
+					<div class="login-card user-card">
+						<div class="card-icon">👨‍🎓</div>
+						<h2>Student Portal</h2>
+						<p>Access your assigned classroom activities and take scheduled coding tests.</p>
+						<div class="card-features">
+							<span class="feature">💻 Code Practice</span>
+							<span class="feature">🤖 AI Feedback</span>
+							<span class="feature">📊 Progress Tracking</span>
+						</div>
+						<a class="btn user-btn" href="/user/login">
+							<span>Student Login</span>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M5 12h14M12 5l7 7-7 7"/>
+							</svg>
+						</a>
+					</div>
 				</div>
 			</section>
 		{% endif %}
