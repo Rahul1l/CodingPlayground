@@ -499,6 +499,81 @@ footer {
     overflow-y: auto;
     max-height: 400px;
 }
+
+/* Question Navigation Styles */
+.question-navigation {
+    margin-bottom: 1rem;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.nav-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.nav-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.question-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Fix visibility issues for manage pages */
+.table-container table {
+    color: var(--text-color);
+}
+
+.table-container th,
+.table-container td {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+.table-container th {
+    background-color: var(--card-bg);
+    font-weight: 600;
+}
+
+.table-container tr:nth-child(even) {
+    background-color: var(--bg-color);
+}
+
+.table-container tr:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Ensure all text is visible */
+.card h2, .card h3, .card h4 {
+    color: var(--text-color);
+}
+
+.card p, .card span {
+    color: var(--text-color);
+}
+
+.muted {
+    color: var(--muted-color) !important;
+}
+
+/* Badge visibility */
+.badge {
+    color: white !important;
+    font-weight: 600;
+}
+
+.difficulty-easy { background-color: #28a745; }
+.difficulty-medium { background-color: #ffc107; color: #000 !important; }
+.difficulty-hard { background-color: #dc3545; }
 </style>
 </head>
 <body>
@@ -1646,6 +1721,29 @@ print(f'Sum: {x + y}')"></textarea>
 
 	{% if view == 'admin_attempt_activity' %}
 	<script>
+	// Question navigation function
+	function showQuestion(questionNum) {
+		// Hide all questions
+		document.querySelectorAll('.question-card').forEach(card => {
+			card.style.display = 'none';
+		});
+		
+		// Show selected question
+		const selectedCard = document.getElementById(`question-${questionNum}`);
+		if (selectedCard) {
+			selectedCard.style.display = 'block';
+		}
+		
+		// Update navigation buttons
+		document.querySelectorAll('.nav-btn').forEach(btn => {
+			btn.classList.remove('active');
+		});
+		const activeBtn = document.querySelector(`[data-question="${questionNum}"]`);
+		if (activeBtn) {
+			activeBtn.classList.add('active');
+		}
+	}
+	
 	// JavaScript for admin activity code execution
 	document.addEventListener('DOMContentLoaded', function() {
 		document.querySelectorAll('.run-admin-question-code').forEach(button => {
