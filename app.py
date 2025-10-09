@@ -14,7 +14,10 @@ from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import Config
 
-app = Flask(__name__)
+app = Flask(__name__, 
+           template_folder='.',  # Look for templates in current directory
+           static_folder='.',   # Look for static files in current directory
+           static_url_path='')  # Serve static files from root
 app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 
 # Mongo Setup
@@ -23,11 +26,23 @@ try:
     MONGO_DB = os.getenv("MONGO_DB", Config.MONGO_DB)
     
     print(f"Connecting to MongoDB: {MONGO_URI[:50]}...")
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     
-    # Test connection
-    client.admin.command('ping')
-    print("✅ MongoDB connected successfully")
+    # Try simple connection first
+    try:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+        client.admin.command('ping')
+        print("✅ MongoDB connected successfully")
+    except Exception as ssl_error:
+        print(f"SSL connection failed, trying alternative: {ssl_error}")
+        # Try with SSL disabled
+        client = MongoClient(
+            MONGO_URI, 
+            serverSelectionTimeoutMS=10000,
+            ssl=False,
+            tls=False
+        )
+        client.admin.command('ping')
+        print("✅ MongoDB connected with SSL disabled")
     
     db = client[MONGO_DB]
     admins_col = db["admins"]
@@ -56,23 +71,12 @@ if not openai_api_key:
 
 if openai_api_key:
 	try:
-		# Clear any proxy-related environment variables that might interfere
-		import os
-		proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
-		for var in proxy_vars:
-			if var in os.environ:
-				del os.environ[var]
-		
 		from openai import OpenAI
-		# Initialize OpenAI client with explicit configuration
-		openai_client = OpenAI(
-			api_key=openai_api_key,
-			# Explicitly avoid any proxy configuration
-			http_client=None
-		)
-		print("OpenAI client initialized successfully")
+		# Initialize OpenAI client with simple configuration
+		openai_client = OpenAI(api_key=openai_api_key)
+		print("✅ OpenAI client initialized successfully")
 	except Exception as e:
-		print(f"OpenAI client initialization error: {e}")
+		print(f"❌ OpenAI client initialization error: {e}")
 		openai_client = None
 else:
 	print("OpenAI API Key not found in environment")
@@ -92,14 +96,38 @@ def require_user():
 
 @app.route("/")
 def index():
-	# If admin is logged in, redirect to dashboard
-	if session.get("admin_username"):
-		return redirect(url_for("admin_dashboard"))
-	# If user is logged in, redirect to their home
-	elif session.get("user_username"):
-		return redirect(url_for("user_home"))
-	# Otherwise show the landing page
-	return render_template("index.html", view="home")
+	# Debug: Check if template exists and MongoDB status
+	try:
+		mongodb_status = "Connected" if users_col is not None else "Disconnected"
+		return render_template("index.html", view="home", mongodb_status=mongodb_status)
+	except Exception as e:
+		print(f"Template error: {e}")
+		return f"Template error: {e}<br>Current directory: {os.getcwd()}<br>MongoDB: {'Connected' if users_col is not None else 'Disconnected'}"
+
+@app.route("/test-mongodb")
+def test_mongodb():
+	"""Test MongoDB connection"""
+	if users_col is None:
+		return jsonify({"status": "error", "message": "MongoDB not connected"})
+	
+	try:
+		# Try to insert a test document
+		test_doc = {"test": True, "timestamp": datetime.now()}
+		result = users_col.insert_one(test_doc)
+		
+		# Try to find the document
+		found = users_col.find_one({"_id": result.inserted_id})
+		
+		# Clean up
+		users_col.delete_one({"_id": result.inserted_id})
+		
+		return jsonify({
+			"status": "success", 
+			"message": "MongoDB connection working",
+			"test_id": str(result.inserted_id)
+		})
+	except Exception as e:
+		return jsonify({"status": "error", "message": f"MongoDB test failed: {str(e)}"})
 
 
 @app.route("/admin/login", methods=["GET", "POST"])
