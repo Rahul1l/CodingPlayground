@@ -6,6 +6,25 @@
 <title>Coding Playground</title>
 <meta http-equiv="Cache-Control" content="no-store" />
 <style>
+/* CSS Variables for consistent theming */
+:root {
+    --text-color: #ffffff;
+    --bg-color: #0b1020;
+    --card-bg: #0e1630;
+    --border-color: #1e293b;
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+    --secondary-hover: #475569;
+    --muted-color: #94a3b8;
+    --link-color: #60a5fa;
+    --link-hover: #93c5fd;
+    --input-bg: #1e293b;
+    --hover-bg: rgba(255, 255, 255, 0.1);
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+}
+
 /* Reset and base styles */
 * {
     box-sizing: border-box;
@@ -15,8 +34,8 @@ body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", Helvetica, Arial, sans-serif;
     line-height: 1.5;
-    color: #0f172a;
-    background: #0b1020;
+    color: var(--text-color);
+    background: var(--bg-color);
 }
 
 /* Layout */
@@ -44,18 +63,19 @@ body {
 
 /* Cards */
 .card {
-    background: #0e1630;
-    border: 1px solid #1e293b;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    color: var(--text-color);
 }
 
 /* Buttons */
 .btn {
     display: inline-block;
-    background: #2563eb;
-    color: #fff;
+    background: var(--primary-color);
+    color: white;
     text-decoration: none;
     border: none;
     border-radius: 10px;
@@ -70,11 +90,13 @@ body {
 }
 
 .btn.secondary {
-    background: #64748b;
+    background: var(--secondary-color);
+    color: white;
 }
 
 .btn.secondary:hover {
-    background: #475569;
+    background: var(--secondary-hover);
+    color: white;
 }
 
 .btn.disabled {
@@ -528,7 +550,23 @@ footer {
     align-items: center;
 }
 
-/* Fix visibility issues for manage pages */
+/* COMPREHENSIVE TEXT VISIBILITY FIXES */
+
+/* Force all text to be white/visible */
+*, *::before, *::after {
+    color: var(--text-color) !important;
+}
+
+/* Override any inherited colors */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-color) !important;
+}
+
+p, span, div, td, th, li, label {
+    color: var(--text-color) !important;
+}
+
+/* Table visibility fixes */
 .table-container table {
     color: var(--text-color) !important;
     background-color: var(--card-bg) !important;
@@ -555,7 +593,7 @@ footer {
     background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Ensure all text is visible */
+/* Card content visibility */
 .card h2, .card h3, .card h4 {
     color: var(--text-color) !important;
 }
@@ -564,6 +602,11 @@ footer {
     color: var(--text-color) !important;
 }
 
+.card div {
+    color: var(--text-color) !important;
+}
+
+/* Muted text */
 .muted {
     color: var(--muted-color) !important;
 }
@@ -595,21 +638,6 @@ footer {
 .university-section h3 {
     color: var(--text-color) !important;
     margin-bottom: 1rem;
-}
-
-/* Button visibility */
-.btn {
-    color: white !important;
-}
-
-.btn.secondary {
-    background-color: var(--secondary-color) !important;
-    color: white !important;
-}
-
-.btn.secondary:hover {
-    background-color: var(--secondary-hover) !important;
-    color: white !important;
 }
 
 /* Form elements visibility */
@@ -653,6 +681,34 @@ a:hover {
 .export-btn:hover {
     background-color: #218838 !important;
     color: white !important;
+}
+
+/* Pagination styling */
+.pagination {
+    color: var(--text-color) !important;
+}
+
+.pagination span {
+    color: var(--text-color) !important;
+}
+
+/* Alert styling */
+.alert {
+    color: var(--text-color) !important;
+    background-color: var(--error-color) !important;
+}
+
+/* Code blocks */
+pre, code {
+    color: var(--text-color) !important;
+    background-color: var(--input-bg) !important;
+}
+
+/* Format boxes */
+.format-box, .sample-box {
+    color: var(--text-color) !important;
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
 }
 </style>
 </head>
