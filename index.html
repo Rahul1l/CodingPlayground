@@ -914,9 +914,15 @@ pre, code {
 	<header class="container flex-between">
 		<h1>Coding Playground</h1>
 		<nav>
-			<a class="btn" href="/">Home</a>
-			{% if session.admin_username %}<a class="btn" href="/admin/logout">Admin Logout</a>{% endif %}
-			{% if session.user_username %}<a class="btn" href="/user/logout">User Logout</a>{% endif %}
+			{% if session.admin_username %}
+				<a class="btn" href="/admin/dashboard">Home</a>
+				<a class="btn" href="/admin/logout">Admin Logout</a>
+			{% elif session.user_username %}
+				<a class="btn" href="/home">Home</a>
+				<a class="btn" href="/user/logout">User Logout</a>
+			{% else %}
+				<a class="btn" href="/">Home</a>
+			{% endif %}
 		</nav>
 	</header>
 
