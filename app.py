@@ -5,67 +5,45 @@ import tempfile
 import traceback
 import json
 import csv
+import logging
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from io import BytesIO, StringIO
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort, send_file
+from flask_cors import CORS
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import Config
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__, 
            template_folder='.',  # Look for templates in current directory
            static_folder='.',   # Look for static files in current directory
            static_url_path='')  # Serve static files from root
+
+# Configure app
+app.config.from_object(Config)
+app.config.update(
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False
+)
 app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 
-# Mongo Setup - Use Config (prioritizes .env file)
+# Enable CORS for all routes (allow credentials for session cookies)
+CORS(app, supports_credentials=True)
+
+# MongoDB Setup - Simple and working approach
 try:
-    # Debug: Check .env file loading
-    print(f"🔍 Current working directory: {os.getcwd()}")
-    print(f"🔍 .env file exists: {os.path.exists('.env')}")
+    print("Connecting to MongoDB...")
+    client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
     
-    # Use Config (will use .env if available, otherwise hardcoded)
-    MONGO_URI = Config.MONGO_URI
-    MONGO_DB = Config.MONGO_DB
-    
-    print(f"🔗 Final MongoDB URI: {MONGO_URI[:50]}...")
-    print(f"📊 Database name: {MONGO_DB}")
-    
-    # Additional debug: Check if .env was loaded
-    env_uri = os.getenv("MONGO_URI")
-    if env_uri:
-        print(f"✅ .env file loaded successfully - MONGO_URI found")
-    else:
-        print(f"⚠️  .env file not loaded or MONGO_URI not found")
-    
-    # MongoDB Atlas connection with proper SSL settings
-    client = None
-    
-    try:
-        print("Connecting to MongoDB Atlas...")
-        client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=10000,
-            connectTimeoutMS=10000,
-            socketTimeoutMS=20000,
-            retryWrites=True,
-            retryReads=True,
-            # MongoDB Atlas specific settings
-            tls=True,
-            tlsAllowInvalidCertificates=False,
-            tlsAllowInvalidHostnames=False
-        )
-        # Test connection
-        client.admin.command('ping')
-        print("✅ MongoDB Atlas connected successfully")
-    except Exception as mongo_error:
-        print(f"❌ MongoDB Atlas connection failed: {mongo_error}")
-        print("Please check your MongoDB Atlas connection string and network access")
-        raise Exception(f"MongoDB Atlas connection failed: {mongo_error}")
-    
-    db = client[MONGO_DB]
+    db = client[Config.MONGO_DB]
     admins_col = db["admins"]
     users_col = db["users"]
     classroom_col = db["classrooms"]
@@ -74,32 +52,13 @@ try:
     submissions_col = db["submissions"]
     
 except Exception as e:
-    print(f"❌ MongoDB Atlas connection failed: {e}")
-    print("App cannot start without MongoDB Atlas connection")
-    print("Please check:")
-    print("1. MongoDB Atlas cluster is running")
-    print("2. Network access is configured for your IP")
-    print("3. Connection string is correct")
-    print("4. Database user has proper permissions")
+    print(f"❌ MongoDB connection failed: {e}")
+    print("App cannot start without MongoDB connection")
     exit(1)
 
-# OpenAI Client (v1)
-openai_client = None
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    print("No OpenAI API Key found")
-
-if openai_api_key:
-	try:
-		from openai import OpenAI
-		# Initialize OpenAI client with simple configuration
-		openai_client = OpenAI(api_key=openai_api_key)
-		print("✅ OpenAI client initialized successfully")
-	except Exception as e:
-		print(f"❌ OpenAI client initialization error: {e}")
-		openai_client = None
-else:
-	print("OpenAI API Key not found in environment")
+# OpenAI Client - Simple and working approach
+import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def require_admin():
@@ -123,6 +82,16 @@ def index():
 	except Exception as e:
 		print(f"Template error: {e}")
 		return f"Template error: {e}<br>Current directory: {os.getcwd()}<br>MongoDB: {'Connected' if users_col is not None else 'Disconnected'}"
+
+@app.route('/health', methods=['GET'])
+def health_check():
+	"""Health check endpoint"""
+	return jsonify({
+		'status': 'healthy',
+		'message': 'Coding Playground API is running',
+		'version': '1.0.0',
+		'mongodb': 'Connected' if users_col is not None else 'Disconnected'
+	})
 
 @app.route("/test-mongodb")
 def test_mongodb():
@@ -408,7 +377,7 @@ def admin_execute_question():
 		
 		# Get AI validation if OpenAI is available
 		validation = ""
-		if openai_client:
+		if openai.api_key:
 			try:
 				validation = _ai_generate(f"""As a coding trainer, validate this student's solution for the following question:
 
@@ -575,13 +544,12 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 
 
 def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.") -> str:
-	if not openai_client:
-		# Fallback for testing when OpenAI is not available
-		print("OpenAI client not available, using mock response")
+	if not openai.api_key:
+		print("OpenAI API key not available, using mock response")
 		return f'{{"questions": [{{"title": "Sample Question", "description": "This is a sample coding question generated for testing. The actual OpenAI integration is not working properly.", "input_format": "Input format here", "output_format": "Output format here", "sample_input": "sample input", "sample_output": "sample output"}}]}}'
 	
 	try:
-		completion = openai_client.chat.completions.create(
+		completion = openai.chat.completions.create(
 			model=os.getenv("OPENAI_MODEL", "gpt-4"),
 			messages=[{"role": "system", "content": system_role}, {"role": "user", "content": prompt}],
 			temperature=0.4,
@@ -1212,6 +1180,32 @@ def add_security_headers(resp):
 	resp.headers["Referrer-Policy"] = "no-referrer"
 	return resp
 
+
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+	"""Handle 404 errors"""
+	return jsonify({
+		'success': False,
+		'message': 'Endpoint not found'
+	}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+	"""Handle 405 errors"""
+	return jsonify({
+		'success': False,
+		'message': 'Method not allowed'
+	}), 405
+
+@app.errorhandler(500)
+def internal_error(error):
+	"""Handle 500 errors"""
+	logger.error(f"Internal server error: {error}")
+	return jsonify({
+		'success': False,
+		'message': 'Internal server error'
+	}), 500
 
 if __name__ == "__main__":
 	# Hardcoded production settings for AWS EC2

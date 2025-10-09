@@ -5,15 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # MongoDB Configuration - Try environment first, then hardcoded fallback
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ayushmang99_db_user:ayushman_g99@codingclass.e6mq5te.mongodb.net/?retryWrites=true&w=majority&appName=CodingClass")
+    # MongoDB Configuration
+    MONGO_URI = os.getenv("MONGO_URI")
     MONGO_DB = os.getenv("MONGO_DB", "coding_playground")
-    
-    # Debug: Print which URI source is being used
-    if os.getenv("MONGO_URI"):
-        print(f"🔧 Config: Using MONGO_URI from environment: {MONGO_URI[:50]}...")
-    else:
-        print(f"⚠️  Config: No MONGO_URI in environment, using hardcoded: {MONGO_URI[:50]}...")
     
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
