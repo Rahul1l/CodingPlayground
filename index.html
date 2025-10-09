@@ -711,6 +711,24 @@ pre, code {
     border-color: var(--border-color) !important;
 }
 
+/* Password toggle styling */
+.password-display {
+    font-family: monospace;
+    font-weight: bold;
+    color: var(--text-color) !important;
+}
+
+.btn.tiny {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+    border-radius: 4px;
+}
+
+.btn.tiny:hover {
+    transform: scale(1.05);
+}
+
 /* HERO SECTION STYLING */
 .hero-section {
     text-align: center;
@@ -1248,7 +1266,7 @@ pre, code {
 								<td><strong>{{ user.username }}</strong></td>
 								<td>
 									<span class="password-display" data-password="{{ user.username }}" data-plain="{{ user.password_plain or 'N/A' }}">••••••••</span>
-									<button class="btn secondary tiny" onclick="togglePassword('{{ user.username }}')">👁️</button>
+									<button class="btn secondary tiny" onclick="toggleUserPassword('{{ user.username }}')">👁️</button>
 								</td>
 								<td><span class="role-badge role-{{ user.role }}">{{ user.role|title }}</span></td>
 								<td>{{ user.classroom_id or '-' }}</td>
@@ -2073,21 +2091,44 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 	}
 	
-	function togglePassword(username) {
-		const passwordSpan = document.querySelector(`[data-password="${username}"]`);
-		const button = passwordSpan.nextElementSibling;
-		const plainPassword = passwordSpan.getAttribute('data-plain');
+	function toggleUserPassword(username) {
+		console.log('toggleUserPassword called for:', username);
 		
-		if (passwordSpan.textContent === '••••••••') {
+		// Find the password span using a more specific selector
+		const passwordSpan = document.querySelector(`span[data-password="${username}"]`);
+		console.log('Password span found:', passwordSpan);
+		
+		if (!passwordSpan) {
+			console.error('Password span not found for username:', username);
+			alert('Password element not found for user: ' + username);
+			return;
+		}
+		
+		// Find the button (next sibling)
+		const button = passwordSpan.nextElementSibling;
+		console.log('Button found:', button);
+		
+		// Get the plain password
+		const plainPassword = passwordSpan.getAttribute('data-plain');
+		console.log('Plain password from data-plain:', plainPassword);
+		
+		// Toggle the password visibility
+		if (passwordSpan.textContent.trim() === '••••••••') {
 			// Show password
 			passwordSpan.textContent = plainPassword || 'N/A';
-			button.textContent = '🙈';
-			button.title = 'Click to hide password';
+			if (button) {
+				button.textContent = '🙈';
+				button.title = 'Click to hide password';
+			}
+			console.log('Password shown:', plainPassword);
 		} else {
 			// Hide password
 			passwordSpan.textContent = '••••••••';
-			button.textContent = '👁️';
-			button.title = 'Click to reveal password';
+			if (button) {
+				button.textContent = '👁️';
+				button.title = 'Click to show password';
+			}
+			console.log('Password hidden');
 		}
 	}
 	</script>
@@ -2641,6 +2682,7 @@ print(f'Sum: {x + y}')"></textarea>
 		});
 
 		// Export functions to global scope for HTML onclick handlers
+		window.toggleUserPassword = toggleUserPassword;
 		window.togglePassword = togglePassword;
 		window.executeCode = executeCode;
 		window.executeQuestionCode = executeQuestionCode;
