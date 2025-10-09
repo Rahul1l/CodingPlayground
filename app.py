@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import traceback
 import json
+import csv
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from io import BytesIO, StringIO
@@ -12,14 +13,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import Config
-
-# Try to import pandas, but handle gracefully if it fails
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-    print("Warning: pandas not available, Excel export will use CSV fallback")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
@@ -206,57 +199,37 @@ def admin_export_users():
 		# Get all users
 		users = list(users_col.find({}, {"username": 1, "role": 1, "classroom_id": 1, "test_id": 1, "university": 1, "password_plain": 1, "created_at": 1}).sort("created_at", -1))
 		
-		# Convert to DataFrame
-		if PANDAS_AVAILABLE:
-			df = pd.DataFrame(users)
-			if not df.empty:
-				# Format the data
-				df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-				df = df.rename(columns={
-					'username': 'Username',
-					'role': 'Role',
-					'classroom_id': 'Classroom ID',
-					'test_id': 'Test ID',
-					'university': 'University',
-					'password_plain': 'Password',
-					'created_at': 'Created At'
-				})
-				# Reorder columns
-				df = df[['Username', 'Password', 'Role', 'University', 'Classroom ID', 'Test ID', 'Created At']]
-			else:
-				df = pd.DataFrame(columns=['Username', 'Password', 'Role', 'University', 'Classroom ID', 'Test ID', 'Created At'])
-			
-			# Create Excel file in memory
-			output = BytesIO()
-			with pd.ExcelWriter(output, engine='openpyxl') as writer:
-				df.to_excel(writer, sheet_name='Users', index=False)
-			
-			output.seek(0)
-			
-			# Return Excel file
-			return send_file(
-				output,
-				mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				as_attachment=True,
-				download_name=f'users_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-			)
-		else:
-			# Fallback to CSV if pandas is not available
-			csv_data = "Username,Password,Role,University,Classroom ID,Test ID,Created At\n"
-			for user in users:
-				created_at = user.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else ''
-				csv_data += f"{user.get('username', '')},{user.get('password_plain', '')},{user.get('role', '')},{user.get('university', '')},{user.get('classroom_id', '')},{user.get('test_id', '')},{created_at}\n"
-			
-			output = BytesIO()
-			output.write(csv_data.encode('utf-8'))
-			output.seek(0)
-			
-			return send_file(
-				output,
-				mimetype='text/csv',
-				as_attachment=True,
-				download_name=f'users_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-			)
+		# Create CSV file in memory
+		output = StringIO()
+		writer = csv.writer(output)
+		
+		# Write header
+		writer.writerow(['Username', 'Password', 'Role', 'University', 'Classroom ID', 'Test ID', 'Created At'])
+		
+		# Write data
+		for user in users:
+			created_at = user.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else ''
+			writer.writerow([
+				user.get('username', ''),
+				user.get('password_plain', ''),
+				user.get('role', ''),
+				user.get('university', ''),
+				user.get('classroom_id', ''),
+				user.get('test_id', ''),
+				created_at
+			])
+		
+		output.seek(0)
+		return send_file(
+			BytesIO(output.getvalue().encode('utf-8')),
+			mimetype='text/csv',
+			as_attachment=True,
+			download_name=f'users_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+		)
+		
+	except Exception as e:
+		print(f"Export error: {e}")
+		return jsonify({"success": False, "error": f"Export failed: {str(e)}"})
 
 
 @app.route("/admin/users/export/<university>")
@@ -272,54 +245,37 @@ def admin_export_university_users(university):
 		if not users:
 			return jsonify({"error": f"No users found for {university}"}), 404
 		
-		# Convert to DataFrame
-		if PANDAS_AVAILABLE:
-			df = pd.DataFrame(users)
-			# Format the data
-			df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-			df = df.rename(columns={
-				'username': 'Username',
-				'role': 'Role',
-				'classroom_id': 'Classroom ID',
-				'test_id': 'Test ID',
-				'university': 'University',
-				'password_plain': 'Password',
-				'created_at': 'Created At'
-			})
-			# Reorder columns
-			df = df[['Username', 'Password', 'Role', 'University', 'Classroom ID', 'Test ID', 'Created At']]
-			
-			# Create Excel file in memory
-			output = BytesIO()
-			with pd.ExcelWriter(output, engine='openpyxl') as writer:
-				df.to_excel(writer, sheet_name=f'{university} Users', index=False)
-			
-			output.seek(0)
-			
-			# Return Excel file
-			return send_file(
-				output,
-				mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				as_attachment=True,
-				download_name=f'{university}_users_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-			)
-		else:
-			# Fallback to CSV if pandas is not available
-			csv_data = "Username,Password,Role,University,Classroom ID,Test ID,Created At\n"
-			for user in users:
-				created_at = user.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else ''
-				csv_data += f"{user.get('username', '')},{user.get('password_plain', '')},{user.get('role', '')},{user.get('university', '')},{user.get('classroom_id', '')},{user.get('test_id', '')},{created_at}\n"
-			
-			output = BytesIO()
-			output.write(csv_data.encode('utf-8'))
-			output.seek(0)
-			
-			return send_file(
-				output,
-				mimetype='text/csv',
-				as_attachment=True,
-				download_name=f'{university}_users_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-			)
+		# Create CSV file in memory
+		output = StringIO()
+		writer = csv.writer(output)
+		
+		# Write header
+		writer.writerow(['Username', 'Password', 'Role', 'University', 'Classroom ID', 'Test ID', 'Created At'])
+		
+		# Write data
+		for user in users:
+			created_at = user.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else ''
+			writer.writerow([
+				user.get('username', ''),
+				user.get('password_plain', ''),
+				user.get('role', ''),
+				user.get('university', ''),
+				user.get('classroom_id', ''),
+				user.get('test_id', ''),
+				created_at
+			])
+		
+		output.seek(0)
+		return send_file(
+			BytesIO(output.getvalue().encode('utf-8')),
+			mimetype='text/csv',
+			as_attachment=True,
+			download_name=f'{university}_users_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+		)
+		
+	except Exception as e:
+		print(f"Export error: {e}")
+		return jsonify({"success": False, "error": f"Export failed: {str(e)}"})
 
 
 @app.route("/admin/users/delete/<username>", methods=["POST"])

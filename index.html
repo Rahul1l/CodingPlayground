@@ -283,7 +283,7 @@
 					<h2>User Management</h2>
 					<div>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
-						<a href="/admin/users/export" class="btn">Export All to Excel</a>
+						<a href="/admin/users/export" class="btn">Export All to CSV</a>
 					</div>
 				</div>
 				<p class="muted">Total Users: {{ total_users }}</p>
@@ -294,7 +294,7 @@
 				<div class="flex-between">
 					<h3>🏫 {{ university }} ({{ users|length }} users)</h3>
 					<div>
-						<a href="/admin/users/export/{{ university|urlencode }}" class="btn secondary small">📥 Export {{ university }}</a>
+						<a href="/admin/users/export/{{ university|urlencode }}" class="btn secondary small">📥 Export {{ university }} CSV</a>
 					</div>
 				</div>
 				
