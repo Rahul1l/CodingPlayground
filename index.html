@@ -8,6 +8,12 @@
 <meta http-equiv="Cache-Control" content="no-store" />
 </head>
 <body>
+	<script>
+		// Hardcoded app configuration
+		const APP_BASE_URL = 'http://3.80.74.243:5000';
+		const ADMIN_USERNAME = 'Ayushman';
+		const ADMIN_PASSWORD = 'ayushman9277';
+	</script>
 	<header class="container flex-between">
 		<h1>Coding Playground</h1>
 		<nav>
@@ -45,24 +51,13 @@
 					<button class="btn" type="submit">Log in</button>
 				</form>
 				<section class="muted small mt">
-					<p>If no admin exists yet, <a href="/admin/bootstrap" class="btn secondary">Create First Admin</a></p>
+					<p>Admin credentials: username: <strong>Ayushman</strong>, password: <strong>ayushman9277</strong></p>
+					<p>App URL: <strong>http://3.80.74.243:5000</strong></p>
 				</section>
 			</section>
 		{% endif %}
 
-		{# Admin Bootstrap #}
-		{% if view == 'admin_bootstrap' %}
-			<section class="container narrow">
-				<h2>Create First Admin</h2>
-				<p class="muted">This will only work if no admin exists yet.</p>
-				<form method="post" action="/admin/bootstrap">
-					<label>Username<input type="text" name="username" required></label>
-					<label>Password<input type="password" name="password" required></label>
-					<button class="btn" type="submit">Create Admin</button>
-				</form>
-				<a href="/admin/login" class="btn secondary mt">Back to Login</a>
-			</section>
-		{% endif %}
+		{# Admin Login #}
 
 		{# Admin Dashboard #}
 		{% if view == 'admin_dashboard' %}

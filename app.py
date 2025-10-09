@@ -18,15 +18,35 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 
 # Mongo Setup
-client = MongoClient(os.getenv("MONGO_URI", Config.MONGO_URI))
-db = client[os.getenv("MONGO_DB", Config.MONGO_DB)]
-
-admins_col = db["admins"]
-users_col = db["users"]
-classroom_col = db["classrooms"]
-activities_col = db["activities"]
-tests_col = db["tests"]
-submissions_col = db["submissions"]
+try:
+    MONGO_URI = os.getenv("MONGO_URI", Config.MONGO_URI)
+    MONGO_DB = os.getenv("MONGO_DB", Config.MONGO_DB)
+    
+    print(f"Connecting to MongoDB: {MONGO_URI[:50]}...")
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    
+    # Test connection
+    client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+    
+    db = client[MONGO_DB]
+    admins_col = db["admins"]
+    users_col = db["users"]
+    classroom_col = db["classrooms"]
+    activities_col = db["activities"]
+    tests_col = db["tests"]
+    submissions_col = db["submissions"]
+    
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("App will start but database operations will fail")
+    # Create dummy collections to prevent errors
+    admins_col = None
+    users_col = None
+    classroom_col = None
+    activities_col = None
+    tests_col = None
+    submissions_col = None
 
 # OpenAI Client (v1)
 openai_client = None
@@ -84,34 +104,30 @@ def index():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
+	# Hardcoded admin credentials: Ayushman / ayushman9277
+	# App URL: http://3.80.74.243:5000
 	if request.method == "POST":
 		username = request.form.get("username", "").strip()
 		password = request.form.get("password", "")
+		
+		# Check if this is the first admin login attempt
+		if username == "Ayushman" and password == "ayushman9277" and admins_col.count_documents({}) == 0:
+			# Create the first admin
+			admins_col.insert_one({
+				"username": "Ayushman",
+				"password_hash": generate_password_hash("ayushman9277"),
+				"created_at": datetime.now(timezone.utc)
+			})
+			session["admin_username"] = "Ayushman"
+			return redirect(url_for("admin_dashboard"))
+		
+		# Check existing admin
 		admin = admins_col.find_one({"username": username})
 		if admin and check_password_hash(admin.get("password_hash", ""), password):
 			session["admin_username"] = username
 			return redirect(url_for("admin_dashboard"))
 		return render_template("index.html", view="admin_login", error="Invalid credentials")
 	return render_template("index.html", view="admin_login")
-
-
-@app.route("/admin/bootstrap", methods=["GET", "POST"])
-def admin_bootstrap():
-	if request.method == "POST":
-		# This route allows creating the first admin only if there are none.
-		if admins_col.count_documents({}) > 0:
-			return render_template("index.html", view="admin_bootstrap", error="Admin already exists")
-		username = request.form.get("username", "").strip()
-		password = request.form.get("password", "")
-		if not username or not password:
-			return render_template("index.html", view="admin_bootstrap", error="Username and password required")
-		admins_col.insert_one({
-			"username": username,
-			"password_hash": generate_password_hash(password),
-			"created_at": datetime.now(timezone.utc)
-		})
-		return redirect(url_for("admin_login"))
-	return render_template("index.html", view="admin_bootstrap")
 
 
 @app.route("/admin/logout")
@@ -1152,10 +1168,10 @@ def add_security_headers(resp):
 
 
 if __name__ == "__main__":
-	# Production settings for AWS EC2
-	host = os.getenv("HOST", "0.0.0.0")  # Listen on all interfaces
-	port = int(os.getenv("PORT", "5000"))
-	debug = os.getenv("DEBUG", "False").lower() == "true"
+	# Hardcoded production settings for AWS EC2
+	host = "0.0.0.0"  # Listen on all interfaces
+	port = 5000       # Hardcoded port
+	debug = False     # Production mode
 	
 	# For production, use threaded=True for better performance
 	app.run(host=host, port=port, debug=debug, threaded=True)
