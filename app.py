@@ -106,6 +106,9 @@ def index():
 	# Debug: Check if template exists and MongoDB status
 	try:
 		mongodb_status = "Connected" if users_col is not None else "Disconnected"
+		print(f"Rendering template from: {os.getcwd()}")
+		print(f"CSS exists: {os.path.exists('main.css')}")
+		print(f"JS exists: {os.path.exists('app.js')}")
 		return render_template("index.html", view="home", mongodb_status=mongodb_status)
 	except Exception as e:
 		print(f"Template error: {e}")
@@ -120,6 +123,82 @@ def health_check():
 		'version': '1.0.0',
 		'mongodb': 'Connected' if users_col is not None else 'Disconnected'
 	})
+
+# Static file routes to ensure CSS and JS are served properly
+@app.route('/main.css')
+def serve_css():
+	"""Serve main.css file"""
+	try:
+		return send_file('main.css', mimetype='text/css')
+	except Exception as e:
+		print(f"Error serving CSS: {e}")
+		return f"CSS file not found: {e}", 404
+
+@app.route('/app.js')
+def serve_js():
+	"""Serve app.js file"""
+	try:
+		return send_file('app.js', mimetype='application/javascript')
+	except Exception as e:
+		print(f"Error serving JS: {e}")
+		return f"JS file not found: {e}", 404
+
+@app.route('/debug-static')
+def debug_static():
+	"""Debug static file serving"""
+	import os
+	files = {
+		'main.css': os.path.exists('main.css'),
+		'app.js': os.path.exists('app.js'),
+		'index.html': os.path.exists('index.html')
+	}
+	
+	# Check file sizes
+	file_sizes = {}
+	for filename in ['main.css', 'app.js', 'index.html']:
+		if os.path.exists(filename):
+			file_sizes[filename] = os.path.getsize(filename)
+		else:
+			file_sizes[filename] = 0
+	
+	return jsonify({
+		'current_dir': os.getcwd(),
+		'files': files,
+		'file_sizes': file_sizes,
+		'static_folder': app.static_folder,
+		'static_url_path': app.static_url_path,
+		'list_dir': os.listdir('.')
+	})
+
+@app.route('/test-styling')
+def test_styling():
+	"""Test page to verify CSS and JS are working"""
+	return '''
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Styling Test</title>
+		<link rel="stylesheet" href="/main.css">
+	</head>
+	<body>
+		<div class="container">
+			<h1>Styling Test Page</h1>
+			<div class="card">
+				<h2>CSS Test</h2>
+				<p>If you can see this styled properly, CSS is working!</p>
+				<button class="btn" onclick="testJS()">Test JavaScript</button>
+				<div id="js-test" class="mt"></div>
+			</div>
+		</div>
+		<script src="/app.js"></script>
+		<script>
+			function testJS() {
+				document.getElementById('js-test').innerHTML = '<div class="alert success">JavaScript is working!</div>';
+			}
+		</script>
+	</body>
+	</html>
+	'''
 
 @app.route("/test-mongodb")
 def test_mongodb():
