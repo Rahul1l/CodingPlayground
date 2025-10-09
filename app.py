@@ -82,39 +82,14 @@ except Exception as e:
         print("App cannot start without MongoDB connection")
         exit(1)
 
-# OpenAI Client - AWS EC2 compatible approach
+# OpenAI Client - Following working Feedback-App-V2 pattern exactly
 import openai
 
-# Clear any proxy environment variables that might interfere with AWS
-proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
-for var in proxy_vars:
-    if var in os.environ:
-        print(f"Removing proxy environment variable: {var}")
-        del os.environ[var]
-
-# Initialize OpenAI client - AWS EC2 compatible
+# Simple initialization like working app - no proxy clearing, no test calls
 api_key = os.getenv("OPENAI_API_KEY")
 if api_key:
-    try:
-        # Use the exact same pattern as working Feedback-App-V2
-        openai.api_key = api_key
-        print(f"OpenAI API key set: {api_key[:10]}...")
-        
-        # Test the connection with error handling
-        print("Testing OpenAI connection...")
-        try:
-            test_response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=5
-            )
-            print("✅ OpenAI connection successful")
-        except Exception as test_e:
-            print(f"⚠️ OpenAI test failed: {test_e}")
-            print("OpenAI will use fallback responses")
-    except Exception as e:
-        print(f"❌ OpenAI initialization failed: {e}")
-        print("OpenAI will use fallback responses")
+    openai.api_key = api_key
+    print(f"OpenAI API key set: {api_key[:10]}...")
 else:
     print("Warning: OPENAI_API_KEY not found in environment variables")
 
@@ -607,21 +582,29 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 
 
 def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.") -> str:
-	# Check if OpenAI is properly initialized
-	if not hasattr(openai, 'api_key') or not openai.api_key:
+	# Check if OpenAI API key is available
+	if not openai.api_key:
 		print("OpenAI API key not available, using mock response")
 		return f'{{"questions": [{{"title": "Sample Question", "description": "This is a sample coding question generated for testing. The actual OpenAI integration is not working properly.", "input_format": "Input format here", "output_format": "Output format here", "sample_input": "sample input", "sample_output": "sample output"}}]}}'
 	
 	try:
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
-		completion = openai.chat.completions.create(
+		
+		# Use the exact same pattern as working Feedback-App-V2
+		response = openai.chat.completions.create(
 			model=os.getenv("OPENAI_MODEL", "gpt-4"),
-			messages=[{"role": "system", "content": system_role}, {"role": "user", "content": prompt}],
+			messages=[
+				{"role": "system", "content": system_role},
+				{"role": "user", "content": prompt}
+			],
 			temperature=0.4,
-			max_tokens=2000
+			max_tokens=2000,
+			timeout=30
 		)
+		
 		print("OpenAI API call successful")
-		return completion.choices[0].message.content
+		return response.choices[0].message.content
+		
 	except Exception as e:
 		print(f"OpenAI API error: {e}")
 		print(f"Error type: {type(e)}")
