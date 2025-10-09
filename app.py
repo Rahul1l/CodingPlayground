@@ -36,14 +36,15 @@ app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 # Enable CORS for all routes (allow credentials for session cookies)
 CORS(app, supports_credentials=True)
 
-# MongoDB Setup - Simple and working approach
+# MongoDB Setup - Following working Feedback-App-V2 pattern
 try:
     print("Connecting to MongoDB...")
+    # Try the exact same pattern as working app
     client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
     client.admin.command('ping')
     print("✅ MongoDB connected successfully")
     
-    db = client[Config.MONGO_DB]
+    db = client[Config.DATABASE_NAME]
     admins_col = db["admins"]
     users_col = db["users"]
     classroom_col = db["classrooms"]
@@ -53,8 +54,35 @@ try:
     
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
-    print("App cannot start without MongoDB connection")
-    exit(1)
+    print("Trying alternative connection method...")
+    
+    # Try with explicit SSL context (sometimes needed on AWS EC2)
+    try:
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        client = MongoClient(
+            Config.MONGO_URI, 
+            serverSelectionTimeoutMS=10000,
+            ssl_context=ssl_context
+        )
+        client.admin.command('ping')
+        print("✅ MongoDB connected successfully with SSL context")
+        
+        db = client[Config.DATABASE_NAME]
+        admins_col = db["admins"]
+        users_col = db["users"]
+        classroom_col = db["classrooms"]
+        activities_col = db["activities"]
+        tests_col = db["tests"]
+        submissions_col = db["submissions"]
+        
+    except Exception as e2:
+        print(f"❌ Alternative MongoDB connection also failed: {e2}")
+        print("App cannot start without MongoDB connection")
+        exit(1)
 
 # OpenAI Client - Simple and working approach
 import openai

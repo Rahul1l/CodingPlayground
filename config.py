@@ -7,7 +7,7 @@ load_dotenv()
 class Config:
     # MongoDB Configuration
     MONGO_URI = os.getenv("MONGO_URI")
-    MONGO_DB = os.getenv("MONGO_DB", "coding_playground")
+    DATABASE_NAME = os.getenv("DATABASE_NAME", "coding_playground")
     
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
