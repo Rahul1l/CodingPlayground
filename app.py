@@ -163,11 +163,11 @@ def login():
 		if username == "Ayushman" and password == "ayushman9277":
 			# Create admin entry if it doesn't exist
 			if admins_col.count_documents({"username": "Ayushman"}) == 0:
-				admins_col.insert_one({
-					"username": "Ayushman",
-					"password_hash": generate_password_hash("ayushman9277"),
-					"created_at": datetime.now(timezone.utc)
-				})
+			admins_col.insert_one({
+				"username": "Ayushman",
+				"password_hash": generate_password_hash("ayushman9277"),
+				"created_at": datetime.now(timezone.utc)
+			})
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
@@ -934,15 +934,15 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		
 	except Exception as e:
 		error_message = str(e)
-		print(f"⚠️ OpenAI API error: {error_message}")
+		print(f"OpenAI API error: {error_message}")
 		print(f"Error type: {type(e)}")
 		
 		# Check if it's a quota error
 		if "quota" in error_message.lower() or "429" in error_message:
-			print("🔴 OpenAI API quota exceeded! Using fallback questions.")
+			print("⚠️ OpenAI API quota exceeded! Using fallback questions.")
 		
 		# Return valid fallback JSON with proper structure
-		fallback_json = '''{
+		return '''{
 	"questions": [
 		{
 			"question_type": "mcq",
@@ -969,9 +969,6 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		}
 	]
 }'''
-		print(f"✅ Returning fallback JSON (length: {len(fallback_json)} chars)")
-		print(f"✅ Fallback JSON preview: {fallback_json[:200]}")
-		return fallback_json
 
 
 def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
@@ -1267,10 +1264,7 @@ def admin_create_test():
 	except Exception as e:
 		return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 	try:
-		print(f"🔷 Creating test: {subject}, {num_questions} questions")
 		content = _ai_generate_test(subject, toc, num_questions)
-		print(f"🔷 AI generated content length: {len(content)} chars")
-		print(f"🔷 Content preview: {content[:200]}")
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1281,40 +1275,29 @@ def admin_create_test():
 			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
 			if match:
 				json_content = match.group(1)
-				print("✅ Cleaned: Extracted JSON from markdown code block")
+				print("Cleaned: Extracted JSON from markdown code block")
 		
 		# Try to find JSON object if there's extra text
 		if not json_content.strip().startswith('{'):
 			match = re.search(r'\{.*\}', content, re.DOTALL)
 			if match:
 				json_content = match.group(0)
-				print("✅ Cleaned: Extracted JSON object from text")
+				print("Cleaned: Extracted JSON object from text")
 		
 		# Validate JSON
 		import json
 		try:
 			parsed = json.loads(json_content)
-			print(f"✅ JSON parsed successfully")
 			if "questions" not in parsed:
-				print(f"❌ No 'questions' key in parsed JSON")
 				return jsonify({"ok": False, "error": "Generated content missing 'questions' array"}), 500
-			print(f"✅ Found {len(parsed['questions'])} questions in JSON")
 			content = json_content  # Use the cleaned version
 		except json.JSONDecodeError as e:
-			print(f"❌ JSON validation failed: {e}")
-			print(f"❌ Content: {json_content[:500]}")
+			print(f"JSON validation failed: {e}")
+			print(f"Content: {json_content[:500]}")
 			return jsonify({"ok": False, "error": f"AI generated invalid JSON: {str(e)}"}), 500
 			
 	except Exception as e:
-		print(f"❌ Exception during test creation: {e}")
-		import traceback
-		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
-	
-	print(f"💾 Storing test in database...")
-	print(f"💾 Content to store (length): {len(content)} chars")
-	print(f"💾 Content to store (preview): {content[:200]}")
-	
 	tests_col.insert_one({
 		"test_id": test_id,
 		"subject": subject,
@@ -1325,7 +1308,6 @@ def admin_create_test():
 		"end_time": end_time,
 		"created_at": datetime.now(timezone.utc)
 	})
-	print(f"✅ Test created successfully: {test_id}")
 	return redirect(url_for("admin_dashboard"))
 
 
