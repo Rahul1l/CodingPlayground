@@ -701,6 +701,37 @@ def admin_create_classroom_activity():
 		return jsonify({"ok": False, "error": "subject, classroom_id, >=1 questions required"}), 400
 	try:
 		content = _ai_generate_classroom_activity(subject, toc, num_questions)
+		
+		# Clean and validate JSON before storing
+		import re
+		json_content = content
+		
+		# Check if content is wrapped in markdown code blocks
+		if "```json" in content or "```" in content:
+			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+			if match:
+				json_content = match.group(1)
+				print("Cleaned: Extracted JSON from markdown code block")
+		
+		# Try to find JSON object if there's extra text
+		if not json_content.strip().startswith('{'):
+			match = re.search(r'\{.*\}', content, re.DOTALL)
+			if match:
+				json_content = match.group(0)
+				print("Cleaned: Extracted JSON object from text")
+		
+		# Validate JSON
+		import json
+		try:
+			parsed = json.loads(json_content)
+			if "questions" not in parsed:
+				return jsonify({"ok": False, "error": "Generated content missing 'questions' array"}), 500
+			content = json_content  # Use the cleaned version
+		except json.JSONDecodeError as e:
+			print(f"JSON validation failed: {e}")
+			print(f"Content: {json_content[:500]}")
+			return jsonify({"ok": False, "error": f"AI generated invalid JSON: {str(e)}"}), 500
+			
 	except Exception as e:
 		return jsonify({"ok": False, "error": str(e)}), 500
 	activity_id = str(uuid4())
@@ -752,6 +783,37 @@ def admin_create_test():
 		return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 	try:
 		content = _ai_generate_test(subject, toc, num_questions)
+		
+		# Clean and validate JSON before storing
+		import re
+		json_content = content
+		
+		# Check if content is wrapped in markdown code blocks
+		if "```json" in content or "```" in content:
+			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+			if match:
+				json_content = match.group(1)
+				print("Cleaned: Extracted JSON from markdown code block")
+		
+		# Try to find JSON object if there's extra text
+		if not json_content.strip().startswith('{'):
+			match = re.search(r'\{.*\}', content, re.DOTALL)
+			if match:
+				json_content = match.group(0)
+				print("Cleaned: Extracted JSON object from text")
+		
+		# Validate JSON
+		import json
+		try:
+			parsed = json.loads(json_content)
+			if "questions" not in parsed:
+				return jsonify({"ok": False, "error": "Generated content missing 'questions' array"}), 500
+			content = json_content  # Use the cleaned version
+		except json.JSONDecodeError as e:
+			print(f"JSON validation failed: {e}")
+			print(f"Content: {json_content[:500]}")
+			return jsonify({"ok": False, "error": f"AI generated invalid JSON: {str(e)}"}), 500
+			
 	except Exception as e:
 		return jsonify({"ok": False, "error": str(e)}), 500
 	tests_col.insert_one({
@@ -963,6 +1025,69 @@ def test():
 		start_time=start_time_local, end_time=end_time_local, scheduled_at=scheduled_at_local, current_time=now + timezone_offset) 
 
 
+@app.route("/debug/test/<test_id>")  # Debug route to check test content
+def debug_test(test_id):
+	"""Debug endpoint to view test structure and content"""
+	test_doc = tests_col.find_one({"test_id": test_id})
+	if not test_doc:
+		return f"Test '{test_id}' not found", 404
+	
+	import json
+	generated_content = test_doc.get("generated", "")
+	
+	debug_info = {
+		"test_id": test_id,
+		"subject": test_doc.get("subject"),
+		"num_questions": test_doc.get("num_questions"),
+		"content_type": type(generated_content).__name__,
+		"content_length": len(generated_content) if generated_content else 0,
+		"content_preview": generated_content[:500] if generated_content else "Empty",
+	}
+	
+	# Try to parse as JSON
+	try:
+		parsed = json.loads(generated_content)
+		debug_info["json_valid"] = True
+		debug_info["has_questions_key"] = "questions" in parsed
+		if "questions" in parsed:
+			debug_info["questions_count"] = len(parsed.get("questions", []))
+			debug_info["first_question"] = parsed["questions"][0] if parsed["questions"] else None
+		else:
+			debug_info["top_level_keys"] = list(parsed.keys())
+	except json.JSONDecodeError as e:
+		debug_info["json_valid"] = False
+		debug_info["json_error"] = str(e)
+	except Exception as e:
+		debug_info["error"] = str(e)
+	
+	return f"""
+	<html>
+	<head><title>Test Debug: {test_id}</title></head>
+	<body style="font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0;">
+		<h1>Test Debug Information</h1>
+		<h2>Test: {test_id}</h2>
+		
+		<h3>Metadata:</h3>
+		<pre>{json.dumps({k: v for k, v in debug_info.items() if k not in ['content_preview', 'first_question']}, indent=2)}</pre>
+		
+		<h3>Content Preview (first 500 chars):</h3>
+		<pre style="background: #2a2a2a; padding: 10px; border-radius: 5px; white-space: pre-wrap;">{debug_info.get('content_preview', 'N/A')}</pre>
+		
+		<h3>First Question (if available):</h3>
+		<pre style="background: #2a2a2a; padding: 10px; border-radius: 5px; white-space: pre-wrap;">{json.dumps(debug_info.get('first_question'), indent=2) if debug_info.get('first_question') else 'N/A'}</pre>
+		
+		<h3>Full Raw Content:</h3>
+		<details>
+			<summary>Click to expand full content</summary>
+			<pre style="background: #2a2a2a; padding: 10px; border-radius: 5px; white-space: pre-wrap; max-height: 600px; overflow: auto;">{generated_content}</pre>
+		</details>
+		
+		<br>
+		<a href="/admin/tests" style="color: #60a5fa;">← Back to Tests Management</a>
+	</body>
+	</html>
+	"""
+
 @app.route("/debug/time")  # Debug route to check timezone handling
 def debug_time():
 	now_utc = datetime.now(timezone.utc)
@@ -1064,22 +1189,56 @@ def test_start():
 	# Parse the generated JSON to extract questions
 	questions = []
 	current_question = None
+	parse_error = None
 	try:
 		import json
-		generated_data = json.loads(test_doc.get("generated", "{}"))
+		import re
+		generated_content = test_doc.get("generated", "")
+		print(f"Generated content type: {type(generated_content)}")
+		print(f"Generated content preview: {generated_content[:200] if generated_content else 'Empty'}")
+		
+		# Try to extract JSON from markdown code blocks or text
+		json_content = generated_content
+		
+		# Check if content is wrapped in markdown code blocks
+		if "```json" in generated_content or "```" in generated_content:
+			# Extract JSON from code blocks
+			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', generated_content, re.DOTALL)
+			if match:
+				json_content = match.group(1)
+				print("Extracted JSON from markdown code block")
+		
+		# Try to find JSON object if there's extra text
+		if not json_content.strip().startswith('{'):
+			match = re.search(r'\{.*\}', generated_content, re.DOTALL)
+			if match:
+				json_content = match.group(0)
+				print("Extracted JSON object from text")
+		
+		generated_data = json.loads(json_content)
 		questions = generated_data.get("questions", [])
+		print(f"Number of questions parsed: {len(questions)}")
 		
 		# Get current question based on progress
 		progress = session["test_progress"]
 		if progress < len(questions):
 			current_question = questions[progress]
-	except Exception as e:
+			print(f"Current question (progress {progress}): {current_question.get('title', 'No title') if current_question else 'None'}")
+		else:
+			print(f"Progress {progress} is beyond question count {len(questions)}")
+	except json.JSONDecodeError as e:
+		parse_error = f"JSON parsing error: {str(e)}"
 		print(f"Error parsing test JSON: {e}")
-		questions = []
+		print(f"Generated content that failed to parse: {test_doc.get('generated', '')[:500]}")
+	except Exception as e:
+		parse_error = f"Error: {str(e)}"
+		print(f"Unexpected error parsing test: {e}")
+		import traceback
+		traceback.print_exc()
 	
 	# Show the actual test interface
 	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question)
+		questions=questions, current_question=current_question, parse_error=parse_error)
 
 
 @app.route("/test/submit", methods=["POST"])  # Sequential submission, no output displayed

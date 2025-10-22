@@ -1388,7 +1388,8 @@ pre, code {
 								</td>
 								<td>{{ test.created_at.strftime('%Y-%m-%d %H:%M') if test.created_at else '-' }}</td>
 								<td>
-									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">Delete</button>
+									<a href="/debug/test/{{ test.test_id }}" class="btn secondary small" target="_blank">🔍 Debug</a>
+									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">🗑️ Delete</button>
 								</td>
 							</tr>
 							{% endfor %}
@@ -1638,6 +1639,14 @@ pre, code {
 				</div>
 			</div>
 			
+			{% if parse_error %}
+			<div class="alert">
+				<strong>⚠️ Error loading test questions:</strong><br>
+				{{ parse_error }}<br>
+				<small>The test content may not be in the expected format. Please check the test generation.</small>
+			</div>
+			{% endif %}
+			
 			{% if current_question %}
 			<section class="card question-card">
 				<div class="question-header">
@@ -1700,15 +1709,25 @@ pre, code {
 			</form>
 			{% else %}
 			<section class="card">
-				<h2>Test Content</h2>
+				<h2>⚠️ Unable to Display Question</h2>
+				<div class="alert">
+					<p><strong>Debug Information:</strong></p>
+					<ul>
+						<li>Number of questions parsed: {{ questions|length }}</li>
+						<li>Current progress: {{ progress }}</li>
+						<li>Expected questions: {{ test.num_questions }}</li>
+					</ul>
+				</div>
+				
+				<h3>Raw Test Content:</h3>
 				<details open>
-					<summary>Test Content (structure)</summary>
+					<summary>Click to view test content structure</summary>
 					<pre class="scroll">{{ test.generated }}</pre>
 				</details>
-				<form id="testForm" method="post" action="/test/submit">
-					<label>Your Code<textarea name="user_code" rows="12" placeholder="# Write your solution here"></textarea></label>
-					<button class="btn" type="submit">Submit</button>
-				</form>
+				
+				<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
+				
+				<a href="/test" class="btn secondary">← Back to Test Info</a>
 			</section>
 			{% endif %}
 			<script>
