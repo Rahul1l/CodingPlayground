@@ -1658,20 +1658,22 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<section class="grid">
 				<div class="card">
 					<h2>Create Classroom Activity</h2>
-					<form method="post" action="/admin/create_classroom_activity">
-						<label>Subject<input type="text" name="subject" required></label>
-						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of Questions<input type="number" min="1" max="20" value="3" name="num_questions"></label>
-						<label>Classroom ID<input type="text" name="classroom_id" required></label>
-						<button class="btn" type="submit">Generate Activity</button>
-					</form>
+				<form method="post" action="/admin/create_classroom_activity">
+					<label>Subject<input type="text" name="subject" required></label>
+					<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
+					<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq"></label>
+					<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding"></label>
+					<label>Classroom ID<input type="text" name="classroom_id" required></label>
+					<button class="btn" type="submit">Generate Activity</button>
+				</form>
 				</div>
 				<div class="card">
 					<h2>Create Test</h2>
 					<form method="post" action="/admin/create_test">
 						<label>Subject<input type="text" name="subject" required></label>
 						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of Questions<input type="number" min="1" max="20" value="3" name="num_questions"></label>
+						<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq"></label>
+						<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding"></label>
 						<label>Test ID<input type="text" name="test_id" required></label>
 						<label>Test Start Time<input type="datetime-local" name="start_datetime" required></label>
 						<label>Test End Time<input type="datetime-local" name="end_datetime" required></label>

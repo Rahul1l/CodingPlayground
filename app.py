@@ -964,8 +964,9 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 }'''
 
 
-def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate classroom activities with varied difficulty and question types"""
+def _ai_generate_classroom_activity(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
+	"""Generate classroom activities with specific MCQ and coding question counts"""
+	num_questions = num_mcq + num_coding
 	trainer_role = """You are an expert Educational Content Designer and Assessment Specialist with 15+ years of experience in creating comprehensive, pedagogically sound assessments. 
 
 Your expertise includes:
@@ -978,41 +979,32 @@ Your expertise includes:
 
 You create assessments that are fair, challenging, and educational."""
 	
-	prompt = f"""Create {num_questions} high-quality practice questions for: **{subject}**
+	prompt = f"""Create EXACTLY {num_questions} high-quality practice questions for: **{subject}**
 
 🎯 **TOPIC/CONTENT GUIDANCE:**
 {toc if toc else "Cover fundamental to advanced concepts in " + subject}
 
-📋 **QUESTION DISTRIBUTION (distribute questions across these types):**
+📋 **REQUIRED QUESTION DISTRIBUTION:**
 
-**1. EASY (25% of questions) - Foundational MCQs:**
-   - Test basic concepts, definitions, and fundamental principles
+**Generate EXACTLY:**
+- **{num_mcq} MCQ Questions** (Multiple Choice with 4 options)
+- **{num_coding} Coding Questions** (Programming problems)
+
+**Total: {num_questions} questions**
+
+**MCQ GUIDELINES (for all {num_mcq} MCQs):**
+   - Mix of easy, medium, and hard difficulties
+   - Test concepts, definitions, and application
    - 4 well-crafted options with clear correct answer
    - Options should be distinct and plausible
-   - Time: 2-3 minutes each
-   - Topics: Core terminology, simple recall, basic understanding
+   - Include explanation for correct answer
 
-**2. MEDIUM (35% of questions) - Application-Based MCQs:**
-   - Short scenario or case study (2-3 paragraphs)
-   - Requires applying concepts to solve problems
-   - 4 options with subtle differences
-   - Time: 5-7 minutes each
-   - Topics: Problem-solving, analysis, practical application
-
-**3. HARD (25% of questions) - Complex Case-Based MCQs:**
-   - Detailed scenario/case study (4-6 paragraphs)
-   - Multi-faceted problem requiring deep analysis
-   - 4 options requiring careful consideration
-   - Time: 8-10 minutes each
-   - Topics: Critical thinking, evaluation, complex decision-making
-
-**4. MEDIUM+ HEAVY (15% of questions) - Coding Challenges:**
+**CODING GUIDELINES (for all {num_coding} coding questions):**
    - Real-world algorithmic or programming problems
    - Must be solvable in Python
    - Focus on logic, not syntax memorization
-   - Provide comprehensive test cases
-   - Time: 15-20 minutes each
-   - Topics: Data structures, algorithms, problem-solving
+   - Provide comprehensive test cases (minimum 3)
+   - Clear input/output format specifications
 
 📝 **STRICT JSON FORMAT (return ONLY JSON, no markdown):**
 {{
@@ -1053,20 +1045,21 @@ You create assessments that are fair, challenging, and educational."""
   ]
 }}
 
-✅ **QUALITY REQUIREMENTS:**
-1. **Topic Focus**: Every question must directly relate to "{subject}" and topics in: {toc if toc else "fundamental to advanced " + subject + " concepts"}
-2. **Randomization**: Mix difficulties - DON'T group by difficulty level
-3. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
-4. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
-5. **Educational**: Each question teaches something valuable about {subject}
+✅ **CRITICAL REQUIREMENTS:**
+1. **Exact Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} coding questions. No more, no less.
+2. **Topic Focus**: Every question must directly relate to "{subject}" and topics in: {toc if toc else "fundamental to advanced " + subject + " concepts"}
+3. **Randomization**: Mix difficulties within each type
+4. **MCQs**: All 4 options plausible, no obvious answers, include explanation
+5. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
 
 ⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
 	return _ai_generate(prompt, trainer_role)
 
 
-def _ai_generate_test(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate tests with varied difficulty and question types"""
+def _ai_generate_test(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
+	"""Generate tests with specific MCQ and coding question counts"""
+	num_questions = num_mcq + num_coding
 	trainer_role = """You are a Senior Examination Designer and Assessment Expert with expertise in creating fair, comprehensive, and academically rigorous tests.
 
 Your qualifications:
@@ -1084,42 +1077,36 @@ You design tests that:
 - Have clear, unambiguous correct answers
 - Provide comprehensive evaluation of student competency"""
 	
-	prompt = f"""Create {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
+	prompt = f"""Create EXACTLY {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
 
 🎯 **SUBJECT/TOPIC COVERAGE:**
 {toc if toc else "Comprehensive coverage of " + subject + " from fundamentals to advanced topics"}
 
 ⚠️ **EXAM STANDARDS:** These are formal test questions - higher difficulty and rigor than practice questions.
 
-📋 **QUESTION DISTRIBUTION:**
+📋 **REQUIRED QUESTION DISTRIBUTION:**
 
-**1. EASY (25%) - Foundation Assessment:**
+**Generate EXACTLY:**
+- **{num_mcq} MCQ Questions** (Multiple Choice with 4 options)
+- **{num_coding} Coding Questions** (Programming problems)
+
+**Total: {num_questions} questions**
+
+**MCQ GUIDELINES (for all {num_mcq} MCQs):**
+   - Mix of easy, medium, and hard difficulties
    - Test essential concepts and core principles
    - 4 carefully designed options (3 plausible distractors)
    - No "freebie" questions - require understanding, not just recall
-   - Time: 2-3 minutes
-   - Purpose: Verify baseline competency
+   - Include thorough explanation for correct answer
+   - Exam-level rigor
 
-**2. MEDIUM (35%) - Applied Knowledge:**
-   - Realistic scenarios (2-3 paragraph case studies)
-   - Test ability to apply concepts to new situations
-   - Options require careful analysis
-   - Time: 5-7 minutes
-   - Purpose: Assess problem-solving and analysis skills
-
-**3. HARD (25%) - Advanced Analysis:**
-   - Complex, multi-layered case studies (4-6 paragraphs)
-   - Requires synthesis of multiple concepts
-   - All options should seem plausible at first glance
-   - Time: 8-10 minutes
-   - Purpose: Distinguish excellent from good students
-
-**4. MEDIUM+ HEAVY (15%) - Coding Proficiency:**
+**CODING GUIDELINES (for all {num_coding} coding questions):**
    - Industry-relevant algorithmic challenges
    - Must demonstrate mastery of data structures and algorithms
    - Comprehensive test cases including corner cases
-   - Time: 15-20 minutes
-   - Purpose: Evaluate practical coding skills and logical thinking
+   - Test FUNCTIONALITY not exact output
+   - Clear input/output format specifications
+   - Exam-level difficulty
 
 REQUIRED JSON FORMAT:
 {{
@@ -1151,12 +1138,13 @@ REQUIRED JSON FORMAT:
 }}
 
 ✅ **EXAM STANDARDS (Stricter than practice):**
-1. **Topic Focus**: All questions test "{subject}" - Coverage: {toc if toc else "Full " + subject + " curriculum"}
-2. **Randomization**: Mix difficulty levels - NO grouping by difficulty
-3. **MCQs**: All options plausible, thorough explanations, one correct answer
-4. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
-5. **Rigor**: Exam-level difficulty - more challenging than practice questions
-6. **Clarity**: Zero ambiguity in questions or answers
+1. **Exact Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} coding questions. No more, no less.
+2. **Topic Focus**: All questions test "{subject}" - Coverage: {toc if toc else "Full " + subject + " curriculum"}
+3. **Randomization**: Mix difficulty levels within each type - NO grouping by difficulty
+4. **MCQs**: All options plausible, thorough explanations, one correct answer
+5. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
+6. **Rigor**: Exam-level difficulty - more challenging than practice questions
+7. **Clarity**: Zero ambiguity in questions or answers
 
 ⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	
@@ -1170,12 +1158,20 @@ def admin_create_classroom_activity():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_questions = int(request.form.get("num_questions", "3") or 3)
+	num_mcq = int(request.form.get("num_mcq", "0") or 0)
+	num_coding = int(request.form.get("num_coding", "0") or 0)
 	classroom_id = request.form.get("classroom_id", "").strip()
-	if not subject or not classroom_id or num_questions < 1:
-		return jsonify({"ok": False, "error": "subject, classroom_id, >=1 questions required"}), 400
+	
+	num_questions = num_mcq + num_coding
+	if not subject or not classroom_id:
+		return jsonify({"ok": False, "error": "subject and classroom_id required"}), 400
+	if num_mcq < 0 or num_coding < 0:
+		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
+	if num_questions < 1:
+		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
+	
 	try:
-		content = _ai_generate_classroom_activity(subject, toc, num_questions)
+		content = _ai_generate_classroom_activity(subject, toc, num_mcq, num_coding)
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1216,6 +1212,8 @@ def admin_create_classroom_activity():
 		"subject": subject,
 		"toc": toc,
 		"num_questions": num_questions,
+		"num_mcq": num_mcq,
+		"num_coding": num_coding,
 		"generated": content,
 		"created_at": datetime.now(timezone.utc)
 	})
@@ -1231,12 +1229,20 @@ def admin_create_test():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_questions = int(request.form.get("num_questions", "3") or 3)
+	num_mcq = int(request.form.get("num_mcq", "0") or 0)
+	num_coding = int(request.form.get("num_coding", "0") or 0)
 	test_id = request.form.get("test_id", "").strip()
 	start_datetime = request.form.get("start_datetime", "").strip()  # datetime-local input
 	end_datetime = request.form.get("end_datetime", "").strip()  # datetime-local input
-	if not subject or not test_id or num_questions < 1 or not start_datetime or not end_datetime:
-		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime, >=1 questions required"}), 400
+	
+	num_questions = num_mcq + num_coding
+	if not subject or not test_id or not start_datetime or not end_datetime:
+		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime required"}), 400
+	if num_mcq < 0 or num_coding < 0:
+		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
+	if num_questions < 1:
+		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
+	
 	try:
 		# Parse datetime-local inputs (YYYY-MM-DDTHH:MM format)
 		# These give us naive datetimes in local time
@@ -1257,7 +1263,7 @@ def admin_create_test():
 	except Exception as e:
 		return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 	try:
-		content = _ai_generate_test(subject, toc, num_questions)
+		content = _ai_generate_test(subject, toc, num_mcq, num_coding)
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1296,6 +1302,8 @@ def admin_create_test():
 		"subject": subject,
 		"toc": toc,
 		"num_questions": num_questions,
+		"num_mcq": num_mcq,
+		"num_coding": num_coding,
 		"generated": content,
 		"start_time": start_time,
 		"end_time": end_time,
