@@ -1779,8 +1779,19 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<section class="card question-card" id="question-{{ loop.index }}" {% if loop.index > 1 %}style="display: none;"{% endif %}>
 					<div class="question-header">
 						<h3>Question {{ loop.index }}: {{ question.title }} ({{ loop.index }}/{{ questions|length }})</h3>
-						<div class="question-controls">
-							<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
+						<div class="question-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
+								{% if question.difficulty == 'medium_plus' %}
+									Medium+ (Coding)
+								{% else %}
+									{{ question.difficulty|title }}
+								{% endif %}
+							</span>
+							{% if question.question_type == 'mcq' %}
+							<span class="role-badge role-classroom">📝 MCQ</span>
+							{% elif question.question_type == 'coding' %}
+							<span class="role-badge role-test">💻 Coding</span>
+							{% endif %}
 							{% if questions|length > 1 %}
 								{% if loop.index > 1 %}
 								<button class="btn secondary" onclick="showQuestion({{ loop.index - 1 }})">← Previous</button>
@@ -1792,54 +1803,85 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 					</div>
 					
-					<div class="question-content">
-						<p><strong>Description:</strong></p>
-						<p>{{ question.description }}</p>
-						
-						{% if question.input_format %}
-						<p><strong>Input Format:</strong></p>
-						<pre class="format-box">{{ question.input_format }}</pre>
-						{% endif %}
-						
-						{% if question.output_format %}
-						<p><strong>Output Format:</strong></p>
-						<pre class="format-box">{{ question.output_format }}</pre>
-						{% endif %}
-						
-						{% if question.sample_input %}
-						<p><strong>Sample Input:</strong></p>
-						<pre class="sample-box">{{ question.sample_input }}</pre>
-						{% endif %}
-						
-						{% if question.sample_output %}
-						<p><strong>Sample Output:</strong></p>
-						<pre class="sample-box">{{ question.sample_output }}</pre>
+				<div class="question-content">
+					<p><strong>Description:</strong></p>
+					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+					
+					{# MCQ Questions #}
+					{% if question.question_type == 'mcq' and question.options %}
+					<div style="margin-top: 1.5rem;">
+						<p><strong>Answer Options:</strong></p>
+						<div style="margin: 1rem 0;">
+							{% for option in question.options %}
+							<div style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000;">
+								{{ option }}
+							</div>
+							{% endfor %}
+						</div>
+						{% if question.correct_answer %}
+						<details style="margin-top: 1rem;">
+							<summary style="cursor: pointer; color: #10b981; font-weight: 600;">✅ Show Correct Answer</summary>
+							<div style="margin-top: 0.5rem; padding: 1rem; background: #d1fae5; border-radius: 8px; border: 1px solid #10b981; color: #000000;">
+								<p><strong>Correct Answer:</strong> {{ question.correct_answer }}</p>
+								{% if question.explanation %}
+								<p><strong>Explanation:</strong> {{ question.explanation }}</p>
+								{% endif %}
+							</div>
+						</details>
 						{% endif %}
 					</div>
+					{% endif %}
 					
-					<div class="compiler-section">
-						<h4>🐍 Code Editor (Admin Preview)</h4>
-						<div class="compiler-container">
-							<div class="code-section">
-								<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+					{# Coding Questions #}
+					{% if question.question_type == 'coding' or not question.question_type %}
+					{% if question.input_format %}
+					<p><strong>Input Format:</strong></p>
+					<pre class="format-box">{{ question.input_format }}</pre>
+					{% endif %}
+					
+					{% if question.output_format %}
+					<p><strong>Output Format:</strong></p>
+					<pre class="format-box">{{ question.output_format }}</pre>
+					{% endif %}
+					
+					{% if question.sample_input %}
+					<p><strong>Sample Input:</strong></p>
+					<pre class="sample-box">{{ question.sample_input }}</pre>
+					{% endif %}
+					
+					{% if question.sample_output %}
+					<p><strong>Sample Output:</strong></p>
+					<pre class="sample-box">{{ question.sample_output }}</pre>
+					{% endif %}
+					{% endif %}
+				</div>
+				
+				{# Only show code editor for coding questions #}
+				{% if question.question_type == 'coding' or not question.question_type %}
+				<div class="compiler-section">
+					<h4>🐍 Code Editor (Admin Preview)</h4>
+					<div class="compiler-container">
+						<div class="code-section">
+							<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-								<div class="compiler-controls">
-									<button class="btn run-admin-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-									<button class="btn secondary clear-admin-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
-								</div>
+							<div class="compiler-controls">
+								<button class="btn run-admin-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+								<button class="btn secondary clear-admin-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
 							</div>
-							
-							<div class="output-section">
-								<label>Output:</label>
-								<div id="admin-output-{{ loop.index }}" class="output-box">
-									<p class="muted">Click "Run Code" to see the output here...</p>
-								</div>
+						</div>
+						
+						<div class="output-section">
+							<label>Output:</label>
+							<div id="admin-output-{{ loop.index }}" class="output-box">
+								<p class="muted">Click "Run Code" to see the output here...</p>
 							</div>
 						</div>
 					</div>
-				</section>
+				</div>
+				{% endif %}
+			</section>
 				{% endfor %}
 			{% else %}
 				<section class="card">
@@ -2489,12 +2531,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						{% if question.question_type == 'mcq' and question.options %}
 						<div style="margin-top: 1.5rem;">
 							<p><strong>Select the correct answer:</strong></p>
-							<div style="margin: 1rem 0;">
+							<div id="mcq-options-{{ loop.index }}" style="margin: 1rem 0;">
 								{% for option in question.options %}
-								<div style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000;">
+								<div class="mcq-option-display" onclick="selectMCQOptionDisplay(this, {{ loop.index }})" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000; cursor: pointer; transition: all 0.2s;">
 									{{ option }}
 								</div>
 								{% endfor %}
+							</div>
+							<div id="selected-answer-{{ loop.index }}" style="margin-top: 1rem; padding: 1rem; background: #dbeafe; border-radius: 8px; display: none;">
+								<strong>Your Selection:</strong> <span id="answer-text-{{ loop.index }}"></span>
 							</div>
 							{% if question.hints %}
 							<details style="margin-top: 1rem;">
@@ -2538,6 +2583,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						{% endif %}
 					</div>
 					
+					{# Only show code editor for coding questions #}
+					{% if question.question_type == 'coding' or not question.question_type %}
 					<div class="compiler-section">
 						<h4>🐍 Code Editor</h4>
 						<div class="compiler-container">
@@ -2560,6 +2607,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							</div>
 						</div>
 					</div>
+					{% endif %}
 				</section>
 				{% endfor %}
 			{% else %}
@@ -3455,6 +3503,28 @@ print(f'Sum: {x + y}')"></textarea>
 	<script src="/static/app.js"></script>
 	{% if view == 'activity' %}
 	<script>
+	// MCQ selection handler for classroom activities
+	function selectMCQOptionDisplay(element, questionNum) {
+		// Remove selection from all options in this question
+		const parent = element.parentElement;
+		parent.querySelectorAll('.mcq-option-display').forEach(opt => {
+			opt.style.background = '#f0f9ff';
+			opt.style.borderLeft = '3px solid #3b82f6';
+			opt.style.fontWeight = 'normal';
+		});
+		
+		// Highlight selected option
+		element.style.background = '#dbeafe';
+		element.style.borderLeft = '3px solid #10b981';
+		element.style.fontWeight = '600';
+		
+		// Show selected answer
+		const selectedDiv = document.getElementById(`selected-answer-${questionNum}`);
+		const answerText = document.getElementById(`answer-text-${questionNum}`);
+		answerText.textContent = element.textContent;
+		selectedDiv.style.display = 'block';
+	}
+	
 	document.addEventListener('DOMContentLoaded', function() {
 		// Handle question-specific code execution
 		document.querySelectorAll('.run-question-code').forEach(button => {

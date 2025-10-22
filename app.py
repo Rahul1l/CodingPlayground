@@ -875,40 +875,52 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 		}
 
 
-def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.") -> str:
+def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.", num_questions: int = 2) -> str:
+	def generate_fallback_questions(n):
+		"""Generate fallback questions when AI is unavailable"""
+		questions = []
+		for i in range(n):
+			if i % 2 == 0:  # MCQ question
+				questions.append({
+					"question_type": "mcq",
+					"difficulty": "easy" if i < n//2 else "medium",
+					"title": f"Sample MCQ Question {i+1}",
+					"description": f"This is sample MCQ question {i+1}. OpenAI API is unavailable. Please check your API key and billing status.",
+					"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
+					"correct_answer": "A",
+					"explanation": "This is a sample question generated due to API unavailability."
+				})
+			else:  # Coding question
+				questions.append({
+					"question_type": "coding",
+					"difficulty": "medium_plus",
+					"title": f"Sample Coding Question {i+1}",
+					"description": f"Write a simple function for question {i+1}. Note: This is a placeholder question due to OpenAI API unavailability.",
+					"input_format": "Input description",
+					"output_format": "Output description",
+					"sample_input": "sample input",
+					"sample_output": "sample output",
+					"test_cases": [
+						{"input": "test1", "expected_output": "result1"},
+						{"input": "test2", "expected_output": "result2"}
+					]
+				})
+		return {"questions": questions}
+	
 	# Check if OpenAI API key is available
 	if not openai.api_key:
-		print("OpenAI API key not available, using mock response")
-		return '''{
-	"questions": [
-		{
-			"question_type": "mcq",
-			"difficulty": "easy",
-			"title": "Python Basics - Variables",
-			"description": "What is the correct way to assign a value to a variable in Python?",
-			"options": ["A) var x = 5", "B) x = 5", "C) set x to 5", "D) x := 5"],
-			"correct_answer": "B",
-			"explanation": "In Python, variables are assigned using the = operator: x = 5"
-		},
-		{
-			"question_type": "coding",
-			"difficulty": "medium_plus",
-			"title": "Sum of Numbers",
-			"description": "Write a function that takes a list of numbers and returns their sum.",
-			"input_format": "A list of integers",
-			"output_format": "The sum of all integers",
-			"sample_input": "[1, 2, 3, 4, 5]",
-			"sample_output": "15",
-			"test_cases": [
-				{"input": "[1, 2, 3]", "expected_output": "6"},
-				{"input": "[10, 20]", "expected_output": "30"}
-			]
-		}
-	]
-}'''
+		print(f"OpenAI API key not available, using {num_questions} fallback questions")
+		import json
+		return json.dumps(generate_fallback_questions(num_questions), indent=2)
 	
 	try:
+		# Calculate appropriate max_tokens and timeout based on number of questions
+		# Each question needs ~200-300 tokens, so scale accordingly
+		max_tokens = min(4000, 200 * num_questions + 500)  # Cap at 4000
+		timeout_seconds = min(180, 30 + (num_questions * 10))  # 30s base + 10s per question, max 180s
+		
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
+		print(f"Requesting {num_questions} questions (timeout: {timeout_seconds}s, max_tokens: {max_tokens})")
 		
 		# Use the exact same pattern as working Feedback-App-V2
 		response = openai.chat.completions.create(
@@ -918,8 +930,8 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 				{"role": "user", "content": prompt}
 			],
 			temperature=0.4,
-			max_tokens=2000,
-			timeout=30
+			max_tokens=max_tokens,
+			timeout=timeout_seconds
 		)
 		
 		print("OpenAI API call successful")
@@ -932,36 +944,11 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		
 		# Check if it's a quota error
 		if "quota" in error_message.lower() or "429" in error_message:
-			print("⚠️ OpenAI API quota exceeded! Using fallback questions.")
+			print(f"⚠️ OpenAI API quota exceeded! Using {num_questions} fallback questions.")
 		
 		# Return valid fallback JSON with proper structure
-		return '''{
-	"questions": [
-		{
-			"question_type": "mcq",
-			"difficulty": "easy",
-			"title": "Sample MCQ Question",
-			"description": "This is a sample question because OpenAI API is unavailable (quota exceeded or API error). Please check your OpenAI API key and billing status.",
-			"options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-			"correct_answer": "A",
-			"explanation": "This is a sample question generated due to API unavailability."
-		},
-		{
-			"question_type": "coding",
-			"difficulty": "medium_plus",
-			"title": "Sample Coding Question",
-			"description": "Write a simple function. Note: This is a placeholder question due to OpenAI API unavailability.",
-			"input_format": "Any input",
-			"output_format": "Any output",
-			"sample_input": "test",
-			"sample_output": "result",
-			"test_cases": [
-				{"input": "test1", "expected_output": "result1"},
-				{"input": "test2", "expected_output": "result2"}
-			]
-		}
-	]
-}'''
+		import json
+		return json.dumps(generate_fallback_questions(num_questions), indent=2)
 
 
 def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
@@ -1062,7 +1049,7 @@ You create assessments that are fair, challenging, and educational."""
 
 ⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
-	return _ai_generate(prompt, trainer_role)
+	return _ai_generate(prompt, trainer_role, num_questions)
 
 
 def _ai_generate_test(subject: str, toc: str, num_questions: int) -> str:
@@ -1160,7 +1147,7 @@ REQUIRED JSON FORMAT:
 
 ⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	
-	return _ai_generate(prompt, trainer_role)
+	return _ai_generate(prompt, trainer_role, num_questions)
 
 
 @app.route("/admin/create_classroom_activity", methods=["POST"])  # Generate activities via OpenAI
@@ -1175,7 +1162,9 @@ def admin_create_classroom_activity():
 	if not subject or not classroom_id or num_questions < 1:
 		return jsonify({"ok": False, "error": "subject, classroom_id, >=1 questions required"}), 400
 	try:
+		print(f"Generating classroom activity: {subject}, {num_questions} questions")
 		content = _ai_generate_classroom_activity(subject, toc, num_questions)
+		print(f"Activity generated successfully, length: {len(content)}")
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1208,20 +1197,32 @@ def admin_create_classroom_activity():
 			return jsonify({"ok": False, "error": f"AI generated invalid JSON: {str(e)}"}), 500
 			
 	except Exception as e:
+		print(f"ERROR creating classroom activity: {str(e)}")
+		import traceback
+		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
-	activity_id = str(uuid4())
-	activities_col.insert_one({
-		"activity_id": activity_id,
-		"classroom_id": classroom_id,
-		"subject": subject,
-		"toc": toc,
-		"num_questions": num_questions,
-		"generated": content,
-		"created_at": datetime.now(timezone.utc)
-	})
-	# Track classroom → activities
-	classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
-	return redirect(url_for("admin_dashboard"))
+	
+	try:
+		activity_id = str(uuid4())
+		print(f"Storing activity in database: {activity_id}")
+		activities_col.insert_one({
+			"activity_id": activity_id,
+			"classroom_id": classroom_id,
+			"subject": subject,
+			"toc": toc,
+			"num_questions": num_questions,
+			"generated": content,
+			"created_at": datetime.now(timezone.utc)
+		})
+		print(f"Activity stored successfully")
+		# Track classroom → activities
+		classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
+		return redirect(url_for("admin_dashboard"))
+	except Exception as e:
+		print(f"ERROR storing activity: {str(e)}")
+		import traceback
+		traceback.print_exc()
+		return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
 
 @app.route("/admin/create_test", methods=["POST"])  # Generate test; scheduled
