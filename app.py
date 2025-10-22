@@ -172,11 +172,11 @@ def login():
 		
 		# Check database admin
 		try:
-		admin = admins_col.find_one({"username": username})
+			admin = admins_col.find_one({"username": username})
 			if admin:
 				if check_password_hash(admin.get("password_hash", ""), password):
-			session["admin_username"] = username
-			return redirect(url_for("admin_dashboard"))
+					session["admin_username"] = username
+					return redirect(url_for("admin_dashboard"))
 		except Exception as e:
 			print(f"Admin lookup error: {e}")
 		
@@ -1279,23 +1279,23 @@ def admin_create_classroom_activity():
 		return jsonify({"ok": False, "error": str(e)}), 500
 	
 	try:
-	activity_id = str(uuid4())
+		activity_id = str(uuid4())
 		print(f"Storing activity in database: {activity_id}")
-	activities_col.insert_one({
-		"activity_id": activity_id,
-		"classroom_id": classroom_id,
-		"subject": subject,
-		"toc": toc,
-		"num_questions": num_questions,
+		activities_col.insert_one({
+			"activity_id": activity_id,
+			"classroom_id": classroom_id,
+			"subject": subject,
+			"toc": toc,
+			"num_questions": num_questions,
 			"num_mcq": num_mcq,
 			"num_coding": num_coding,
-		"generated": content,
-		"created_at": datetime.now(timezone.utc)
-	})
+			"generated": content,
+			"created_at": datetime.now(timezone.utc)
+		})
 		print(f"Activity stored successfully")
-	# Track classroom → activities
-	classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
-	return redirect(url_for("admin_dashboard"))
+		# Track classroom → activities
+		classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
+		return redirect(url_for("admin_dashboard"))
 	except Exception as e:
 		print(f"ERROR storing activity: {str(e)}")
 		import traceback
