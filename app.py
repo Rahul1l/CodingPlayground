@@ -875,110 +875,6 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 		}
 
 
-def _ai_generate_batch(prompt: str, system_role: str, num_questions: int, num_mcq: int = None, num_coding: int = None, batch_size: int = 5) -> str:
-	"""Generate questions in batches to avoid OpenAI timeout"""
-	import json
-	
-	# If requesting small number, generate all at once
-	if num_questions <= batch_size:
-		return _ai_generate(prompt, system_role, num_questions, num_mcq, num_coding)
-	
-	# For large requests, generate in batches
-	print(f"Generating {num_questions} questions in batches of {batch_size}...")
-	all_questions = []
-	
-	# Calculate batches for each type
-	if num_mcq is not None and num_coding is not None:
-		# Generate MCQ in batches
-		mcq_questions = []
-		mcq_remaining = num_mcq
-		while mcq_remaining > 0:
-			batch_count = min(batch_size, mcq_remaining)
-			print(f"Generating batch: {batch_count} MCQ questions...")
-			try:
-				result = _ai_generate(
-					prompt.replace(f"{num_mcq} MCQ Questions", f"{batch_count} MCQ Questions")
-					      .replace(f"{num_coding} Coding Questions", "0 Coding Questions")
-					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
-					system_role,
-					batch_count,
-					batch_count,
-					0
-				)
-				batch_data = json.loads(result)
-				mcq_questions.extend(batch_data.get("questions", []))
-				mcq_remaining -= batch_count
-			except Exception as e:
-				print(f"Batch generation error: {e}")
-				# Use fallback for remaining
-				for i in range(mcq_remaining):
-					mcq_questions.append({
-						"question_type": "mcq",
-						"difficulty": "easy",
-						"title": f"Sample MCQ Question {len(mcq_questions)+1}",
-						"description": "Fallback question due to generation error.",
-						"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
-						"correct_answer": "A",
-						"explanation": "Sample explanation."
-					})
-				break
-		
-		# Generate Coding in batches
-		coding_questions = []
-		coding_remaining = num_coding
-		while coding_remaining > 0:
-			batch_count = min(batch_size, coding_remaining)
-			print(f"Generating batch: {batch_count} Coding questions...")
-			try:
-				result = _ai_generate(
-					prompt.replace(f"{num_mcq} MCQ Questions", "0 MCQ Questions")
-					      .replace(f"{num_coding} Coding Questions", f"{batch_count} Coding Questions")
-					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
-					system_role,
-					batch_count,
-					0,
-					batch_count
-				)
-				batch_data = json.loads(result)
-				coding_questions.extend(batch_data.get("questions", []))
-				coding_remaining -= batch_count
-			except Exception as e:
-				print(f"Batch generation error: {e}")
-				# Use fallback for remaining
-				for i in range(coding_remaining):
-					coding_questions.append({
-						"question_type": "coding",
-						"difficulty": "medium_plus",
-						"title": f"Sample Coding Question {len(coding_questions)+1}",
-						"description": "Write a function. Fallback question due to generation error.",
-						"input_format": "Input description",
-						"output_format": "Output description",
-						"sample_input": "sample",
-						"sample_output": "output",
-						"test_cases": []
-					})
-				break
-		
-		all_questions = mcq_questions + coding_questions
-	else:
-		# Legacy: alternate batches
-		remaining = num_questions
-		while remaining > 0:
-			batch_count = min(batch_size, remaining)
-			print(f"Generating batch: {batch_count} questions...")
-			try:
-				result = _ai_generate(prompt, system_role, batch_count, None, None)
-				batch_data = json.loads(result)
-				all_questions.extend(batch_data.get("questions", []))
-				remaining -= batch_count
-			except Exception as e:
-				print(f"Batch generation error: {e}")
-				break
-	
-	print(f"Batch generation complete: {len(all_questions)} questions generated")
-	return json.dumps({"questions": all_questions}, indent=2)
-
-
 def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.", num_questions: int = 2, num_mcq: int = None, num_coding: int = None) -> str:
 	def generate_fallback_questions(total, mcq_count=None, coding_count=None):
 		"""Generate fallback questions when AI is unavailable"""
@@ -1084,6 +980,110 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		# Return valid fallback JSON with proper structure
 		import json
 		return json.dumps(generate_fallback_questions(num_questions, num_mcq, num_coding), indent=2)
+
+
+def _ai_generate_batch(prompt: str, system_role: str, num_questions: int, num_mcq: int = None, num_coding: int = None, batch_size: int = 5) -> str:
+	"""Generate questions in batches to avoid OpenAI timeout"""
+	import json
+	
+	# If requesting small number, generate all at once
+	if num_questions <= batch_size:
+		return _ai_generate(prompt, system_role, num_questions, num_mcq, num_coding)
+	
+	# For large requests, generate in batches
+	print(f"Generating {num_questions} questions in batches of {batch_size}...")
+	all_questions = []
+	
+	# Calculate batches for each type
+	if num_mcq is not None and num_coding is not None:
+		# Generate MCQ in batches
+		mcq_questions = []
+		mcq_remaining = num_mcq
+		while mcq_remaining > 0:
+			batch_count = min(batch_size, mcq_remaining)
+			print(f"Generating batch: {batch_count} MCQ questions...")
+			try:
+				result = _ai_generate(
+					prompt.replace(f"{num_mcq} MCQ Questions", f"{batch_count} MCQ Questions")
+					      .replace(f"{num_coding} Coding Questions", "0 Coding Questions")
+					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
+					system_role,
+					batch_count,
+					batch_count,
+					0
+				)
+				batch_data = json.loads(result)
+				mcq_questions.extend(batch_data.get("questions", []))
+				mcq_remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				# Use fallback for remaining
+				for i in range(mcq_remaining):
+					mcq_questions.append({
+						"question_type": "mcq",
+						"difficulty": "easy",
+						"title": f"Sample MCQ Question {len(mcq_questions)+1}",
+						"description": "Fallback question due to generation error.",
+						"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
+						"correct_answer": "A",
+						"explanation": "Sample explanation."
+					})
+				break
+		
+		# Generate Coding in batches
+		coding_questions = []
+		coding_remaining = num_coding
+		while coding_remaining > 0:
+			batch_count = min(batch_size, coding_remaining)
+			print(f"Generating batch: {batch_count} Coding questions...")
+			try:
+				result = _ai_generate(
+					prompt.replace(f"{num_mcq} MCQ Questions", "0 MCQ Questions")
+					      .replace(f"{num_coding} Coding Questions", f"{batch_count} Coding Questions")
+					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
+					system_role,
+					batch_count,
+					0,
+					batch_count
+				)
+				batch_data = json.loads(result)
+				coding_questions.extend(batch_data.get("questions", []))
+				coding_remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				# Use fallback for remaining
+				for i in range(coding_remaining):
+					coding_questions.append({
+						"question_type": "coding",
+						"difficulty": "medium_plus",
+						"title": f"Sample Coding Question {len(coding_questions)+1}",
+						"description": "Write a function. Fallback question due to generation error.",
+						"input_format": "Input description",
+						"output_format": "Output description",
+						"sample_input": "sample",
+						"sample_output": "output",
+						"test_cases": []
+					})
+				break
+		
+		all_questions = mcq_questions + coding_questions
+	else:
+		# Legacy: alternate batches
+		remaining = num_questions
+		while remaining > 0:
+			batch_count = min(batch_size, remaining)
+			print(f"Generating batch: {batch_count} questions...")
+			try:
+				result = _ai_generate(prompt, system_role, batch_count, None, None)
+				batch_data = json.loads(result)
+				all_questions.extend(batch_data.get("questions", []))
+				remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				break
+	
+	print(f"Batch generation complete: {len(all_questions)} questions generated")
+	return json.dumps({"questions": all_questions}, indent=2)
 
 
 def _ai_generate_classroom_activity(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
