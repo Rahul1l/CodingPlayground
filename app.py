@@ -875,83 +875,40 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 		}
 
 
-def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.", num_questions: int = 2, num_mcq: int = None, num_coding: int = None) -> str:
-	def generate_fallback_questions(total, mcq_count=None, coding_count=None):
-		"""Generate fallback questions when AI is unavailable"""
-		questions = []
-		
-		# If specific counts provided, use them; otherwise alternate
-		if mcq_count is not None and coding_count is not None:
-			# Generate exact number of each type
-			for i in range(mcq_count):
-				questions.append({
-					"question_type": "mcq",
-					"difficulty": "easy" if i < mcq_count//2 else "medium",
-					"title": f"Sample MCQ Question {i+1}",
-					"description": f"This is sample MCQ question {i+1}. OpenAI API is unavailable. Please check your API key and billing status.",
-					"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
-					"correct_answer": "A",
-					"explanation": "This is a sample question generated due to API unavailability."
-				})
-			for i in range(coding_count):
-				questions.append({
-					"question_type": "coding",
-					"difficulty": "medium_plus",
-					"title": f"Sample Coding Question {i+1}",
-					"description": f"Write a simple function for question {i+1}. Note: This is a placeholder question due to OpenAI API unavailability.",
-					"input_format": "Input description",
-					"output_format": "Output description",
-					"sample_input": "sample input",
-					"sample_output": "sample output",
-					"test_cases": [
-						{"input": "test1", "expected_output": "result1"},
-						{"input": "test2", "expected_output": "result2"}
-					]
-				})
-		else:
-			# Alternate between MCQ and Coding
-			for i in range(total):
-				if i % 2 == 0:  # MCQ question
-					questions.append({
-						"question_type": "mcq",
-						"difficulty": "easy" if i < total//2 else "medium",
-						"title": f"Sample MCQ Question {i+1}",
-						"description": f"This is sample MCQ question {i+1}. OpenAI API is unavailable. Please check your API key and billing status.",
-						"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
-						"correct_answer": "A",
-						"explanation": "This is a sample question generated due to API unavailability."
-					})
-				else:  # Coding question
-					questions.append({
-						"question_type": "coding",
-						"difficulty": "medium_plus",
-						"title": f"Sample Coding Question {i+1}",
-						"description": f"Write a simple function for question {i+1}. Note: This is a placeholder question due to OpenAI API unavailability.",
-						"input_format": "Input description",
-						"output_format": "Output description",
-						"sample_input": "sample input",
-						"sample_output": "sample output",
-						"test_cases": [
-							{"input": "test1", "expected_output": "result1"},
-							{"input": "test2", "expected_output": "result2"}
-						]
-					})
-		return {"questions": questions}
-	
+def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.") -> str:
 	# Check if OpenAI API key is available
 	if not openai.api_key:
-		print(f"OpenAI API key not available, using {num_questions} fallback questions")
-		import json
-		return json.dumps(generate_fallback_questions(num_questions, num_mcq, num_coding), indent=2)
+		print("OpenAI API key not available, using mock response")
+		return '''{
+	"questions": [
+		{
+			"question_type": "mcq",
+			"difficulty": "easy",
+			"title": "Python Basics - Variables",
+			"description": "What is the correct way to assign a value to a variable in Python?",
+			"options": ["A) var x = 5", "B) x = 5", "C) set x to 5", "D) x := 5"],
+			"correct_answer": "B",
+			"explanation": "In Python, variables are assigned using the = operator: x = 5"
+		},
+		{
+			"question_type": "coding",
+			"difficulty": "medium_plus",
+			"title": "Sum of Numbers",
+			"description": "Write a function that takes a list of numbers and returns their sum.",
+			"input_format": "A list of integers",
+			"output_format": "The sum of all integers",
+			"sample_input": "[1, 2, 3, 4, 5]",
+			"sample_output": "15",
+			"test_cases": [
+				{"input": "[1, 2, 3]", "expected_output": "6"},
+				{"input": "[10, 20]", "expected_output": "30"}
+			]
+		}
+	]
+}'''
 	
 	try:
-		# Calculate appropriate max_tokens and timeout based on number of questions
-		# Each question needs ~200-300 tokens, so scale accordingly
-		max_tokens = min(4000, 200 * num_questions + 500)  # Cap at 4000
-		timeout_seconds = min(1800, 30 + (num_questions * 20))  # 30s base + 20s per question, max 1800s (30 min)
-		
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
-		print(f"Requesting {num_questions} questions (timeout: {timeout_seconds}s, max_tokens: {max_tokens})")
 		
 		# Use the exact same pattern as working Feedback-App-V2
 		response = openai.chat.completions.create(
@@ -961,8 +918,8 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 				{"role": "user", "content": prompt}
 			],
 			temperature=0.4,
-			max_tokens=max_tokens,
-			timeout=timeout_seconds
+			max_tokens=2000,
+			timeout=30
 		)
 		
 		print("OpenAI API call successful")
@@ -975,16 +932,40 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		
 		# Check if it's a quota error
 		if "quota" in error_message.lower() or "429" in error_message:
-			print(f"⚠️ OpenAI API quota exceeded! Using {num_questions} fallback questions.")
+			print("⚠️ OpenAI API quota exceeded! Using fallback questions.")
 		
 		# Return valid fallback JSON with proper structure
-		import json
-		return json.dumps(generate_fallback_questions(num_questions, num_mcq, num_coding), indent=2)
+		return '''{
+	"questions": [
+		{
+			"question_type": "mcq",
+			"difficulty": "easy",
+			"title": "Sample MCQ Question",
+			"description": "This is a sample question because OpenAI API is unavailable (quota exceeded or API error). Please check your OpenAI API key and billing status.",
+			"options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+			"correct_answer": "A",
+			"explanation": "This is a sample question generated due to API unavailability."
+		},
+		{
+			"question_type": "coding",
+			"difficulty": "medium_plus",
+			"title": "Sample Coding Question",
+			"description": "Write a simple function. Note: This is a placeholder question due to OpenAI API unavailability.",
+			"input_format": "Any input",
+			"output_format": "Any output",
+			"sample_input": "test",
+			"sample_output": "result",
+			"test_cases": [
+				{"input": "test1", "expected_output": "result1"},
+				{"input": "test2", "expected_output": "result2"}
+			]
+		}
+	]
+}'''
 
 
-def _ai_generate_classroom_activity(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
-	"""Generate classroom activities with specific MCQ and coding question counts"""
-	num_questions = num_mcq + num_coding
+def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
+	"""Generate classroom activities with varied difficulty and question types"""
 	trainer_role = """You are an expert Educational Content Designer and Assessment Specialist with 15+ years of experience in creating comprehensive, pedagogically sound assessments. 
 
 Your expertise includes:
@@ -997,43 +978,35 @@ Your expertise includes:
 
 You create assessments that are fair, challenging, and educational."""
 	
-	prompt = f"""Create exactly {num_questions} high-quality practice questions for: **{subject}**
+	prompt = f"""Create {num_questions} high-quality practice questions for: **{subject}**
 
 🎯 **TOPIC/CONTENT GUIDANCE:**
 {toc if toc else "Cover fundamental to advanced concepts in " + subject}
 
-📋 **REQUIRED QUESTION DISTRIBUTION:**
+📋 **QUESTION DISTRIBUTION (distribute questions across these types):**
 
-Generate EXACTLY:
-- **{num_mcq} MCQ Questions** (Multiple Choice Questions with 4 options)
-- **{num_coding} Coding Questions** (Programming problems)
-
-Total: {num_questions} questions
-
-**MCQ QUESTION GUIDELINES:**
-
-**EASY MCQs (distribute among the {num_mcq} MCQs):**
+**1. EASY (25% of questions) - Foundational MCQs:**
    - Test basic concepts, definitions, and fundamental principles
    - 4 well-crafted options with clear correct answer
    - Options should be distinct and plausible
    - Time: 2-3 minutes each
    - Topics: Core terminology, simple recall, basic understanding
 
-**MEDIUM MCQs:**
+**2. MEDIUM (35% of questions) - Application-Based MCQs:**
    - Short scenario or case study (2-3 paragraphs)
    - Requires applying concepts to solve problems
    - 4 options with subtle differences
    - Time: 5-7 minutes each
    - Topics: Problem-solving, analysis, practical application
 
-**HARD MCQs:**
+**3. HARD (25% of questions) - Complex Case-Based MCQs:**
    - Detailed scenario/case study (4-6 paragraphs)
    - Multi-faceted problem requiring deep analysis
    - 4 options requiring careful consideration
    - Time: 8-10 minutes each
    - Topics: Critical thinking, evaluation, complex decision-making
 
-**CODING QUESTIONS (all {num_coding} questions):**
+**4. MEDIUM+ HEAVY (15% of questions) - Coding Challenges:**
    - Real-world algorithmic or programming problems
    - Must be solvable in Python
    - Focus on logic, not syntax memorization
@@ -1082,20 +1055,18 @@ Total: {num_questions} questions
 
 ✅ **QUALITY REQUIREMENTS:**
 1. **Topic Focus**: Every question must directly relate to "{subject}" and topics in: {toc if toc else "fundamental to advanced " + subject + " concepts"}
-2. **Question Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} Coding questions
-3. **Randomization**: Mix difficulties within each type - DON'T group by difficulty level
-4. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
-5. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
-6. **Educational**: Each question teaches something valuable about {subject}
+2. **Randomization**: Mix difficulties - DON'T group by difficulty level
+3. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
+4. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
+5. **Educational**: Each question teaches something valuable about {subject}
 
 ⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
-	return _ai_generate(prompt, trainer_role, num_questions, num_mcq, num_coding)
+	return _ai_generate(prompt, trainer_role)
 
 
-def _ai_generate_test(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
-	"""Generate tests with specific MCQ and coding question counts"""
-	num_questions = num_mcq + num_coding
+def _ai_generate_test(subject: str, toc: str, num_questions: int) -> str:
+	"""Generate tests with varied difficulty and question types"""
 	trainer_role = """You are a Senior Examination Designer and Assessment Expert with expertise in creating fair, comprehensive, and academically rigorous tests.
 
 Your qualifications:
@@ -1113,45 +1084,37 @@ You design tests that:
 - Have clear, unambiguous correct answers
 - Provide comprehensive evaluation of student competency"""
 	
-	prompt = f"""Create exactly {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
+	prompt = f"""Create {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
 
 🎯 **SUBJECT/TOPIC COVERAGE:**
 {toc if toc else "Comprehensive coverage of " + subject + " from fundamentals to advanced topics"}
 
 ⚠️ **EXAM STANDARDS:** These are formal test questions - higher difficulty and rigor than practice questions.
 
-📋 **REQUIRED QUESTION DISTRIBUTION:**
+📋 **QUESTION DISTRIBUTION:**
 
-Generate EXACTLY:
-- **{num_mcq} MCQ Questions** (Multiple Choice Questions with 4 options)
-- **{num_coding} Coding Questions** (Programming problems)
-
-Total: {num_questions} questions
-
-**MCQ QUESTION GUIDELINES:**
-
-**EASY MCQs (distribute among the {num_mcq} MCQs):**
+**1. EASY (25%) - Foundation Assessment:**
    - Test essential concepts and core principles
    - 4 carefully designed options (3 plausible distractors)
    - No "freebie" questions - require understanding, not just recall
    - Time: 2-3 minutes
    - Purpose: Verify baseline competency
 
-**MEDIUM MCQs:**
+**2. MEDIUM (35%) - Applied Knowledge:**
    - Realistic scenarios (2-3 paragraph case studies)
    - Test ability to apply concepts to new situations
    - Options require careful analysis
    - Time: 5-7 minutes
    - Purpose: Assess problem-solving and analysis skills
 
-**HARD MCQs:**
+**3. HARD (25%) - Advanced Analysis:**
    - Complex, multi-layered case studies (4-6 paragraphs)
    - Requires synthesis of multiple concepts
    - All options should seem plausible at first glance
    - Time: 8-10 minutes
    - Purpose: Distinguish excellent from good students
 
-**CODING QUESTIONS (all {num_coding} questions):**
+**4. MEDIUM+ HEAVY (15%) - Coding Proficiency:**
    - Industry-relevant algorithmic challenges
    - Must demonstrate mastery of data structures and algorithms
    - Comprehensive test cases including corner cases
@@ -1189,16 +1152,15 @@ REQUIRED JSON FORMAT:
 
 ✅ **EXAM STANDARDS (Stricter than practice):**
 1. **Topic Focus**: All questions test "{subject}" - Coverage: {toc if toc else "Full " + subject + " curriculum"}
-2. **Question Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} Coding questions
-3. **Randomization**: Mix difficulty levels within each type - NO grouping by difficulty
-4. **MCQs**: All options plausible, thorough explanations, one correct answer
-5. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
-6. **Rigor**: Exam-level difficulty - more challenging than practice questions
-7. **Clarity**: Zero ambiguity in questions or answers
+2. **Randomization**: Mix difficulty levels - NO grouping by difficulty
+3. **MCQs**: All options plausible, thorough explanations, one correct answer
+4. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
+5. **Rigor**: Exam-level difficulty - more challenging than practice questions
+6. **Clarity**: Zero ambiguity in questions or answers
 
 ⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	
-	return _ai_generate(prompt, trainer_role, num_questions, num_mcq, num_coding)
+	return _ai_generate(prompt, trainer_role)
 
 
 @app.route("/admin/create_classroom_activity", methods=["POST"])  # Generate activities via OpenAI
@@ -1208,23 +1170,12 @@ def admin_create_classroom_activity():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_mcq = int(request.form.get("num_mcq", "0") or 0)
-	num_coding = int(request.form.get("num_coding", "0") or 0)
+	num_questions = int(request.form.get("num_questions", "3") or 3)
 	classroom_id = request.form.get("classroom_id", "").strip()
-	
-	# Validate that at least one question type is requested
-	if not subject or not classroom_id:
-		return jsonify({"ok": False, "error": "subject and classroom_id required"}), 400
-	if num_mcq < 0 or num_coding < 0:
-		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
-	if num_mcq == 0 and num_coding == 0:
-		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
-	
-	num_questions = num_mcq + num_coding
+	if not subject or not classroom_id or num_questions < 1:
+		return jsonify({"ok": False, "error": "subject, classroom_id, >=1 questions required"}), 400
 	try:
-		print(f"Generating classroom activity: {subject}, {num_mcq} MCQ + {num_coding} Coding = {num_questions} total")
-		content = _ai_generate_classroom_activity(subject, toc, num_mcq, num_coding)
-		print(f"Activity generated successfully, length: {len(content)}")
+		content = _ai_generate_classroom_activity(subject, toc, num_questions)
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1257,34 +1208,20 @@ def admin_create_classroom_activity():
 			return jsonify({"ok": False, "error": f"AI generated invalid JSON: {str(e)}"}), 500
 			
 	except Exception as e:
-		print(f"ERROR creating classroom activity: {str(e)}")
-		import traceback
-		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
-	
-	try:
-		activity_id = str(uuid4())
-		print(f"Storing activity in database: {activity_id}")
-		activities_col.insert_one({
-			"activity_id": activity_id,
-			"classroom_id": classroom_id,
-			"subject": subject,
-			"toc": toc,
-			"num_questions": num_questions,
-			"num_mcq": num_mcq,
-			"num_coding": num_coding,
-			"generated": content,
-			"created_at": datetime.now(timezone.utc)
-		})
-		print(f"Activity stored successfully")
-		# Track classroom → activities
-		classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
-		return redirect(url_for("admin_dashboard"))
-	except Exception as e:
-		print(f"ERROR storing activity: {str(e)}")
-		import traceback
-		traceback.print_exc()
-		return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+	activity_id = str(uuid4())
+	activities_col.insert_one({
+		"activity_id": activity_id,
+		"classroom_id": classroom_id,
+		"subject": subject,
+		"toc": toc,
+		"num_questions": num_questions,
+		"generated": content,
+		"created_at": datetime.now(timezone.utc)
+	})
+	# Track classroom → activities
+	classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
+	return redirect(url_for("admin_dashboard"))
 
 
 @app.route("/admin/create_test", methods=["POST"])  # Generate test; scheduled
@@ -1294,21 +1231,12 @@ def admin_create_test():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_mcq = int(request.form.get("num_mcq", "0") or 0)
-	num_coding = int(request.form.get("num_coding", "0") or 0)
+	num_questions = int(request.form.get("num_questions", "3") or 3)
 	test_id = request.form.get("test_id", "").strip()
 	start_datetime = request.form.get("start_datetime", "").strip()  # datetime-local input
 	end_datetime = request.form.get("end_datetime", "").strip()  # datetime-local input
-	
-	# Validate inputs
-	if not subject or not test_id or not start_datetime or not end_datetime:
-		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime required"}), 400
-	if num_mcq < 0 or num_coding < 0:
-		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
-	if num_mcq == 0 and num_coding == 0:
-		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
-	
-	num_questions = num_mcq + num_coding
+	if not subject or not test_id or num_questions < 1 or not start_datetime or not end_datetime:
+		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime, >=1 questions required"}), 400
 	try:
 		# Parse datetime-local inputs (YYYY-MM-DDTHH:MM format)
 		# These give us naive datetimes in local time
@@ -1329,8 +1257,7 @@ def admin_create_test():
 	except Exception as e:
 		return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 	try:
-		print(f"Generating test: {subject}, {num_mcq} MCQ + {num_coding} Coding = {num_questions} total")
-		content = _ai_generate_test(subject, toc, num_mcq, num_coding)
+		content = _ai_generate_test(subject, toc, num_questions)
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1369,8 +1296,6 @@ def admin_create_test():
 		"subject": subject,
 		"toc": toc,
 		"num_questions": num_questions,
-		"num_mcq": num_mcq,
-		"num_coding": num_coding,
 		"generated": content,
 		"start_time": start_time,
 		"end_time": end_time,
