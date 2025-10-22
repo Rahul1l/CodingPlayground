@@ -159,12 +159,12 @@ def login():
 		username = request.form.get("username", "").strip()
 		password = request.form.get("password", "")
 		
-		# Check if admin credentials (hardcoded: Ayushman / ayushman9277)
+		# Check hardcoded admin credentials
 		if username == "Ayushman" and password == "ayushman9277":
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
-		# Check existing admin in database
+		# Check database admin
 		admin = admins_col.find_one({"username": username})
 		if admin and check_password_hash(admin.get("password_hash", ""), password):
 			session["admin_username"] = username
