@@ -1500,7 +1500,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 						<div class="shape shape-1"></div>
 						<div class="shape shape-2"></div>
 						<div class="shape shape-3"></div>
-					</div>
+				</div>
 				</div>
 				
 				<div class="login-container">
@@ -1512,7 +1512,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 										<path d="M16 18l2-2 4 4-4 4-2-2m0-4H8a4 4 0 01-4-4V6"/>
 										<circle cx="12" cy="12" r="3"/>
 									</svg>
-								</div>
+						</div>
 							</div>
 							<h1 class="login-title">Welcome Back</h1>
 							<p class="login-subtitle">Sign in to your Coding Playground account</p>
@@ -1526,7 +1526,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 								<line x1="12" y1="16" x2="12.01" y2="16"/>
 							</svg>
 							<span>{{ error }}</span>
-						</div>
+					</div>
 						{% endif %}
 						
 						<form class="login-form" method="post" action="/login">
@@ -1548,14 +1548,14 @@ button.secondary, .btn.secondary, a.btn.secondary {
 									autofocus
 									autocomplete="username"
 								>
-							</div>
+						</div>
 							
 							<div class="form-group">
 								<label for="password" class="form-label">
 									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 										<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
 										<path d="M7 11V7a5 5 0 0110 0v4"/>
-									</svg>
+							</svg>
 									<span>Password</span>
 								</label>
 								<input 
@@ -1567,7 +1567,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 									required
 									autocomplete="current-password"
 								>
-							</div>
+					</div>
 							
 							<button type="submit" class="login-btn">
 								<span>Sign In</span>
@@ -1576,7 +1576,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 									<polyline points="12 5 19 12 12 19"/>
 								</svg>
 							</button>
-						</form>
+				</form>
 					</div>
 				</div>
 			</div>
@@ -1607,22 +1607,51 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					</div>
 				</div>
 				<div class="card">
-					<h2>Create User</h2>
-					<form method="post" action="/admin/create_user">
-						<label>Username<input type="text" name="username" required></label>
-						<label>Password<input type="password" name="password" required></label>
-						<label>University Name<input type="text" name="university" required placeholder="e.g., MIT, Stanford, etc."></label>
-					<label>Role
-						<select name="role" required>
-							<option value="classroom">Classroom</option>
-							<option value="test">Test</option>
-							<option value="both">Both</option>
-						</select>
+					<h2>📂 Create Users via CSV Upload</h2>
+					<p class="muted" style="margin-bottom: 1rem;">Upload a CSV file to create multiple users at once</p>
+					
+					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
+						<p style="margin: 0 0 0.5rem 0; font-weight: 600;">📋 CSV Format Requirements:</p>
+						<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
+							<strong>Required:</strong> username, password, university<br>
+							<strong>Optional:</strong> role, classroom_id, test_id
+						</p>
+						<p style="color: #dc2626; margin: 0.75rem 0 0 0; font-size: 0.9rem; font-weight: 600;">
+							⚠️ <strong>Important:</strong> Usernames can duplicate, but passwords must be unique!
+						</p>
+					</div>
+					
+					<details style="margin-bottom: 1rem;">
+						<summary style="cursor: pointer; font-weight: 600; color: #667eea; padding: 0.5rem 0;">📝 Show CSV Example</summary>
+						<div style="background: #fef3c7; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; border: 1px solid #fbbf24;">
+							<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 0.85rem; border: 1px solid #e2e8f0;">username,password,university,role,classroom_id,test_id
+student1,unique001,MIT,,act001,
+student1,unique002,MIT,,,test001
+student2,unique003,Stanford,both,act002,test002</pre>
+							<p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.85rem;">
+								💡 Role auto-detected from IDs if not specified
+							</p>
+						</div>
+					</details>
+					
+					<form id="dashboardBulkUploadForm" enctype="multipart/form-data">
+						<label style="cursor: pointer;">
+							<strong>Select CSV File</strong>
+							<input type="file" id="dashboardCsvFile" name="csv_file" accept=".csv" required style="cursor: pointer;">
 					</label>
-						<label>Classroom ID (for Classroom role)<input type="text" name="classroom_id"></label>
-						<label>Test ID (for Test role)<input type="text" name="test_id"></label>
-						<button class="btn" type="submit">Create User</button>
+						<button type="submit" class="btn" style="width: 100%;">
+							<span id="dashboardUploadBtnText">📤 Upload & Create Users</span>
+							<span id="dashboardUploadBtnLoading" style="display: none;">⏳ Processing...</span>
+						</button>
 					</form>
+					
+					<div id="dashboardUploadResults" style="display: none; margin-top: 1rem;"></div>
+					
+					<div style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 6px; border-left: 3px solid #3b82f6;">
+						<p style="margin: 0; font-size: 0.9rem; color: #000000;">
+							📥 <a href="/user_upload_template.csv" download style="color: #3b82f6; font-weight: 600;">Download CSV Template</a>
+						</p>
+					</div>
 				</div>
 			</section>
 
@@ -1836,52 +1865,6 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					</div>
 				</div>
 				<p class="muted">Total Users: {{ total_users }}</p>
-			</section>
-
-			{# Bulk Upload Section #}
-			<section class="card" style="border-left: 4px solid #667eea;">
-				<h3>📂 Bulk Upload Users from CSV</h3>
-				<p class="muted">Upload a CSV file to create multiple users at once. The system will automatically group them by university.</p>
-				
-				<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #bfdbfe;">
-					<p style="margin: 0 0 0.5rem 0;"><strong>📋 CSV Format Requirements:</strong></p>
-					<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
-						<strong>Required columns:</strong> username, password, university<br>
-						<strong>Optional columns:</strong> role, classroom_id, test_id
-					</p>
-					<p style="color: #000000; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
-						💡 <strong>Tip:</strong> If role is not specified, the system will auto-detect based on classroom_id and test_id values.
-					</p>
-					<p style="color: #dc2626; margin: 0.5rem 0 0 0; font-size: 0.9rem; font-weight: 600;">
-						⚠️ <strong>Important:</strong> Usernames can be duplicated, but each password must be unique across all users.
-					</p>
-				</div>
-
-				<div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #fbbf24;">
-					<p style="margin: 0;"><strong>📝 Example CSV:</strong></p>
-					<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; overflow-x: auto; font-size: 0.85rem;">username,password,university,role,classroom_id,test_id
-john_doe,pass123,MIT,,act001,
-jane_smith,pass456,MIT,,,test001
-bob_jones,pass789,Stanford,both,act002,test002</pre>
-					<p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.85rem;">
-						• Row 1: John has classroom_id → role auto-set to "classroom"<br>
-						• Row 2: Jane has test_id → role auto-set to "test"<br>
-						• Row 3: Bob has both IDs → role set to "both"
-					</p>
-				</div>
-
-				<form id="bulkUploadForm" enctype="multipart/form-data" style="margin-top: 1.5rem;">
-					<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-						<input type="file" id="csvFile" name="csv_file" accept=".csv" required style="flex: 1; min-width: 250px;">
-						<button type="submit" class="btn" style="white-space: nowrap;">
-							<span id="uploadBtnText">📤 Upload & Create Users</span>
-							<span id="uploadBtnLoading" style="display: none;">⏳ Processing...</span>
-						</button>
-					</div>
-				</form>
-
-				{# Upload Results #}
-				<div id="uploadResults" style="display: none; margin-top: 1.5rem;"></div>
 			</section>
 
 			{% for university, users in universities.items() %}
@@ -2222,7 +2205,7 @@ bob_jones,pass789,Stanford,both,act002,test002</pre>
 										<span class="role-badge role-classroom">🎓 Classroom</span>
 									{% else %}
 										<span class="role-badge">{{ sub.context }}</span>
-									{% endif %}
+		{% endif %}
 								</td>
 								<td>{{ sub.test_id if sub.test_id else '-' }}</td>
 								<td>
@@ -3243,7 +3226,7 @@ bob_jones,pass789,Stanford,both,act002,test002</pre>
 						testForm.addEventListener('submit', function(e) {
 							// Copy code textarea value
 							if (hiddenUserCode && codeTextarea) {
-								hiddenUserCode.value = codeTextarea.value;
+							hiddenUserCode.value = codeTextarea.value;
 							}
 							
 							// Copy MCQ answer if it exists
@@ -3574,13 +3557,13 @@ print(f'Sum: {x + y}')"></textarea>
 	</script>
 	{% endif %}
 
-	{% if view == 'admin_users' %}
+	{% if view == 'admin_dashboard' %}
 	<script>
-	// Handle bulk CSV upload
-	document.getElementById('bulkUploadForm').addEventListener('submit', async function(e) {
+	// Handle CSV bulk upload from dashboard
+	document.getElementById('dashboardBulkUploadForm').addEventListener('submit', async function(e) {
 		e.preventDefault();
 		
-		const fileInput = document.getElementById('csvFile');
+		const fileInput = document.getElementById('dashboardCsvFile');
 		const file = fileInput.files[0];
 		
 		if (!file) {
@@ -3589,9 +3572,9 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 		
 		// Show loading state
-		document.getElementById('uploadBtnText').style.display = 'none';
-		document.getElementById('uploadBtnLoading').style.display = 'inline';
-		document.getElementById('uploadResults').style.display = 'none';
+		document.getElementById('dashboardUploadBtnText').style.display = 'none';
+		document.getElementById('dashboardUploadBtnLoading').style.display = 'inline';
+		document.getElementById('dashboardUploadResults').style.display = 'none';
 		
 		const formData = new FormData();
 		formData.append('csv_file', file);
@@ -3605,11 +3588,11 @@ print(f'Sum: {x + y}')"></textarea>
 			const data = await response.json();
 			
 			// Hide loading state
-			document.getElementById('uploadBtnText').style.display = 'inline';
-			document.getElementById('uploadBtnLoading').style.display = 'none';
+			document.getElementById('dashboardUploadBtnText').style.display = 'inline';
+			document.getElementById('dashboardUploadBtnLoading').style.display = 'none';
 			
 			// Display results
-			displayUploadResults(data);
+			displayDashboardUploadResults(data);
 			
 			// Reset form
 			fileInput.value = '';
@@ -3622,14 +3605,14 @@ print(f'Sum: {x + y}')"></textarea>
 			}
 			
 		} catch (error) {
-			document.getElementById('uploadBtnText').style.display = 'inline';
-			document.getElementById('uploadBtnLoading').style.display = 'none';
+			document.getElementById('dashboardUploadBtnText').style.display = 'inline';
+			document.getElementById('dashboardUploadBtnLoading').style.display = 'none';
 			alert('Error uploading file: ' + error.message);
 		}
 	});
 	
-	function displayUploadResults(data) {
-		const resultsDiv = document.getElementById('uploadResults');
+	function displayDashboardUploadResults(data) {
+		const resultsDiv = document.getElementById('dashboardUploadResults');
 		
 		if (!data.ok) {
 			resultsDiv.innerHTML = `
@@ -3705,7 +3688,11 @@ print(f'Sum: {x + y}')"></textarea>
 		resultsDiv.innerHTML = html;
 		resultsDiv.style.display = 'block';
 	}
-	
+	</script>
+	{% endif %}
+
+	{% if view == 'admin_users' %}
+	<script>
 	async function deleteUser(username) {
 		if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
 			return;
