@@ -2682,8 +2682,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 		{# Test Interface (when test is actually open) #}
 		{% if view == 'test_interface' %}
-		<div class="test-interface">
-			<div class="flex-between test-header">
+			<div class="flex-between">
 				<h2>{{ test.subject }} - Test</h2>
 				<div class="test-progress">
 					<span class="progress-badge">Question {{ progress + 1 }} of {{ test.num_questions }}</span>
@@ -2826,7 +2825,29 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type if current_question else 'coding' }}">
 				<button class="btn" type="submit">Submit Answer</button>
 			</form>
-			
+			{% else %}
+			<section class="card">
+				<h2>⚠️ Unable to Display Question</h2>
+				<div class="alert">
+					<p><strong>Debug Information:</strong></p>
+					<ul>
+						<li>Number of questions parsed: {{ questions|length }}</li>
+						<li>Current progress: {{ progress }}</li>
+						<li>Expected questions: {{ test.num_questions }}</li>
+					</ul>
+				</div>
+				
+				<h3>Raw Test Content:</h3>
+				<details open>
+					<summary>Click to view test content structure</summary>
+					<pre class="scroll">{{ test.generated }}</pre>
+				</details>
+				
+				<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
+				
+				<a href="/test" class="btn secondary">← Back to Test Info</a>
+			</section>
+			{% endif %}
 			<script>
 			// Anti-Cheat System for Test Interface
 			(function(){
@@ -2847,40 +2868,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				
 				// Alert user about fullscreen requirement
 				alert('⚠️ TEST MODE ACTIVATED\n\n✓ The test will open in fullscreen mode\n✓ Do not switch tabs or windows\n✓ Do not press F11 or Esc\n✓ Violations will be recorded\n\nClick OK to continue');
-				
-				// Monitor fullscreen changes and re-enter if user exits
-				document.addEventListener('fullscreenchange', function() {
-					if (!document.fullscreenElement) {
-						// User exited fullscreen - record violation and re-enter
-						recordViolation('fullscreen_exit');
-						setTimeout(enterFullscreen, 500);
-					}
-				});
-				
-				// For webkit browsers (Safari)
-				document.addEventListener('webkitfullscreenchange', function() {
-					if (!document.webkitFullscreenElement) {
-						recordViolation('fullscreen_exit');
-						setTimeout(enterFullscreen, 500);
-					}
-				});
-				
-				// For MS browsers
-				document.addEventListener('msfullscreenchange', function() {
-					if (!document.msFullscreenElement) {
-						recordViolation('fullscreen_exit');
-						setTimeout(enterFullscreen, 500);
-					}
-				});
-				
-				// Block ESC key to prevent fullscreen exit
-				document.addEventListener('keydown', function(e) {
-					if (e.key === 'Escape' || e.key === 'Esc') {
-						e.preventDefault();
-						recordViolation('escape_key');
-						return false;
-					}
-				}, true); // Use capture phase
 				
 				// Configuration
 				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
@@ -2935,9 +2922,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						'cut_attempt': 'Cutting content is not allowed during the test.',
 						'inactivity': 'You were inactive for too long. Stay active during the test!',
 						'devtools': 'Developer tools are not allowed during the test.',
-						'print_screen': 'Screenshots are not allowed during the test.',
-						'fullscreen_exit': 'You exited fullscreen mode. Test must remain in fullscreen!',
-						'escape_key': 'Do not press the Escape key during the test!'
+						'print_screen': 'Screenshots are not allowed during the test.'
 					};
 					
 					messageEl.textContent = messages[violationType] || 'Unauthorized action detected.';
@@ -3380,38 +3365,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		}
 		</script>
 		{% endif %}
-		
-		{# Error display if no current_question #}
-		{% if not current_question %}
-		<section class="card">
-			<h2>⚠️ Unable to Display Question</h2>
-			<div class="alert">
-				<p><strong>Debug Information:</strong></p>
-				<ul>
-					<li>Number of questions parsed: {{ questions|length }}</li>
-					<li>Current progress: {{ progress }}</li>
-					<li>Expected questions: {{ test.num_questions }}</li>
-				</ul>
-			</div>
-			
-			{% if parse_error %}
-			<div class="alert" style="background: #fecaca; border-color: #dc2626;">
-				<strong>Parse Error:</strong> {{ parse_error }}
-			</div>
-			{% endif %}
-			
-			<h3>Raw Test Content:</h3>
-			<details open>
-				<summary>Click to view test content structure</summary>
-				<pre class="scroll">{{ test.generated }}</pre>
-			</details>
-			
-			<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
-			
-			<a href="/test" class="btn secondary">← Back to Test Info</a>
-		</section>
-		{% endif %}
-		</div>
 		{% endif %}
 
 		{# Test Result #}
