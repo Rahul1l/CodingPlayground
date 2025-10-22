@@ -397,21 +397,23 @@ footer {
 
 /* Test interface specific styles */
 .test-interface {
-    background: #0b1020;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
     min-height: 100vh;
 }
 
 .test-header {
-    background: #0e1630;
-    border-bottom: 2px solid #1e293b;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid #e2e8f0;
     padding: 1rem;
     position: sticky;
     top: 0;
     z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .test-progress {
-    background: #1e293b;
+    background: #e2e8f0;
     height: 4px;
     border-radius: 2px;
     overflow: hidden;
@@ -425,11 +427,13 @@ footer {
 }
 
 .question-card {
-    background: #0e1630;
-    border: 1px solid #1e293b;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 1.5rem;
     margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .difficulty-badge {
@@ -462,28 +466,28 @@ footer {
 }
 
 .code-editor {
-    background: #0b1228;
-    border: 1px solid #1e293b;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 1rem;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 0.9rem;
-    color: #e2e8f0;
+    color: #1e293b;
     width: 100%;
     min-height: 200px;
     resize: vertical;
 }
 
 .output-area {
-    background: #0b1228;
-    border: 1px solid #1e293b;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 1rem;
     margin-top: 1rem;
     min-height: 100px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 0.9rem;
-    color: #e2e8f0;
+    color: #1e293b;
     white-space: pre-wrap;
 }
 
@@ -798,9 +802,13 @@ pre, code {
 
 /* Format boxes */
 .format-box, .sample-box {
-    color: var(--text-color) !important;
-    background-color: var(--input-bg) !important;
-    border-color: var(--border-color) !important;
+    color: #000000 !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
 }
 
 /* Password toggle styling */
@@ -1431,98 +1439,31 @@ pre, pre *, code {
 }
 
 /* ========================================
-   TEST INTERFACE - WHITE TEXT ON DARK BG
+   LIGHT BACKGROUNDS - BLACK TEXT EVERYWHERE
    ======================================== */
-.test-interface, .test-interface *,
-.question-card, .question-card *,
-.test-header, .test-header * {
-    color: #ffffff !important;
-}
+/* All interfaces now use light backgrounds, so black text is naturally readable */
 
-/* Keep input fields readable */
-.test-interface input,
-.test-interface textarea,
-.test-interface select,
-.question-card input,
-.question-card textarea,
-.question-card select {
-    color: #000000 !important;
-    background: #ffffff !important;
-}
-
-/* Dark backgrounds need white text */
-[style*="background: #0e1630"],
-[style*="background: #0b1020"],
-[style*="background: #1e293b"],
-[style*="background: #1e3a8a"] {
-    color: #ffffff !important;
-}
-
-[style*="background: #0e1630"] *,
-[style*="background: #0b1020"] *,
-[style*="background: #1e293b"] *,
-[style*="background: #1e3a8a"] * {
-    color: #ffffff !important;
-}
-
-/* Code editor text should be white on dark bg */
-.test-interface pre,
-.test-interface code,
-.question-card pre,
-.question-card code {
-    color: #ffffff !important;
-}
-
-/* Format boxes with dark backgrounds */
-.format-box, .sample-box {
-    color: #ffffff !important;
-    background: #1e293b !important;
-}
-
-/* MCQ options on dark background */
-.mcq-option {
-    color: #ffffff !important;
-}
-
-/* Admin attempt activity with dark cards */
-.admin-attempt-activity .question-card,
-.admin-attempt-activity .question-card * {
-    color: #ffffff !important;
-}
-
-/* Compiler output on dark background */
-.output-box {
-    color: #ffffff !important;
-    background: #1e293b !important;
-}
-
-/* Test result page elements */
-.test-result {
-    color: #000000 !important;
-}
-
-/* Warning modal text */
-.warning-modal, .warning-modal * {
-    color: #ffffff !important;
-}
-
-/* Any element with explicit dark inline background */
-[style*="background:#0e1630"],
-[style*="background:#0b1020"],
-[style*="background:#1e293b"],
-[style*="background-color:#0e1630"],
-[style*="background-color:#0b1020"],
-[style*="background-color:#1e293b"] {
-    color: #ffffff !important;
-}
-
-/* Preserve button text colors */
+/* Preserve button text colors only */
 button, .btn, a.btn {
     color: #ffffff !important;
 }
 
 button.secondary, .btn.secondary, a.btn.secondary {
     color: #667eea !important;
+}
+
+/* Warning modal with light background */
+.warning-modal {
+    background: rgba(255, 255, 255, 0.98) !important;
+    color: #000000 !important;
+}
+
+.warning-modal * {
+    color: #000000 !important;
+}
+
+.warning-modal h2 {
+    color: #dc2626 !important;
 }
 </style>
 </head>
@@ -2400,11 +2341,11 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					<p class="muted">Final Score</p>
 				</div>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
-					<div style="text-align: center; padding: 1rem; background: #1e293b; border-radius: 8px;">
+					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
 						<p class="muted">Total Questions</p>
-						<p style="font-size: 2rem; font-weight: 700;">{{ submission.total_questions }}</p>
+						<p style="font-size: 2rem; font-weight: 700; color: #000000;">{{ submission.total_questions }}</p>
 					</div>
-					<div style="text-align: center; padding: 1rem; background: #1e293b; border-radius: 8px;">
+					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
 						<p class="muted">Grade</p>
 						<p style="font-size: 2rem; font-weight: 700;">
 							{% if submission.final_score >= 90 %}
@@ -2521,15 +2462,15 @@ button.secondary, .btn.secondary, a.btn.secondary {
 							<p><strong>Select the correct answer:</strong></p>
 							<div style="margin: 1rem 0;">
 								{% for option in question.options %}
-								<div style="padding: 0.75rem; margin: 0.5rem 0; background: #1e293b; border-radius: 8px; border-left: 3px solid #3b82f6;">
+								<div style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000;">
 									{{ option }}
 								</div>
 								{% endfor %}
 							</div>
 							{% if question.hints %}
 							<details style="margin-top: 1rem;">
-								<summary style="cursor: pointer; color: #60a5fa;">💡 Show Hints</summary>
-								<div style="margin-top: 0.5rem; padding: 1rem; background: #1e3a8a; border-radius: 8px;">
+								<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
+								<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
 									{% for hint in question.hints %}
 									<p>• {{ hint }}</p>
 									{% endfor %}
@@ -2618,21 +2559,21 @@ button.secondary, .btn.secondary, a.btn.secondary {
 						<p style="font-size: 1.1rem; margin: 1.5rem 0;">{{ error }}</p>
 						
 						{% if already_completed %}
-						<div style="background: #1e3a8a; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0;">
-							<h3 style="color: #93c5fd; margin: 0 0 0.5rem 0;">📋 Test Details</h3>
+						<div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border: 2px solid #fbbf24;">
+							<h3 style="color: #92400e; margin: 0 0 0.5rem 0;">📋 Test Details</h3>
 							{% if test %}
-							<p style="color: #bfdbfe; margin: 0.5rem 0;"><strong>Test:</strong> {{ test.subject }}</p>
+							<p style="color: #000000; margin: 0.5rem 0;"><strong>Test:</strong> {{ test.subject }}</p>
 							{% endif %}
 							{% if completion_time %}
-							<p style="color: #bfdbfe; margin: 0.5rem 0;"><strong>Completed At:</strong> {{ completion_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+							<p style="color: #000000; margin: 0.5rem 0;"><strong>Completed At:</strong> {{ completion_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
 							{% endif %}
 							<p style="color: #fbbf24; margin-top: 1rem;">
 								⚠️ <strong>Once submitted, tests cannot be retaken.</strong>
 							</p>
 						</div>
 						
-						<div style="background: #1e293b; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
-							<p style="color: #94a3b8; margin: 0;">
+						<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
+							<p style="color: #000000; margin: 0;">
 								Your responses have been recorded and are being evaluated by your instructor. Results will be shared at a later time.
 							</p>
 						</div>
@@ -2784,17 +2725,17 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					<div style="margin-top: 1.5rem;">
 						<p><strong>Select your answer:</strong></p>
 						<div id="mcq-options-{{ progress }}" style="margin: 1rem 0;">
-							{% for option in current_question.options %}
-							<div class="mcq-option" data-option="{{ option[0] }}" onclick="selectMCQOption(this)" style="padding: 0.75rem; margin: 0.5rem 0; background: #1e293b; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s;">
-								{{ option }}
-							</div>
-							{% endfor %}
+						{% for option in current_question.options %}
+						<div class="mcq-option" data-option="{{ option[0] }}" onclick="selectMCQOption(this)" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+							{{ option }}
+						</div>
+						{% endfor %}
 						</div>
 						<input type="hidden" id="mcq-answer-{{ progress }}" name="mcq_answer" value="">
 						{% if current_question.hints %}
 						<details style="margin-top: 1rem;">
-							<summary style="cursor: pointer; color: #60a5fa;">💡 Show Hints</summary>
-							<div style="margin-top: 0.5rem; padding: 1rem; background: #1e3a8a; border-radius: 8px;">
+							<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
+							<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
 								{% for hint in current_question.hints %}
 								<p>• {{ hint }}</p>
 								{% endfor %}
@@ -3151,17 +3092,19 @@ button.secondary, .btn.secondary, a.btn.secondary {
 			})();
 			
 			// MCQ Selection Handler
-			window.selectMCQOption = function(element) {
-				// Remove selection from all options in this question
-				const parent = element.parentElement;
-				parent.querySelectorAll('.mcq-option').forEach(opt => {
-					opt.style.background = '#1e293b';
-					opt.style.borderLeft = '3px solid #3b82f6';
-				});
-				
-				// Highlight selected option
-				element.style.background = '#1e3a8a';
-				element.style.borderLeft = '3px solid #10b981';
+		window.selectMCQOption = function(element) {
+			// Remove selection from all options in this question
+			const parent = element.parentElement;
+			parent.querySelectorAll('.mcq-option').forEach(opt => {
+				opt.style.background = '#f0f9ff';
+				opt.style.borderLeft = '3px solid #3b82f6';
+				opt.style.fontWeight = 'normal';
+			});
+			
+			// Highlight selected option
+			element.style.background = '#dbeafe';
+			element.style.borderLeft = '3px solid #10b981';
+			element.style.fontWeight = '600';
 				
 				// Store selected answer
 				const option = element.getAttribute('data-option');
@@ -3414,16 +3357,16 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					</p>
 					
 					{% if test %}
-					<div style="background: #1e293b; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
-						<p><strong>Test:</strong> {{ test.subject }}</p>
+					<div style="background: #f0f9ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
+						<p style="color: #000000;"><strong>Test:</strong> {{ test.subject }}</p>
 						{% if total_questions %}
-						<p><strong>Questions Answered:</strong> {{ total_questions }}</p>
+						<p style="color: #000000;"><strong>Questions Answered:</strong> {{ total_questions }}</p>
 						{% endif %}
 					</div>
 					{% endif %}
 					
-					<div style="background: #1e3a8a; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
-						<p style="color: #93c5fd;">
+					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
+						<p style="color: #000000;">
 							<strong>📊 Results</strong><br>
 							Your responses have been recorded and will be evaluated by your instructor.<br>
 							Results will be shared by your instructor at a later time.
