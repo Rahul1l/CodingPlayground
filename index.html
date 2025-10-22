@@ -1838,6 +1838,52 @@ button.secondary, .btn.secondary, a.btn.secondary {
 				<p class="muted">Total Users: {{ total_users }}</p>
 			</section>
 
+			{# Bulk Upload Section #}
+			<section class="card" style="border-left: 4px solid #667eea;">
+				<h3>📂 Bulk Upload Users from CSV</h3>
+				<p class="muted">Upload a CSV file to create multiple users at once. The system will automatically group them by university.</p>
+				
+				<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #bfdbfe;">
+					<p style="margin: 0 0 0.5rem 0;"><strong>📋 CSV Format Requirements:</strong></p>
+					<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
+						<strong>Required columns:</strong> username, password, university<br>
+						<strong>Optional columns:</strong> role, classroom_id, test_id
+					</p>
+					<p style="color: #000000; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+						💡 <strong>Tip:</strong> If role is not specified, the system will auto-detect based on classroom_id and test_id values.
+					</p>
+					<p style="color: #dc2626; margin: 0.5rem 0 0 0; font-size: 0.9rem; font-weight: 600;">
+						⚠️ <strong>Important:</strong> Usernames can be duplicated, but each password must be unique across all users.
+					</p>
+				</div>
+
+				<div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #fbbf24;">
+					<p style="margin: 0;"><strong>📝 Example CSV:</strong></p>
+					<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; overflow-x: auto; font-size: 0.85rem;">username,password,university,role,classroom_id,test_id
+john_doe,pass123,MIT,,act001,
+jane_smith,pass456,MIT,,,test001
+bob_jones,pass789,Stanford,both,act002,test002</pre>
+					<p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.85rem;">
+						• Row 1: John has classroom_id → role auto-set to "classroom"<br>
+						• Row 2: Jane has test_id → role auto-set to "test"<br>
+						• Row 3: Bob has both IDs → role set to "both"
+					</p>
+				</div>
+
+				<form id="bulkUploadForm" enctype="multipart/form-data" style="margin-top: 1.5rem;">
+					<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+						<input type="file" id="csvFile" name="csv_file" accept=".csv" required style="flex: 1; min-width: 250px;">
+						<button type="submit" class="btn" style="white-space: nowrap;">
+							<span id="uploadBtnText">📤 Upload & Create Users</span>
+							<span id="uploadBtnLoading" style="display: none;">⏳ Processing...</span>
+						</button>
+					</div>
+				</form>
+
+				{# Upload Results #}
+				<div id="uploadResults" style="display: none; margin-top: 1.5rem;"></div>
+			</section>
+
 			{% for university, users in universities.items() %}
 			<section class="card">
 				<div class="flex-between">
@@ -3530,6 +3576,136 @@ print(f'Sum: {x + y}')"></textarea>
 
 	{% if view == 'admin_users' %}
 	<script>
+	// Handle bulk CSV upload
+	document.getElementById('bulkUploadForm').addEventListener('submit', async function(e) {
+		e.preventDefault();
+		
+		const fileInput = document.getElementById('csvFile');
+		const file = fileInput.files[0];
+		
+		if (!file) {
+			alert('Please select a CSV file');
+			return;
+		}
+		
+		// Show loading state
+		document.getElementById('uploadBtnText').style.display = 'none';
+		document.getElementById('uploadBtnLoading').style.display = 'inline';
+		document.getElementById('uploadResults').style.display = 'none';
+		
+		const formData = new FormData();
+		formData.append('csv_file', file);
+		
+		try {
+			const response = await fetch('/admin/bulk_create_users', {
+				method: 'POST',
+				body: formData
+			});
+			
+			const data = await response.json();
+			
+			// Hide loading state
+			document.getElementById('uploadBtnText').style.display = 'inline';
+			document.getElementById('uploadBtnLoading').style.display = 'none';
+			
+			// Display results
+			displayUploadResults(data);
+			
+			// Reset form
+			fileInput.value = '';
+			
+			// Reload page after 3 seconds if users were created
+			if (data.created > 0) {
+				setTimeout(() => {
+					location.reload();
+				}, 3000);
+			}
+			
+		} catch (error) {
+			document.getElementById('uploadBtnText').style.display = 'inline';
+			document.getElementById('uploadBtnLoading').style.display = 'none';
+			alert('Error uploading file: ' + error.message);
+		}
+	});
+	
+	function displayUploadResults(data) {
+		const resultsDiv = document.getElementById('uploadResults');
+		
+		if (!data.ok) {
+			resultsDiv.innerHTML = `
+				<div style="background: #fecaca; padding: 1rem; border-radius: 8px; border: 2px solid #dc2626;">
+					<h4 style="color: #dc2626; margin: 0 0 0.5rem 0;">❌ Upload Failed</h4>
+					<p style="color: #000000; margin: 0;">${data.error}</p>
+				</div>
+			`;
+			resultsDiv.style.display = 'block';
+			return;
+		}
+		
+		let html = `
+			<div style="background: #d1fae5; padding: 1rem; border-radius: 8px; border: 2px solid #10b981; margin-bottom: 1rem;">
+				<h4 style="color: #065f46; margin: 0 0 0.5rem 0;">✅ Upload Complete!</h4>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+					<div style="text-align: center;">
+						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #10b981;">${data.created}</p>
+						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Created</p>
+					</div>
+					<div style="text-align: center;">
+						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #f59e0b;">${data.skipped}</p>
+						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Skipped</p>
+					</div>
+					<div style="text-align: center;">
+						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #dc2626;">${data.errors}</p>
+						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Errors</p>
+					</div>
+				</div>
+			</div>
+		`;
+		
+		// Show created users
+		if (data.details.created_users && data.details.created_users.length > 0) {
+			html += `
+				<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
+					<h5 style="color: #1e40af; margin: 0 0 0.5rem 0;">✅ Created Users (${data.details.created_users.length}):</h5>
+					<div style="max-height: 150px; overflow-y: auto; color: #000000;">
+						${data.details.created_users.map(user => `<p style="margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">• ${user}</p>`).join('')}
+					</div>
+				</div>
+			`;
+		}
+		
+		// Show skipped users
+		if (data.details.skipped_users && data.details.skipped_users.length > 0) {
+			html += `
+				<div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #fbbf24;">
+					<h5 style="color: #92400e; margin: 0 0 0.5rem 0;">⚠️ Skipped Users (${data.details.skipped_users.length}):</h5>
+					<div style="max-height: 150px; overflow-y: auto; color: #000000;">
+						${data.details.skipped_users.map(user => `<p style="margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">• ${user}</p>`).join('')}
+					</div>
+				</div>
+			`;
+		}
+		
+		// Show errors
+		if (data.details.errors && data.details.errors.length > 0) {
+			html += `
+				<div style="background: #fecaca; padding: 1rem; border-radius: 8px; border: 1px solid #dc2626;">
+					<h5 style="color: #dc2626; margin: 0 0 0.5rem 0;">❌ Errors (${data.details.errors.length}):</h5>
+					<div style="max-height: 200px; overflow-y: auto; color: #000000;">
+						${data.details.errors.map(error => `<p style="margin: 0.25rem 0; font-size: 0.9rem;">• ${error}</p>`).join('')}
+					</div>
+				</div>
+			`;
+		}
+		
+		if (data.created > 0) {
+			html += `<p style="margin-top: 1rem; color: #059669; font-weight: 600;">🔄 Page will reload in 3 seconds...</p>`;
+		}
+		
+		resultsDiv.innerHTML = html;
+		resultsDiv.style.display = 'block';
+	}
+	
 	async function deleteUser(username) {
 		if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
 			return;

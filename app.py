@@ -228,8 +228,9 @@ def admin_create_user():
 		return jsonify({"ok": False, "error": "username, password, university, and valid role required"}), 400
 	if role == "both" and (not classroom_id or not test_id):
 		return jsonify({"ok": False, "error": "both classroom_id and test_id required for 'both' role"}), 400
-	if users_col.find_one({"username": username}):
-		return jsonify({"ok": False, "error": "username already exists"}), 409
+	# Check if password already exists (passwords must be unique)
+	if users_col.find_one({"password_plain": password}):
+		return jsonify({"ok": False, "error": "This password is already in use. Please use a different password."}), 409
 	users_col.insert_one({
 		"username": username,
 		"password_hash": generate_password_hash(password),
@@ -241,6 +242,119 @@ def admin_create_user():
 		"created_at": datetime.now(timezone.utc)
 	})
 	return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/bulk_create_users", methods=["POST"])
+def admin_bulk_create_users():
+	redir = require_admin()
+	if redir:
+		return redir
+	
+	# Check if file was uploaded
+	if 'csv_file' not in request.files:
+		return jsonify({"ok": False, "error": "No CSV file uploaded"}), 400
+	
+	file = request.files['csv_file']
+	if file.filename == '':
+		return jsonify({"ok": False, "error": "No file selected"}), 400
+	
+	if not file.filename.endswith('.csv'):
+		return jsonify({"ok": False, "error": "File must be a CSV file"}), 400
+	
+	try:
+		# Read CSV file
+		stream = StringIO(file.stream.read().decode("UTF-8"), newline=None)
+		csv_reader = csv.DictReader(stream)
+		
+		# Validate headers
+		required_headers = ['username', 'password', 'university']
+		optional_headers = ['role', 'classroom_id', 'test_id']
+		
+		if not all(header in csv_reader.fieldnames for header in required_headers):
+			return jsonify({"ok": False, "error": f"CSV must contain headers: {', '.join(required_headers)}. Optional: {', '.join(optional_headers)}"}), 400
+		
+		created_users = []
+		skipped_users = []
+		errors = []
+		
+		for row_num, row in enumerate(csv_reader, start=2):  # start=2 because row 1 is header
+			username = row.get('username', '').strip()
+			password = row.get('password', '').strip()
+			university = row.get('university', '').strip()
+			classroom_id = row.get('classroom_id', '').strip() or None
+			test_id = row.get('test_id', '').strip() or None
+			role = row.get('role', '').strip().lower()
+			
+			# Skip empty rows
+			if not username:
+				continue
+			
+			# Validate required fields
+			if not password or not university:
+				errors.append(f"Row {row_num}: Missing password or university for user '{username}'")
+				continue
+			
+			# Auto-detect role if not specified or invalid
+			if role not in ('classroom', 'test', 'both'):
+				if classroom_id and test_id:
+					role = 'both'
+				elif classroom_id:
+					role = 'classroom'
+				elif test_id:
+					role = 'test'
+				else:
+					errors.append(f"Row {row_num}: Cannot determine role for user '{username}'. No classroom_id or test_id provided.")
+					continue
+			
+			# Validate role requirements
+			if role == 'classroom' and not classroom_id:
+				errors.append(f"Row {row_num}: User '{username}' has role 'classroom' but no classroom_id")
+				continue
+			if role == 'test' and not test_id:
+				errors.append(f"Row {row_num}: User '{username}' has role 'test' but no test_id")
+				continue
+			if role == 'both' and (not classroom_id or not test_id):
+				errors.append(f"Row {row_num}: User '{username}' has role 'both' but missing classroom_id or test_id")
+				continue
+			
+			# Check if password already exists (passwords must be unique)
+			if users_col.find_one({"password_plain": password}):
+				skipped_users.append(f"{username} - password already in use")
+				continue
+			
+			# Create user (usernames can be duplicate)
+			try:
+				users_col.insert_one({
+					"username": username,
+					"password_hash": generate_password_hash(password),
+					"password_plain": password,
+					"university": university,
+					"role": role,
+					"classroom_id": classroom_id,
+					"test_id": test_id,
+					"created_at": datetime.now(timezone.utc)
+				})
+				created_users.append(f"{username} ({university})")
+			except Exception as e:
+				errors.append(f"Row {row_num}: Failed to create user '{username}': {str(e)}")
+		
+		# Prepare response
+		response = {
+			"ok": True,
+			"created": len(created_users),
+			"skipped": len(skipped_users),
+			"errors": len(errors),
+			"details": {
+				"created_users": created_users,
+				"skipped_users": skipped_users,
+				"errors": errors
+			}
+		}
+		
+		return jsonify(response), 200
+		
+	except Exception as e:
+		return jsonify({"ok": False, "error": f"Failed to process CSV: {str(e)}"}), 500
 
 
 @app.route("/admin/users")
