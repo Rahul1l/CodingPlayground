@@ -509,6 +509,16 @@ def admin_tests():
 	total_tests = tests_col.count_documents({})
 	total_pages = (total_tests + per_page - 1) // per_page
 	
+	# Convert UTC times to local time for display
+	timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+	for test in tests:
+		if test.get("start_time"):
+			test["start_time"] = test["start_time"] + timezone_offset
+		if test.get("end_time"):
+			test["end_time"] = test["end_time"] + timezone_offset
+		if test.get("scheduled_at"):
+			test["scheduled_at"] = test["scheduled_at"] + timezone_offset
+	
 	return render_template("index.html", view="admin_tests", tests=tests, page=page, total_pages=total_pages, total_tests=total_tests)
 
 
@@ -912,6 +922,12 @@ def test():
 	if scheduled_at and scheduled_at.tzinfo is None:
 		scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
 	
+	# Convert UTC times to local time for display
+	timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+	start_time_local = start_time + timezone_offset if start_time else None
+	end_time_local = end_time + timezone_offset if end_time else None
+	scheduled_at_local = scheduled_at + timezone_offset if scheduled_at else None
+	
 	# Determine test status
 	test_status = "not_scheduled"
 	test_open = False
@@ -944,24 +960,60 @@ def test():
 	# Always show test info, but with different UI based on test status
 	return render_template("index.html", view="test", test=test_doc, progress=session["test_progress"], 
 		test_open=test_open, test_expired=test_expired, test_status=test_status,
-		start_time=start_time, end_time=end_time, scheduled_at=scheduled_at, current_time=now) 
+		start_time=start_time_local, end_time=end_time_local, scheduled_at=scheduled_at_local, current_time=now + timezone_offset) 
 
 
 @app.route("/debug/time")  # Debug route to check timezone handling
 def debug_time():
-	now = datetime.now(timezone.utc)
-	from datetime import timedelta
+	now_utc = datetime.now(timezone.utc)
 	timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+	now_local = now_utc + timezone_offset
+	
+	# Get a test to show how times are stored and displayed
+	sample_test = tests_col.find_one()
+	test_info = ""
+	if sample_test:
+		test_info = f"""
+		<br><strong>Sample Test Times:</strong><br>
+		Test ID: {sample_test.get('test_id', 'N/A')}<br>
+		"""
+		if sample_test.get('start_time'):
+			start_utc = sample_test['start_time']
+			start_local = start_utc + timezone_offset if start_utc else None
+			test_info += f"""
+			Stored Start Time (UTC): {start_utc}<br>
+			Display Start Time (Local): {start_local}<br>
+			"""
+		if sample_test.get('end_time'):
+			end_utc = sample_test['end_time']
+			end_local = end_utc + timezone_offset if end_utc else None
+			test_info += f"""
+			Stored End Time (UTC): {end_utc}<br>
+			Display End Time (Local): {end_local}<br>
+			"""
+	
 	return f"""
-	Current UTC time: {now}<br>
-	Current local time: {datetime.now()}<br>
-	Configured timezone offset: UTC+{Config.TIMEZONE_OFFSET_HOURS}:{Config.TIMEZONE_OFFSET_MINUTES:02d}<br>
-	If you scheduled for local time, it should be stored as: {now - timezone_offset}<br>
+	<h2>Timezone Debug Information</h2>
+	<strong>Current Times:</strong><br>
+	Server UTC time: {now_utc}<br>
+	Server Local time (UTC + offset): {now_local}<br>
+	System local time: {datetime.now()}<br>
 	<br>
-	To fix timezone issues, update your .env file with:<br>
+	<strong>Configuration:</strong><br>
+	Configured timezone offset: UTC+{Config.TIMEZONE_OFFSET_HOURS}:{Config.TIMEZONE_OFFSET_MINUTES:02d}<br>
+	<br>
+	<strong>How it works:</strong><br>
+	1. Admin enters time in datetime-local input (browser's local time)<br>
+	2. Server converts to UTC by subtracting offset and stores in MongoDB<br>
+	3. When displaying to users, server adds offset to convert back to local time<br>
+	4. Users see times in their configured local timezone<br>
+	{test_info}
+	<br>
+	<strong>To adjust timezone:</strong><br>
+	Update your .env file with:<br>
 	TIMEZONE_OFFSET_HOURS=5<br>
 	TIMEZONE_OFFSET_MINUTES=30<br>
-	(Adjust these values to your actual timezone)
+	(Adjust these values to match your actual timezone offset from UTC)
 	"""
 
 

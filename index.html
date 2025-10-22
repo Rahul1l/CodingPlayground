@@ -1377,7 +1377,15 @@ pre, code {
 								<td>{{ test.subject }}</td>
 								<td>{{ test.test_id }}</td>
 								<td>{{ test.num_questions }}</td>
-								<td>{{ test.scheduled_at.strftime('%Y-%m-%d %H:%M') if test.scheduled_at else '-' }}</td>
+								<td>
+									{% if test.start_time and test.end_time %}
+										{{ test.start_time.strftime('%Y-%m-%d %H:%M') }} - {{ test.end_time.strftime('%Y-%m-%d %H:%M') }}
+									{% elif test.scheduled_at %}
+										{{ test.scheduled_at.strftime('%Y-%m-%d %H:%M') }}
+									{% else %}
+										-
+									{% endif %}
+								</td>
 								<td>{{ test.created_at.strftime('%Y-%m-%d %H:%M') if test.created_at else '-' }}</td>
 								<td>
 									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">Delete</button>
@@ -1558,14 +1566,14 @@ pre, code {
 					
 					{# Display time information based on test format #}
 					{% if start_time and end_time %}
-						<p class="muted">Test Window: {{ start_time.strftime('%Y-%m-%d %H:%M UTC') }} - {{ end_time.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+						<p class="muted">Test Window: {{ start_time.strftime('%Y-%m-%d %H:%M') }} - {{ end_time.strftime('%Y-%m-%d %H:%M') }} (Local Time)</p>
 					{% elif scheduled_at %}
-						<p class="muted">Scheduled for: {{ scheduled_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+						<p class="muted">Scheduled for: {{ scheduled_at.strftime('%Y-%m-%d %H:%M') }} (Local Time)</p>
 					{% else %}
 						<p class="muted">Not scheduled</p>
 					{% endif %}
 					
-					<p class="muted">Current time: {{ current_time.strftime('%Y-%m-%d %H:%M UTC') if current_time else 'Unknown' }}</p>
+					<p class="muted">Current time: {{ current_time.strftime('%Y-%m-%d %H:%M') if current_time else 'Unknown' }} (Local Time)</p>
 					
 					{# Test status display #}
 					{% if test_status == 'open' %}
@@ -1818,8 +1826,9 @@ pre, code {
 		// Countdown timer for test opening/closing
 		{% if start_time and end_time %}
 		(function(){
-			const startTime = new Date('{{ start_time.isoformat() }}');
-			const endTime = new Date('{{ end_time.isoformat() }}');
+			// Times are already in local timezone from server
+			const startTime = new Date('{{ start_time.strftime('%Y-%m-%dT%H:%M:%S') }}');
+			const endTime = new Date('{{ end_time.strftime('%Y-%m-%dT%H:%M:%S') }}');
 			const countdownElement = document.getElementById('time-remaining');
 			
 			function updateCountdown() {
@@ -1871,7 +1880,8 @@ pre, code {
 		})();
 		{% elif scheduled_at %}
 		(function(){
-			const scheduledTime = new Date('{{ scheduled_at.isoformat() }}');
+			// Time is already in local timezone from server
+			const scheduledTime = new Date('{{ scheduled_at.strftime('%Y-%m-%dT%H:%M:%S') }}');
 			const countdownElement = document.getElementById('time-remaining');
 			
 			function updateCountdown() {
