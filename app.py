@@ -155,50 +155,32 @@ def test_mongodb():
 @app.route("/login", methods=["GET", "POST"])
 def login():
 	"""Unified login for both admin and users"""
-	if request.method == "GET":
-		return render_template("index.html", view="login")
-	
-	try:
+	if request.method == "POST":
 		username = request.form.get("username", "").strip()
 		password = request.form.get("password", "")
 		
-		if not username or not password:
-			return render_template("index.html", view="login", error="Username and password required")
-		
-		# Check hardcoded admin (Ayushman / ayushman9277)
+		# Check if admin credentials (hardcoded: Ayushman / ayushman9277)
 		if username == "Ayushman" and password == "ayushman9277":
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
-		# Check database admin
-		try:
-			admin = admins_col.find_one({"username": username})
-			if admin:
-				if check_password_hash(admin.get("password_hash", ""), password):
-					session["admin_username"] = username
-					return redirect(url_for("admin_dashboard"))
-		except Exception as e:
-			print(f"Admin lookup error: {e}")
+		# Check existing admin in database
+		admin = admins_col.find_one({"username": username})
+		if admin and check_password_hash(admin.get("password_hash", ""), password):
+			session["admin_username"] = username
+			return redirect(url_for("admin_dashboard"))
 		
 		# Check regular user
-		try:
-			user = users_col.find_one({"username": username})
-			if user:
-				if check_password_hash(user.get("password_hash", ""), password):
-					session["user_username"] = username
-					session["user_role"] = user.get("role")
-					return redirect(url_for("user_home"))
-		except Exception as e:
-			print(f"User lookup error: {e}")
+		user = users_col.find_one({"username": username})
+		if user and check_password_hash(user.get("password_hash", ""), password):
+			session["user_username"] = username
+			session["user_role"] = user.get("role")
+			return redirect(url_for("user_home"))
 		
 		# Invalid credentials
 		return render_template("index.html", view="login", error="Invalid username or password")
 	
-	except Exception as e:
-		print(f"Login error: {e}")
-		import traceback
-		traceback.print_exc()
-		return render_template("index.html", view="login", error="Login system error. Please try again.")
+	return render_template("index.html", view="login")
 
 
 @app.route("/admin/logout")
@@ -966,7 +948,7 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		# Calculate appropriate max_tokens and timeout based on number of questions
 		# Each question needs ~200-300 tokens, so scale accordingly
 		max_tokens = min(4000, 200 * num_questions + 500)  # Cap at 4000
-		timeout_seconds = min(300, 30 + (num_questions * 20))  # 30s base + 20s per question, max 300s (5 min)
+		timeout_seconds = min(1800, 30 + (num_questions * 20))  # 30s base + 20s per question, max 1800s (30 min)
 		
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
 		print(f"Requesting {num_questions} questions (timeout: {timeout_seconds}s, max_tokens: {max_tokens})")
@@ -1037,21 +1019,21 @@ Total: {num_questions} questions
    - Time: 2-3 minutes each
    - Topics: Core terminology, simple recall, basic understanding
 
-**2. MEDIUM (35% of questions) - Application-Based MCQs:**
+**MEDIUM MCQs:**
    - Short scenario or case study (2-3 paragraphs)
    - Requires applying concepts to solve problems
    - 4 options with subtle differences
    - Time: 5-7 minutes each
    - Topics: Problem-solving, analysis, practical application
 
-**3. HARD (25% of questions) - Complex Case-Based MCQs:**
+**HARD MCQs:**
    - Detailed scenario/case study (4-6 paragraphs)
    - Multi-faceted problem requiring deep analysis
    - 4 options requiring careful consideration
    - Time: 8-10 minutes each
    - Topics: Critical thinking, evaluation, complex decision-making
 
-**4. MEDIUM+ HEAVY (15% of questions) - Coding Challenges:**
+**CODING QUESTIONS (all {num_coding} questions):**
    - Real-world algorithmic or programming problems
    - Must be solvable in Python
    - Focus on logic, not syntax memorization
@@ -1100,10 +1082,11 @@ Total: {num_questions} questions
 
 ✅ **QUALITY REQUIREMENTS:**
 1. **Topic Focus**: Every question must directly relate to "{subject}" and topics in: {toc if toc else "fundamental to advanced " + subject + " concepts"}
-2. **Randomization**: Mix difficulties - DON'T group by difficulty level
-3. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
-4. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
-5. **Educational**: Each question teaches something valuable about {subject}
+2. **Question Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} Coding questions
+3. **Randomization**: Mix difficulties within each type - DON'T group by difficulty level
+4. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
+5. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
+6. **Educational**: Each question teaches something valuable about {subject}
 
 ⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
@@ -1154,21 +1137,21 @@ Total: {num_questions} questions
    - Time: 2-3 minutes
    - Purpose: Verify baseline competency
 
-**2. MEDIUM (35%) - Applied Knowledge:**
+**MEDIUM MCQs:**
    - Realistic scenarios (2-3 paragraph case studies)
    - Test ability to apply concepts to new situations
    - Options require careful analysis
    - Time: 5-7 minutes
    - Purpose: Assess problem-solving and analysis skills
 
-**3. HARD (25%) - Advanced Analysis:**
+**HARD MCQs:**
    - Complex, multi-layered case studies (4-6 paragraphs)
    - Requires synthesis of multiple concepts
    - All options should seem plausible at first glance
    - Time: 8-10 minutes
    - Purpose: Distinguish excellent from good students
 
-**4. MEDIUM+ HEAVY (15%) - Coding Proficiency:**
+**CODING QUESTIONS (all {num_coding} questions):**
    - Industry-relevant algorithmic challenges
    - Must demonstrate mastery of data structures and algorithms
    - Comprehensive test cases including corner cases
@@ -1206,11 +1189,12 @@ REQUIRED JSON FORMAT:
 
 ✅ **EXAM STANDARDS (Stricter than practice):**
 1. **Topic Focus**: All questions test "{subject}" - Coverage: {toc if toc else "Full " + subject + " curriculum"}
-2. **Randomization**: Mix difficulty levels - NO grouping by difficulty
-3. **MCQs**: All options plausible, thorough explanations, one correct answer
-4. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
-5. **Rigor**: Exam-level difficulty - more challenging than practice questions
-6. **Clarity**: Zero ambiguity in questions or answers
+2. **Question Counts**: Generate EXACTLY {num_mcq} MCQ and {num_coding} Coding questions
+3. **Randomization**: Mix difficulty levels within each type - NO grouping by difficulty
+4. **MCQs**: All options plausible, thorough explanations, one correct answer
+5. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
+6. **Rigor**: Exam-level difficulty - more challenging than practice questions
+7. **Clarity**: Zero ambiguity in questions or answers
 
 ⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	

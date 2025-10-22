@@ -1807,8 +1807,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 					</div>
 					
-				<div class="question-content">
-					<p><strong>Description:</strong></p>
+					<div class="question-content">
+						<p><strong>Description:</strong></p>
 					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
 					
 					{# MCQ Questions #}
@@ -1838,54 +1838,54 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 					{# Coding Questions #}
 					{% if question.question_type == 'coding' or not question.question_type %}
-					{% if question.input_format %}
-					<p><strong>Input Format:</strong></p>
-					<pre class="format-box">{{ question.input_format }}</pre>
+						{% if question.input_format %}
+						<p><strong>Input Format:</strong></p>
+						<pre class="format-box">{{ question.input_format }}</pre>
+						{% endif %}
+						
+						{% if question.output_format %}
+						<p><strong>Output Format:</strong></p>
+						<pre class="format-box">{{ question.output_format }}</pre>
+						{% endif %}
+						
+						{% if question.sample_input %}
+						<p><strong>Sample Input:</strong></p>
+						<pre class="sample-box">{{ question.sample_input }}</pre>
+						{% endif %}
+						
+						{% if question.sample_output %}
+						<p><strong>Sample Output:</strong></p>
+						<pre class="sample-box">{{ question.sample_output }}</pre>
+						{% endif %}
 					{% endif %}
+					</div>
 					
-					{% if question.output_format %}
-					<p><strong>Output Format:</strong></p>
-					<pre class="format-box">{{ question.output_format }}</pre>
-					{% endif %}
-					
-					{% if question.sample_input %}
-					<p><strong>Sample Input:</strong></p>
-					<pre class="sample-box">{{ question.sample_input }}</pre>
-					{% endif %}
-					
-					{% if question.sample_output %}
-					<p><strong>Sample Output:</strong></p>
-					<pre class="sample-box">{{ question.sample_output }}</pre>
-					{% endif %}
-					{% endif %}
-				</div>
-				
 				{# Only show code editor for coding questions #}
 				{% if question.question_type == 'coding' or not question.question_type %}
-				<div class="compiler-section">
-					<h4>🐍 Code Editor (Admin Preview)</h4>
-					<div class="compiler-container">
-						<div class="code-section">
-							<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+					<div class="compiler-section">
+						<h4>🐍 Code Editor (Admin Preview)</h4>
+						<div class="compiler-container">
+							<div class="code-section">
+								<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-							<div class="compiler-controls">
-								<button class="btn run-admin-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-								<button class="btn secondary clear-admin-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
+								<div class="compiler-controls">
+									<button class="btn run-admin-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									<button class="btn secondary clear-admin-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
+								</div>
 							</div>
-						</div>
-						
-						<div class="output-section">
-							<label>Output:</label>
-							<div id="admin-output-{{ loop.index }}" class="output-box">
-								<p class="muted">Click "Run Code" to see the output here...</p>
+							
+							<div class="output-section">
+								<label>Output:</label>
+								<div id="admin-output-{{ loop.index }}" class="output-box">
+									<p class="muted">Click "Run Code" to see the output here...</p>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 				{% endif %}
-			</section>
+				</section>
 				{% endfor %}
 			{% else %}
 				<section class="card">
