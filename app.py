@@ -96,28 +96,25 @@ else:
 
 def require_admin():
 	if not session.get("admin_username"):
-		return redirect(url_for("admin_login"))
+		return redirect(url_for("login"))
 	return None
 
 
 def require_user():
 	if not session.get("user_username"):
-		return redirect(url_for("user_login"))
+		return redirect(url_for("login"))
 	return None
 
 
 @app.route("/")
 def index():
-	# Debug: Check if template exists and MongoDB status
-	try:
-		mongodb_status = "Connected" if users_col is not None else "Disconnected"
-		print(f"Rendering template from: {os.getcwd()}")
-		print(f"CSS exists: {os.path.exists('main.css')}")
-		print(f"JS exists: {os.path.exists('app.js')}")
-		return render_template("index.html", view="home", mongodb_status=mongodb_status)
-	except Exception as e:
-		print(f"Template error: {e}")
-		return f"Template error: {e}<br>Current directory: {os.getcwd()}<br>MongoDB: {'Connected' if users_col is not None else 'Disconnected'}"
+	# Check if already logged in
+	if "admin_username" in session:
+		return redirect(url_for("admin_dashboard"))
+	if "user_username" in session:
+		return redirect(url_for("user_home"))
+	# Otherwise redirect to unified login
+	return redirect(url_for("login"))
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -155,38 +152,48 @@ def test_mongodb():
 		return jsonify({"status": "error", "message": f"MongoDB Atlas test failed: {str(e)}"})
 
 
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-	# Hardcoded admin credentials: Ayushman / ayushman9277
-	# App URL: http://3.80.74.243:5000
+@app.route("/login", methods=["GET", "POST"])
+def login():
+	"""Unified login for both admin and users"""
 	if request.method == "POST":
 		username = request.form.get("username", "").strip()
 		password = request.form.get("password", "")
 		
-		# Check if this is the first admin login attempt
-		if username == "Ayushman" and password == "ayushman9277" and admins_col.count_documents({}) == 0:
-			# Create the first admin
-			admins_col.insert_one({
-				"username": "Ayushman",
-				"password_hash": generate_password_hash("ayushman9277"),
-				"created_at": datetime.now(timezone.utc)
-			})
+		# Check if admin credentials (hardcoded: Ayushman / ayushman9277)
+		if username == "Ayushman" and password == "ayushman9277":
+			# Create admin entry if it doesn't exist
+			if admins_col.count_documents({"username": "Ayushman"}) == 0:
+				admins_col.insert_one({
+					"username": "Ayushman",
+					"password_hash": generate_password_hash("ayushman9277"),
+					"created_at": datetime.now(timezone.utc)
+				})
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
-		# Check existing admin
+		# Check existing admin in database
 		admin = admins_col.find_one({"username": username})
 		if admin and check_password_hash(admin.get("password_hash", ""), password):
 			session["admin_username"] = username
 			return redirect(url_for("admin_dashboard"))
-		return render_template("index.html", view="admin_login", error="Invalid credentials")
-	return render_template("index.html", view="admin_login")
+		
+		# Check regular user
+		user = users_col.find_one({"username": username})
+		if user and check_password_hash(user.get("password_hash", ""), password):
+			session["user_username"] = username
+			session["user_role"] = user.get("role")
+			return redirect(url_for("user_home"))
+		
+		# Invalid credentials
+		return render_template("index.html", view="login", error="Invalid username or password")
+	
+	return render_template("index.html", view="login")
 
 
 @app.route("/admin/logout")
 def admin_logout():
 	session.pop("admin_username", None)
-	return redirect(url_for("index"))
+	return redirect(url_for("login"))
 
 
 
@@ -417,25 +424,40 @@ def admin_execute_question():
 		validation = ""
 		if openai.api_key:
 			try:
-				validation = _ai_generate(f"""As a coding trainer, validate this student's solution for the following question:
+				trainer_role = """You are an Expert Code Reviewer for educational purposes.
 
-Question: {question_text}
+Your approach:
+- Technical but accessible
+- Identify both strengths and issues
+- Provide specific, actionable advice
+- Consider best practices
+- Help admins understand student performance"""
+				
+				validation_prompt = f"""Review this student solution from an educational assessment perspective.
 
-Student's Code:
+**Question:** {question_text}
+
+**Student's Code:**
 ```python
 {code}
 ```
 
-Student's Output:
+**Execution Result:**
 {result['output'] if result['success'] else 'Error: ' + result['error']}
 
-Please provide:
-1. Whether the solution is correct
-2. What the student did well
-3. Areas for improvement
-4. Suggestions for better approaches
+**Provide Assessment:**
 
-Be encouraging but constructive in your feedback.""", "You are a helpful coding trainer who provides constructive feedback to students.")
+✅ **Correctness:** (Correct / Partially Correct / Incorrect) - Brief explanation
+
+💪 **Strengths:** What the student did well
+
+⚠️ **Issues:** Specific problems or concerns
+
+💡 **Improvement Suggestions:** Concrete advice
+
+🎓 **Teaching Note:** Key concepts this reveals about student understanding"""
+				
+				validation = _ai_generate(validation_prompt, trainer_role)
 			except Exception as e:
 				print(f"AI validation error: {e}")
 				validation = "AI validation temporarily unavailable"
@@ -538,6 +560,161 @@ def admin_delete_test(test_id):
 		return jsonify({"ok": False, "message": "Test not found"}), 404
 
 
+@app.route("/admin/submissions")
+def admin_submissions():
+	redir = require_admin()
+	if redir:
+		return redir
+	
+	# Get filter parameters
+	filter_context = request.args.get('context', 'all')  # all, test, test_violation, classroom
+	filter_test = request.args.get('test_id', 'all')
+	filter_user = request.args.get('username', 'all')
+	page = int(request.args.get('page', 1))
+	per_page = 50
+	skip = (page - 1) * per_page
+	
+	# Build query
+	query = {}
+	if filter_context != 'all':
+		query['context'] = filter_context
+	if filter_test != 'all':
+		query['test_id'] = filter_test
+	if filter_user != 'all':
+		query['username'] = filter_user
+	
+	# Get submissions
+	submissions = list(submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page))
+	total_submissions = submissions_col.count_documents(query)
+	total_pages = (total_submissions + per_page - 1) // per_page
+	
+	# Get unique values for filters
+	all_tests = submissions_col.distinct("test_id")
+	all_users = submissions_col.distinct("username")
+	
+	# Get statistics
+	stats = {
+		'total_submissions': submissions_col.count_documents({}),
+		'total_violations': submissions_col.count_documents({'context': 'test_violation'}),
+		'total_test_submissions': submissions_col.count_documents({'context': 'test'}),
+		'total_test_completions': submissions_col.count_documents({'context': 'test_complete'}),
+		'total_classroom_submissions': submissions_col.count_documents({'context': 'classroom'}),
+		'unique_users': len(all_users),
+		'unique_tests': len([t for t in all_tests if t])
+	}
+	
+	# Get violation breakdown
+	violation_pipeline = [
+		{"$match": {"context": "test_violation"}},
+		{"$group": {"_id": "$violation_type", "count": {"$sum": 1}}},
+		{"$sort": {"count": -1}}
+	]
+	violation_stats = list(submissions_col.aggregate(violation_pipeline))
+	
+	# Get users with most violations
+	user_violation_pipeline = [
+		{"$match": {"context": "test_violation"}},
+		{"$group": {"_id": "$username", "count": {"$sum": 1}}},
+		{"$sort": {"count": -1}},
+		{"$limit": 10}
+	]
+	user_violations = list(submissions_col.aggregate(user_violation_pipeline))
+	
+	return render_template("index.html", view="admin_submissions", 
+		submissions=submissions, page=page, total_pages=total_pages, total_submissions=total_submissions,
+		filter_context=filter_context, filter_test=filter_test, filter_user=filter_user,
+		all_tests=all_tests, all_users=all_users, stats=stats, 
+		violation_stats=violation_stats, user_violations=user_violations)
+
+
+@app.route("/admin/submissions/export")
+def admin_export_submissions():
+	redir = require_admin()
+	if redir:
+		return redir
+	
+	# Get filter parameters
+	filter_context = request.args.get('context', 'all')
+	filter_test = request.args.get('test_id', 'all')
+	filter_user = request.args.get('username', 'all')
+	
+	# Build query
+	query = {}
+	if filter_context != 'all':
+		query['context'] = filter_context
+	if filter_test != 'all':
+		query['test_id'] = filter_test
+	if filter_user != 'all':
+		query['username'] = filter_user
+	
+	try:
+		# Get all submissions matching filters
+		submissions = list(submissions_col.find(query).sort("created_at", -1))
+		
+		# Create CSV file in memory
+		output = StringIO()
+		writer = csv.writer(output)
+		
+		# Write header
+		writer.writerow(['Username', 'Context', 'Test ID', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
+		
+		# Write data
+		for sub in submissions:
+			created_at = sub.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if sub.get('created_at') else ''
+			details = ''
+			
+			if sub.get('context') == 'test_violation':
+				details = f"Violation: {sub.get('violation_type', 'N/A')}"
+			elif sub.get('context') == 'test':
+				details = f"Question: {sub.get('question_index', 'N/A')}"
+			
+			writer.writerow([
+				sub.get('username', ''),
+				sub.get('context', ''),
+				sub.get('test_id', ''),
+				sub.get('violation_type', ''),
+				sub.get('warning_number', ''),
+				created_at,
+				details
+			])
+		
+		output.seek(0)
+		filename = f'submissions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+		if filter_test != 'all':
+			filename += f'_{filter_test}'
+		if filter_context != 'all':
+			filename += f'_{filter_context}'
+		filename += '.csv'
+		
+		return send_file(
+			BytesIO(output.getvalue().encode('utf-8')),
+			mimetype='text/csv',
+			as_attachment=True,
+			download_name=filename
+		)
+		
+	except Exception as e:
+		print(f"Export error: {e}")
+		return jsonify({"success": False, "error": f"Export failed: {str(e)}"})
+
+
+@app.route("/admin/submissions/<submission_id>")
+def admin_submission_detail(submission_id):
+	redir = require_admin()
+	if redir:
+		return redir
+	
+	from bson.objectid import ObjectId
+	try:
+		submission = submissions_col.find_one({"_id": ObjectId(submission_id)})
+		if not submission:
+			abort(404)
+		
+		return render_template("index.html", view="admin_submission_detail", submission=submission)
+	except:
+		abort(404)
+
+
 def execute_python_code(code: str, timeout: int = 5) -> dict:
 	"""Safely execute Python code and return output"""
 	try:
@@ -623,67 +800,200 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 
 
 def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate classroom activities with trainer role and ToC integration"""
-	trainer_role = """You are a trainer and you will design set of coding based activities for the number of questions mentioned and the questions will vary in difficulty from simple to hard and you will validate entries for each activity and display output and display suggestions as well."""
+	"""Generate classroom activities with varied difficulty and question types"""
+	trainer_role = """You are an expert Educational Content Designer and Assessment Specialist with 15+ years of experience in creating comprehensive, pedagogically sound assessments. 
+
+Your expertise includes:
+- Designing questions that test different cognitive levels (Bloom's Taxonomy)
+- Creating realistic, industry-relevant case studies
+- Balancing theoretical knowledge with practical application
+- Writing clear, unambiguous MCQs with effective distractors
+- Crafting coding problems that assess problem-solving and algorithmic thinking
+- Ensuring questions are aligned with learning objectives and difficulty levels
+
+You create assessments that are fair, challenging, and educational."""
 	
-	prompt = f"""Create {num_questions} case-study based coding activities for subject '{subject}'.
+	prompt = f"""Create {num_questions} high-quality practice questions for: **{subject}**
 
-Table of Contents (ToC) Guidance:
-{toc}
+🎯 **TOPIC/CONTENT GUIDANCE:**
+{toc if toc else "Cover fundamental to advanced concepts in " + subject}
 
-Requirements:
-- Design activities that vary in difficulty from simple to hard
-- Each activity should be practical and hands-on
-- Include clear validation criteria for each activity
-- Provide expected outputs and suggestions for improvement
-- Make activities engaging and educational
+📋 **QUESTION DISTRIBUTION (distribute questions across these types):**
 
-For each activity, provide:
-- title: Clear, descriptive title
-- description: Detailed problem statement with context
-- difficulty: "easy", "medium", or "hard"
-- input_format: How input should be provided
-- output_format: Expected output format
-- sample_input: Example input
-- sample_output: Expected output for sample input
-- validation_criteria: How to validate the solution
-- suggestions: Tips and hints for students
-- learning_objectives: What students will learn
+**1. EASY (25% of questions) - Foundational MCQs:**
+   - Test basic concepts, definitions, and fundamental principles
+   - 4 well-crafted options with clear correct answer
+   - Options should be distinct and plausible
+   - Time: 2-3 minutes each
+   - Topics: Core terminology, simple recall, basic understanding
 
-Respond in JSON format with an array 'questions' containing all activities."""
+**2. MEDIUM (35% of questions) - Application-Based MCQs:**
+   - Short scenario or case study (2-3 paragraphs)
+   - Requires applying concepts to solve problems
+   - 4 options with subtle differences
+   - Time: 5-7 minutes each
+   - Topics: Problem-solving, analysis, practical application
+
+**3. HARD (25% of questions) - Complex Case-Based MCQs:**
+   - Detailed scenario/case study (4-6 paragraphs)
+   - Multi-faceted problem requiring deep analysis
+   - 4 options requiring careful consideration
+   - Time: 8-10 minutes each
+   - Topics: Critical thinking, evaluation, complex decision-making
+
+**4. MEDIUM+ HEAVY (15% of questions) - Coding Challenges:**
+   - Real-world algorithmic or programming problems
+   - Must be solvable in Python
+   - Focus on logic, not syntax memorization
+   - Provide comprehensive test cases
+   - Time: 15-20 minutes each
+   - Topics: Data structures, algorithms, problem-solving
+
+📝 **STRICT JSON FORMAT (return ONLY JSON, no markdown):**
+{{
+  "questions": [
+    {{
+      "question_type": "mcq",
+      "difficulty": "easy",
+      "title": "Concise, descriptive title based on {subject}",
+      "description": "Complete question. For cases: include realistic scenario with context.",
+      "options": [
+        "A) First plausible option",
+        "B) Common misconception option",
+        "C) Correct answer",
+        "D) Another plausible distractor"
+      ],
+      "correct_answer": "C",
+      "explanation": "Why C is correct and why A, B, D are wrong. Include key concepts from {subject}.",
+      "hints": ["Helpful hint 1", "Helpful hint 2"],
+      "learning_objectives": ["What student should learn"]
+    }},
+    {{
+      "question_type": "coding",
+      "difficulty": "medium_plus",
+      "title": "Clear problem title related to {subject}",
+      "description": "Complete problem statement with context and requirements related to {toc if toc else subject}",
+      "input_format": "Format with examples: e.g., 'First line: integer n, Second line: n space-separated integers'",
+      "output_format": "Expected output format with examples",
+      "sample_input": "3\\n1 2 3",
+      "sample_output": "6",
+      "test_cases": [
+        {{"input": "basic test", "expected_output": "result"}},
+        {{"input": "edge case", "expected_output": "edge result"}},
+        {{"input": "complex test", "expected_output": "complex result"}}
+      ],
+      "hints": ["Algorithm hint", "Edge case hint"],
+      "learning_objectives": ["Data structure knowledge", "Algorithm application"]
+    }}
+  ]
+}}
+
+✅ **QUALITY REQUIREMENTS:**
+1. **Topic Focus**: Every question must directly relate to "{subject}" and topics in: {toc if toc else "fundamental to advanced " + subject + " concepts"}
+2. **Randomization**: Mix difficulties - DON'T group by difficulty level
+3. **MCQs**: All 4 options plausible, no obvious answers, equal-length options, include explanation
+4. **Coding**: Solvable in time limit, minimum 3 test cases with edges, clear I/O specs
+5. **Educational**: Each question teaches something valuable about {subject}
+
+⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
 	return _ai_generate(prompt, trainer_role)
 
 
 def _ai_generate_test(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate tests with trainer role and ToC integration"""
-	trainer_role = """You are a trainer and you will design set of coding based activities for the number of questions mentioned and the questions will vary in difficulty from simple to hard and you will validate entries for each activity and display output and display suggestions as well."""
+	"""Generate tests with varied difficulty and question types"""
+	trainer_role = """You are a Senior Examination Designer and Assessment Expert with expertise in creating fair, comprehensive, and academically rigorous tests.
+
+Your qualifications:
+- PhD in Educational Assessment and Measurement
+- 20+ years designing standardized tests and professional certifications
+- Expert in psychometrics and item response theory
+- Specialist in computer science and programming assessments
+- Known for creating challenging yet fair exam questions
+
+You design tests that:
+- Accurately measure student knowledge and skills
+- Cover the full spectrum of difficulty levels
+- Test both theoretical understanding and practical application
+- Use realistic scenarios from industry and research
+- Have clear, unambiguous correct answers
+- Provide comprehensive evaluation of student competency"""
 	
-	prompt = f"""Create a rigorous coding test with {num_questions} questions for subject '{subject}'.
+	prompt = f"""Create {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
 
-Table of Contents (ToC) Guidance:
-{toc}
+🎯 **SUBJECT/TOPIC COVERAGE:**
+{toc if toc else "Comprehensive coverage of " + subject + " from fundamentals to advanced topics"}
 
-Requirements:
-- Design questions that vary in difficulty from simple to hard
-- Each question should test practical coding skills
-- Include comprehensive test cases for validation
-- Questions should be challenging but fair
-- Focus on problem-solving and implementation skills
+⚠️ **EXAM STANDARDS:** These are formal test questions - higher difficulty and rigor than practice questions.
 
-For each question, provide:
-- title: Clear, descriptive title
-- description: Detailed problem statement
-- difficulty: "easy", "medium", or "hard"
-- input_format: How input should be provided
-- output_format: Expected output format
-- sample_input: Example input
-- sample_output: Expected output for sample input
-- test_cases: Array of hidden test cases for validation
-- constraints: Any limitations or constraints
-- time_limit: Suggested time limit in minutes
+📋 **QUESTION DISTRIBUTION:**
 
-Respond in JSON format with an array 'questions' containing all test questions."""
+**1. EASY (25%) - Foundation Assessment:**
+   - Test essential concepts and core principles
+   - 4 carefully designed options (3 plausible distractors)
+   - No "freebie" questions - require understanding, not just recall
+   - Time: 2-3 minutes
+   - Purpose: Verify baseline competency
+
+**2. MEDIUM (35%) - Applied Knowledge:**
+   - Realistic scenarios (2-3 paragraph case studies)
+   - Test ability to apply concepts to new situations
+   - Options require careful analysis
+   - Time: 5-7 minutes
+   - Purpose: Assess problem-solving and analysis skills
+
+**3. HARD (25%) - Advanced Analysis:**
+   - Complex, multi-layered case studies (4-6 paragraphs)
+   - Requires synthesis of multiple concepts
+   - All options should seem plausible at first glance
+   - Time: 8-10 minutes
+   - Purpose: Distinguish excellent from good students
+
+**4. MEDIUM+ HEAVY (15%) - Coding Proficiency:**
+   - Industry-relevant algorithmic challenges
+   - Must demonstrate mastery of data structures and algorithms
+   - Comprehensive test cases including corner cases
+   - Time: 15-20 minutes
+   - Purpose: Evaluate practical coding skills and logical thinking
+
+REQUIRED JSON FORMAT:
+{{
+  "questions": [
+    {{
+      "question_type": "mcq" OR "coding",
+      "difficulty": "easy" OR "medium" OR "hard" OR "medium_plus",
+      "title": "Clear question title",
+      "description": "Full question text with case study if applicable",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],  // Only for MCQs
+      "correct_answer": "A" OR "B" OR "C" OR "D",  // Only for MCQs
+      "explanation": "Why this answer is correct",  // Only for MCQs
+      "input_format": "...",  // Only for coding
+      "output_format": "...",  // Only for coding
+      "sample_input": "...",  // Only for coding
+      "sample_output": "...",  // Only for coding
+      "test_cases": [  // Only for coding
+        {{"input": "...", "expected_output": "..."}},
+        {{"input": "...", "expected_output": "..."}},
+        {{"input": "...", "expected_output": "..."}}
+      ],
+      "constraints": "Any limitations",  // Only for coding
+      "time_limit_minutes": <number>,
+      "points": <number>,
+      "hints": ["Hint 1", "Hint 2"],
+      "learning_objectives": ["Objective 1", "Objective 2"]
+    }}
+  ]
+}}
+
+✅ **EXAM STANDARDS (Stricter than practice):**
+1. **Topic Focus**: All questions test "{subject}" - Coverage: {toc if toc else "Full " + subject + " curriculum"}
+2. **Randomization**: Mix difficulty levels - NO grouping by difficulty
+3. **MCQs**: All options plausible, thorough explanations, one correct answer
+4. **Coding**: Test FUNCTIONALITY not exact output, include edge cases, clear specs
+5. **Rigor**: Exam-level difficulty - more challenging than practice questions
+6. **Clarity**: Zero ambiguity in questions or answers
+
+⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	
 	return _ai_generate(prompt, trainer_role)
 
@@ -829,25 +1139,14 @@ def admin_create_test():
 	return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/user/login", methods=["GET", "POST"])  # User login
-def user_login():
-	if request.method == "POST":
-		username = request.form.get("username", "").strip()
-		password = request.form.get("password", "")
-		user = users_col.find_one({"username": username})
-		if user and check_password_hash(user.get("password_hash", ""), password):
-			session["user_username"] = username
-			session["user_role"] = user.get("role")
-			return redirect(url_for("user_home"))
-		return render_template("index.html", view="user_login", error="Invalid credentials")
-	return render_template("index.html", view="user_login")
-
-
 @app.route("/user/logout")
 def user_logout():
 	session.pop("user_username", None)
 	session.pop("user_role", None)
-	return redirect(url_for("index"))
+	session.pop("test_progress", None)
+	session.pop("test_warnings", None)
+	session.pop("test_violations", None)
+	return redirect(url_for("login"))
 
 
 @app.route("/home")
@@ -916,24 +1215,82 @@ def classroom_validate():
 	user_code = request.form.get("user_code", "")
 	if not question_text or not user_code:
 		return jsonify({"ok": False, "error": "question_text and user_code required"}), 400
-	trainer_role = """You are a trainer and you will design set of coding based activities for the number of questions mentioned and the questions will vary in difficulty from simple to hard and you will validate entries for each activity and display output and display suggestions as well."""
-	
-	prompt = f"""As a trainer, evaluate the student's code submission and provide helpful feedback.
+	trainer_role = """You are a Patient and Encouraging Coding Mentor with a passion for teaching.
 
-Problem Statement:
+Your philosophy:
+- **Student-Centered**: Every student learns at their own pace
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Constructive**: Always find something positive first
+- **Practical**: Give actionable, specific advice
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply without talking down to students
+
+Your experience:
+- 10+ years mentoring students from beginner to advanced levels
+- Expert in breaking down complex concepts into understandable chunks
+- Known for patient, encouraging feedback that motivates students
+- Skilled at identifying common pitfalls and explaining why they happen
+- Passionate about helping students develop good coding habits early"""
+	
+	prompt = f"""Review this student's practice code submission and provide encouraging, educational feedback.
+
+🎯 **PROBLEM:**
 {question_text}
 
-Student's Code:
+💻 **STUDENT'S CODE:**
+```python
 {user_code}
+```
 
-Please provide:
-1. Validation of the code (correct/incorrect/partially correct)
-2. Expected vs actual output if the code is runnable
-3. Specific suggestions for improvement
-4. Learning points and tips
-5. Encouragement and constructive feedback
+📝 **YOUR FEEDBACK SHOULD INCLUDE:**
 
-Format your response in a clear, educational manner that helps the student learn and improve."""
+1. **Initial Encouragement** (Start positive!)
+   - Acknowledge their effort and any correct approaches
+   - Highlight what they're doing right
+
+2. **Correctness Assessment**
+   - ✅ Correct: Solution works perfectly
+   - ⚠️ Partially Correct: Works for some cases but not all
+   - ❌ Needs Work: Has significant issues
+   - Explain which test cases it would pass/fail
+
+3. **What Works Well**
+   - Specific code elements they did correctly
+   - Good practices they're using
+   - Right concepts they've applied
+
+4. **Areas for Improvement**
+   - Specific issues in the code (be gentle!)
+   - Explain WHY it's an issue (help them understand)
+   - Show the impact (what goes wrong because of this)
+
+5. **Learning Points**
+   - Key concepts relevant to this problem
+   - Common mistakes to avoid
+   - Helpful patterns or approaches
+
+6. **Step-by-Step Guidance**
+   - How to fix the main issues
+   - Better approaches they could try
+   - Example of what improved code might look like (hints, not full solution)
+
+7. **Next Steps**
+   - What to focus on for improvement
+   - Practice suggestions
+   - Resources or topics to study
+
+8. **Encouragement** (End positive!)
+   - Motivate them to keep learning
+   - Remind them that coding is a journey
+
+⚠️ **TONE GUIDELINES:**
+- 🎓 **Educational**: Teach, don't just correct
+- 💚 **Kind**: Be gentle, especially about mistakes
+- 🎯 **Specific**: Give concrete examples, not vague advice
+- ✨ **Encouraging**: Build confidence
+- 🔍 **Thorough**: Cover main issues but don't overwhelm
+
+Format your response as clear, friendly text (not JSON). Use emojis sparingly to make it engaging. Write as if you're sitting next to the student explaining everything patiently."""
 	
 	try:
 		suggestions = _ai_generate(prompt, trainer_role)
@@ -969,6 +1326,20 @@ def test():
 	test_doc = tests_col.find_one({"test_id": user.get("test_id")})
 	if not test_doc:
 		return render_template("index.html", view="test", error="No test assigned" )
+	
+	# Check if user has already completed this test
+	test_id = user.get("test_id")
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id
+	})
+	
+	if already_completed:
+		return render_template("index.html", view="test", error="You have already completed this test. You cannot attempt it again.", 
+			test=test_doc, already_completed=True,
+			completion_time=already_completed.get("created_at"))
+	
 	now = datetime.now(timezone.utc)
 	
 	# Get start and end times (new format) or fallback to scheduled_at (old format)
@@ -1154,6 +1525,19 @@ def test_start():
 	if not test_doc:
 		return render_template("index.html", view="test", error="No test assigned" )
 	
+	# Check if user has already completed this test
+	test_id = user.get("test_id")
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id
+	})
+	
+	if already_completed:
+		return render_template("index.html", view="test", error="You have already completed this test. You cannot attempt it again.", 
+			test=test_doc, already_completed=True,
+			completion_time=already_completed.get("created_at"))
+	
 	# Check if test is open
 	now = datetime.now(timezone.utc)
 	start_time = test_doc.get("start_time")
@@ -1182,9 +1566,13 @@ def test_start():
 	else:
 		return render_template("index.html", view="test", error="No test scheduled" )
 	
-	# Initialize progress
+	# Initialize progress and anti-cheat tracking
 	if session.get("test_progress") is None:
 		session["test_progress"] = 0
+	if session.get("test_warnings") is None:
+		session["test_warnings"] = 0
+	if session.get("test_violations") is None:
+		session["test_violations"] = []
 	
 	# Parse the generated JSON to extract questions
 	questions = []
@@ -1238,7 +1626,63 @@ def test_start():
 	
 	# Show the actual test interface
 	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question, parse_error=parse_error)
+		questions=questions, current_question=current_question, parse_error=parse_error, 
+		warning_count=session.get("test_warnings", 0))
+
+
+@app.route("/test/violation", methods=["POST"])  # Record test violations
+def test_violation():
+	"""Record anti-cheat violations during test"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("test", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	violation_type = request.json.get("type", "unknown")
+	timestamp = datetime.now(timezone.utc)
+	
+	# Initialize warnings if not present
+	if session.get("test_warnings") is None:
+		session["test_warnings"] = 0
+	if session.get("test_violations") is None:
+		session["test_violations"] = []
+	
+	# Increment warning count
+	session["test_warnings"] += 1
+	warning_count = session["test_warnings"]
+	
+	# Record violation
+	violation_record = {
+		"type": violation_type,
+		"timestamp": timestamp.isoformat(),
+		"warning_number": warning_count
+	}
+	session["test_violations"].append(violation_record)
+	session.modified = True
+	
+	# Log violation to database for audit
+	test_id = user.get("test_id")
+	submissions_col.insert_one({
+		"username": user["username"],
+		"context": "test_violation",
+		"test_id": test_id,
+		"violation_type": violation_type,
+		"warning_number": warning_count,
+		"created_at": timestamp
+	})
+	
+	# Check if test should be auto-closed
+	auto_close = warning_count >= 3
+	
+	return jsonify({
+		"ok": True,
+		"warning_count": warning_count,
+		"auto_close": auto_close,
+		"message": f"Warning {warning_count}/3: {violation_type}"
+	})
 
 
 @app.route("/test/submit", methods=["POST"])  # Sequential submission, no output displayed
@@ -1282,42 +1726,140 @@ def test_submit():
 		return jsonify({"ok": False, "error": "No test scheduled"}), 403
 	idx = int(session.get("test_progress", 0))
 	answer_code = request.form.get("user_code", "")
+	mcq_answer = request.form.get("mcq_answer", "")
+	question_type = request.form.get("question_type", "coding")
 	question_bank_json = test_doc.get("generated", "")
-	# Background-like evaluation (sync here for simplicity), but do not show output
-	if answer_code:
-		trainer_role = """You are a trainer and you will design set of coding based activities for the number of questions mentioned and the questions will vary in difficulty from simple to hard and you will validate entries for each activity and display output and display suggestions as well."""
+	
+	# Get current question details
+	try:
+		import json
+		generated_data = json.loads(question_bank_json)
+		questions = generated_data.get("questions", [])
+		current_question = questions[idx] if idx < len(questions) else None
+	except:
+		current_question = None
+	
+	# Evaluate based on question type
+	if mcq_answer and question_type == "mcq" and current_question:
+		# MCQ Evaluation
+		correct_answer = current_question.get("correct_answer", "")
+		is_correct = mcq_answer.strip().upper()[0] == correct_answer.strip().upper()[0] if correct_answer else False
+		score = 1.0 if is_correct else 0.0
 		
-		prompt = f"""As a trainer, evaluate the student's test submission and provide a score with detailed feedback.
-
-Question Set: {question_bank_json}
-Question Index: {idx}
-Student's Code: {answer_code}
-
-Please evaluate the code and respond in JSON format:
-{{
-  "score": <0.0 to 1.0>,
-  "reason": "Detailed explanation of the score and what the student did well or needs to improve",
-  "suggestions": "Specific suggestions for improvement",
-  "learning_points": "Key concepts the student should focus on"
-}}
-
-Score guidelines:
-- 1.0: Perfect solution, excellent code quality
-- 0.8-0.9: Very good solution with minor issues
-- 0.6-0.7: Good solution with some problems
-- 0.4-0.5: Partially correct with significant issues
-- 0.2-0.3: Mostly incorrect but shows some understanding
-- 0.0-0.1: Incorrect or no meaningful attempt"""
+		grading = json.dumps({
+			"score": score,
+			"is_correct": is_correct,
+			"student_answer": mcq_answer,
+			"correct_answer": correct_answer,
+			"explanation": current_question.get("explanation", ""),
+			"question_type": "mcq",
+			"reason": "Correct answer!" if is_correct else f"Incorrect. The correct answer is {correct_answer}."
+		})
 		
-		try:
-			grading = _ai_generate(prompt, trainer_role)
-		except Exception as e:
-			grading = str({"score": 0, "reason": f"AI error: {e}", "suggestions": "Please try again", "learning_points": "Review the problem statement"})
 		submissions_col.insert_one({
 			"username": user["username"],
 			"context": "test",
 			"test_id": test_doc.get("test_id"),
 			"question_index": idx,
+			"question_type": "mcq",
+			"mcq_answer": mcq_answer,
+			"correct_answer": correct_answer,
+			"is_correct": is_correct,
+			"ai_grading": grading,
+			"created_at": datetime.now(timezone.utc)
+		})
+	elif answer_code and question_type == "coding":
+		# Coding Question Evaluation
+		trainer_role = """You are a Senior Software Engineering Evaluator and Computer Science Professor specializing in code assessment.
+
+Your credentials:
+- 15+ years teaching Data Structures & Algorithms
+- Former Technical Interviewer at top tech companies (Google, Microsoft, Amazon)
+- Expert in evaluating code for correctness, efficiency, and quality
+- Published researcher in programming education and assessment
+- Known for fair, thorough, and constructive code reviews
+
+Your evaluation approach:
+- Test-driven: Does the code pass all test cases?
+- Correctness-focused: Does it solve the actual problem?
+- Quality-aware: Is the code readable, maintainable, and well-structured?
+- Efficiency-conscious: Is the algorithm optimal or reasonable?
+- Edge-case minded: Does it handle boundary conditions?
+- Fair but rigorous: Give credit for what works, note what doesn't"""
+		
+		prompt = f"""Evaluate this student's coding submission for an exam question. Be thorough and fair.
+
+📋 **PROBLEM:**
+{json.dumps(current_question, indent=2) if current_question else "N/A"}
+
+💻 **STUDENT'S SUBMISSION:**
+```python
+{answer_code}
+```
+
+🎯 **EVALUATION CRITERIA:**
+
+1. **Correctness (40%)**: Does the code solve the problem as specified?
+   - Check against problem requirements
+   - Verify logic and algorithm
+   - Consider test case coverage
+
+2. **Functionality (30%)**: Does it work properly?
+   - Would it pass the provided test cases?
+   - Does it handle edge cases (empty input, large input, special cases)?
+   - Are there any runtime errors or logical bugs?
+
+3. **Code Quality (20%)**: Is it well-written?
+   - Readability and clarity
+   - Proper naming conventions
+   - Logical structure and organization
+   - Comments if needed for complex logic
+
+4. **Efficiency (10%)**: Is the approach reasonable?
+   - Time complexity appropriate for problem
+   - Space usage reasonable
+   - Unnecessary inefficiencies avoided
+
+📊 **REQUIRED JSON RESPONSE:**
+{{
+  "score": <0.0 to 1.0>,
+  "functionality_score": <0.0 to 1.0>,
+  "code_quality_score": <0.0 to 1.0>,
+  "efficiency_score": <0.0 to 1.0>,
+  "passes_test_cases": true/false,
+  "reason": "Comprehensive explanation: what works, what doesn't, why this score",
+  "strengths": "Specific things the student did well (be encouraging)",
+  "weaknesses": "Specific issues found (be constructive)",
+  "suggestions": "Actionable advice for improvement",
+  "test_case_analysis": "Which test cases would pass/fail and why"
+}}
+
+⭐ **SCORING RUBRIC:**
+- **1.0 (Perfect)**: Correct solution, passes all tests, excellent code quality, optimal approach
+- **0.9**: Correct solution, minor code quality issues, passes all tests
+- **0.8**: Correct solution, some quality issues or slightly inefficient
+- **0.7**: Solution works for most cases, misses one edge case, decent quality
+- **0.6**: Partial solution, works for basic cases, has logical issues
+- **0.5**: Attempts the problem, has the right idea, but significant bugs
+- **0.4**: Some correct logic, but doesn't work for most cases
+- **0.3**: Shows understanding of problem, but implementation is largely incorrect
+- **0.2**: Minimal correct code, mostly wrong approach
+- **0.1**: Attempted but fundamentally wrong
+- **0.0**: Empty, completely incorrect, or unrelated code
+
+⚠️ **BE FAIR**: Give credit for partially correct solutions. If logic is right but has a small bug, don't give 0."""
+		
+		try:
+			grading = _ai_generate(prompt, trainer_role)
+		except Exception as e:
+			grading = json.dumps({"score": 0, "reason": f"AI error: {e}", "suggestions": "Please try again"})
+		
+		submissions_col.insert_one({
+			"username": user["username"],
+			"context": "test",
+			"test_id": test_doc.get("test_id"),
+			"question_index": idx,
+			"question_type": "coding",
 			"user_code": answer_code,
 			"ai_grading": grading,
 			"created_at": datetime.now(timezone.utc)
@@ -1339,8 +1881,10 @@ def test_complete():
 	if user.get("role") not in ("test", "both"):
 		abort(403)
 	test_id = user.get("test_id")
+	test_doc = tests_col.find_one({"test_id": test_id})
+	
+	# Calculate score but don't show to user
 	submissions = list(submissions_col.find({"username": user["username"], "context": "test", "test_id": test_id}))
-	# Extract scores if present (simple parsing, robust against non-JSON text)
 	score_sum = 0.0
 	total = 0
 	import json
@@ -1352,9 +1896,25 @@ def test_complete():
 		except Exception:
 			continue
 	final_score = 0.0 if total == 0 else round((score_sum / total) * 100.0, 2)
-	# Reset progress
+	
+	# Store final score in database for admin viewing
+	submissions_col.insert_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id,
+		"final_score": final_score,
+		"total_questions": total,
+		"created_at": datetime.now(timezone.utc)
+	})
+	
+	# Reset progress and warnings
 	session.pop("test_progress", None)
-	return render_template("index.html", view="test_result", score=final_score, total=total)
+	session.pop("test_warnings", None)
+	session.pop("test_violations", None)
+	
+	# Don't pass score to template - user won't see it
+	return render_template("index.html", view="test_result", 
+		test=test_doc, total_questions=total, show_score=False)
 
 
 @app.route("/compiler")
@@ -1402,26 +1962,40 @@ def execute_question_code():
 	if result["success"] and question_text:
 		try:
 			# Use AI to validate the solution
-			trainer_role = """You are a trainer and you will design set of coding based activities for the number of questions mentioned and the questions will vary in difficulty from simple to hard and you will validate entries for each activity and display output and display suggestions as well."""
+			trainer_role = """You are a Helpful Coding Tutor focused on quick, actionable feedback.
+
+Your style:
+- Quick and concise (students are testing their code in real-time)
+- Focused on what matters most
+- Encouraging but honest
+- Practical suggestions"""
 			
-			validation_prompt = f"""As a trainer, validate the student's solution for this coding question.
+			validation_prompt = f"""Quickly validate this student's code execution. Keep it concise.
 
-Question: {question_text}
+**Question:** {question_text}
 
-Student's Code:
+**Student's Code:**
+```python
 {code}
+```
 
-Code Output:
+**Output Produced:**
+```
 {result.get('output', 'No output')}
+```
 
-Please provide:
-1. Is the solution correct? (Yes/No/Partially)
-2. What the code actually does
-3. Expected behavior vs actual behavior
-4. Suggestions for improvement
-5. Learning points
+**Provide Brief Feedback:**
 
-Format your response clearly and helpfully."""
+✅ **Status:** (Correct / Partially Correct / Incorrect)
+
+💡 **Quick Analysis:**
+- What the code does
+- Is it solving the problem correctly?
+- Any obvious issues?
+
+📝 **Main Suggestions:** (1-2 key improvements)
+
+Keep it concise - the student is iterating on their solution."""
 			
 			try:
 				validation = _ai_generate(validation_prompt, trainer_role)

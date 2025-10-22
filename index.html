@@ -369,6 +369,11 @@ footer {
     color: #fca5a5;
 }
 
+.difficulty-medium_plus {
+    background: #581c87;
+    color: #c4b5fd;
+}
+
 .code-editor {
     background: #0b1228;
     border: 1px solid #1e293b;
@@ -729,6 +734,139 @@ pre, code {
     transform: scale(1.05);
 }
 
+/* Anti-Cheat Warning Modal */
+.warning-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    animation: fadeIn 0.3s;
+}
+
+.warning-modal-content {
+    position: relative;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    margin: 10% auto;
+    padding: 2rem;
+    border: 2px solid #fca5a5;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(220, 38, 38, 0.5);
+    animation: slideIn 0.3s;
+}
+
+.warning-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: pulse 1s infinite;
+}
+
+.warning-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.warning-message {
+    font-size: 1.1rem;
+    color: #fca5a5;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.warning-counter {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fef2f2;
+    margin-bottom: 1rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.warning-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.warning-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.warning-btn-primary {
+    background: white;
+    color: #dc2626;
+}
+
+.warning-btn-primary:hover {
+    background: #f3f4f6;
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Warning indicator in header */
+.warning-indicator {
+    background: #dc2626;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+/* Inactivity warning */
+.inactivity-warning {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #f59e0b;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    z-index: 9998;
+    animation: slideIn 0.3s;
+    font-weight: 600;
+}
+
+.inactivity-countdown {
+    font-size: 1.5rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    margin-top: 0.5rem;
+}
+
 /* HERO SECTION STYLING */
 .hero-section {
     text-align: center;
@@ -902,6 +1040,354 @@ pre, code {
         padding: 0.4rem 0.8rem;
     }
 }
+
+/* ========================================
+   UNIFIED LOGIN PAGE STYLES
+   ======================================== */
+
+.login-page {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow-y: auto;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-background {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow: hidden;
+	opacity: 0.1;
+}
+
+.login-shapes {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.shape {
+	position: absolute;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	animation: float 20s infinite ease-in-out;
+}
+
+.shape-1 {
+	width: 300px;
+	height: 300px;
+	top: 10%;
+	left: 10%;
+	animation-delay: 0s;
+}
+
+.shape-2 {
+	width: 200px;
+	height: 200px;
+	top: 60%;
+	right: 10%;
+	animation-delay: 5s;
+}
+
+.shape-3 {
+	width: 250px;
+	height: 250px;
+	bottom: 10%;
+	left: 40%;
+	animation-delay: 10s;
+}
+
+@keyframes float {
+	0%, 100% { transform: translateY(0) rotate(0deg); }
+	33% { transform: translateY(-30px) rotate(120deg); }
+	66% { transform: translateY(30px) rotate(240deg); }
+}
+
+.login-container {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	grid-template-columns: 500px 350px;
+	gap: 3rem;
+	padding: 2rem;
+	max-width: 1200px;
+	width: 100%;
+}
+
+.login-box {
+	background: #ffffff;
+	border-radius: 24px;
+	padding: 3rem;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.login-header {
+	text-align: center;
+	margin-bottom: 2.5rem;
+}
+
+.login-logo {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 1.5rem;
+}
+
+.logo-icon {
+	width: 80px;
+	height: 80px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border-radius: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.logo-icon svg {
+	stroke: #ffffff;
+}
+
+.login-title {
+	font-size: 2rem;
+	font-weight: 700;
+	color: #1a202c;
+	margin: 0 0 0.5rem 0;
+}
+
+.login-subtitle {
+	font-size: 1rem;
+	color: #718096;
+	margin: 0;
+}
+
+.login-error {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 1rem 1.25rem;
+	background: #fee;
+	border: 1px solid #fcc;
+	border-radius: 12px;
+	margin-bottom: 1.5rem;
+	color: #c53030;
+	font-size: 0.95rem;
+}
+
+.login-error svg {
+	flex-shrink: 0;
+	stroke: #c53030;
+}
+
+.login-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.form-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-weight: 600;
+	font-size: 0.95rem;
+	color: #2d3748;
+}
+
+.form-label svg {
+	stroke: #667eea;
+}
+
+.form-input {
+	width: 100%;
+	padding: 0.875rem 1rem;
+	font-size: 1rem;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	background: #f7fafc;
+	color: #1a202c;
+	transition: all 0.2s ease;
+	font-family: inherit;
+}
+
+.form-input:focus {
+	outline: none;
+	border-color: #667eea;
+	background: #ffffff;
+	box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input::placeholder {
+	color: #a0aec0;
+}
+
+.login-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	padding: 1rem;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: #ffffff;
+	font-size: 1.05rem;
+	font-weight: 600;
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	margin-top: 0.5rem;
+	box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.login-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.login-btn:active {
+	transform: translateY(0);
+}
+
+.login-btn svg {
+	stroke: currentColor;
+	transition: transform 0.3s ease;
+}
+
+.login-btn:hover svg {
+	transform: translateX(4px);
+}
+
+.login-footer {
+	margin-top: 2rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #e2e8f0;
+}
+
+.login-info {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	padding: 1rem;
+	background: #f7fafc;
+	border-radius: 12px;
+	font-size: 0.875rem;
+	color: #4a5568;
+	line-height: 1.5;
+}
+
+.login-info svg {
+	flex-shrink: 0;
+	stroke: #667eea;
+	margin-top: 0.125rem;
+}
+
+.login-features {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.feature-card {
+	background: rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 20px;
+	padding: 2rem;
+	text-align: center;
+	transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+	background: rgba(255, 255, 255, 0.25);
+	transform: translateY(-4px);
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon {
+	width: 72px;
+	height: 72px;
+	margin: 0 auto 1.25rem;
+	border-radius: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.admin-icon {
+	background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+	box-shadow: 0 8px 24px rgba(240, 147, 251, 0.4);
+}
+
+.student-icon {
+	background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+	box-shadow: 0 8px 24px rgba(79, 172, 254, 0.4);
+}
+
+.feature-icon svg {
+	stroke: #ffffff;
+}
+
+.feature-card h3 {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: #ffffff;
+	margin: 0 0 0.75rem 0;
+}
+
+.feature-card p {
+	font-size: 0.95rem;
+	color: rgba(255, 255, 255, 0.9);
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+	.login-container {
+		grid-template-columns: 1fr;
+		max-width: 500px;
+	}
+	
+	.login-features {
+		flex-direction: row;
+	}
+}
+
+@media (max-width: 640px) {
+	.login-container {
+		padding: 1rem;
+	}
+	
+	.login-box {
+		padding: 2rem 1.5rem;
+		border-radius: 16px;
+	}
+	
+	.login-title {
+		font-size: 1.5rem;
+	}
+	
+	.login-features {
+		flex-direction: column;
+	}
+	
+	.feature-card {
+		padding: 1.5rem;
+	}
+}
 </style>
 </head>
 <body>
@@ -911,6 +1397,7 @@ pre, code {
 		const ADMIN_USERNAME = 'Ayushman';
 		const ADMIN_PASSWORD = 'ayushman9277';
 	</script>
+	{% if view != 'login' %}
 	<header class="container flex-between">
 		<h1>Coding Playground</h1>
 		<nav>
@@ -925,70 +1412,136 @@ pre, code {
 			{% endif %}
 		</nav>
 	</header>
+	{% endif %}
 
 	<main class="container">
-		{# Home View #}
-		{% if view == 'home' %}
-			<section class="hero-section">
-				<div class="hero-content">
-					<h1>🎓 Coding Playground</h1>
-					<p class="hero-subtitle">Interactive coding education platform for students and educators</p>
+		{# Unified Login Page #}
+		{% if view == 'login' %}
+			<div class="login-page">
+				<div class="login-background">
+					<div class="login-shapes">
+						<div class="shape shape-1"></div>
+						<div class="shape shape-2"></div>
+						<div class="shape shape-3"></div>
+					</div>
 				</div>
-			</section>
-			
-			<section class="login-options">
-				<div class="login-grid">
-					<div class="login-card admin-card">
-						<div class="card-icon">👨‍💼</div>
-						<h2>Admin Portal</h2>
-						<p>Manage users, create classroom activities, and schedule coding tests for your students.</p>
-						<div class="card-features">
-							<span class="feature">👥 User Management</span>
-							<span class="feature">📚 Activity Creation</span>
-							<span class="feature">📝 Test Scheduling</span>
+				
+				<div class="login-container">
+					<div class="login-box">
+						<div class="login-header">
+							<div class="login-logo">
+								<div class="logo-icon">
+									<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M16 18l2-2 4 4-4 4-2-2m0-4H8a4 4 0 01-4-4V6"/>
+										<circle cx="12" cy="12" r="3"/>
+									</svg>
+								</div>
+							</div>
+							<h1 class="login-title">Welcome Back</h1>
+							<p class="login-subtitle">Sign in to your Coding Playground account</p>
 						</div>
-						<a class="btn admin-btn" href="/admin/login">
-							<span>Admin Login</span>
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M5 12h14M12 5l7 7-7 7"/>
+						
+						{% if error %}
+						<div class="login-error">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<circle cx="12" cy="12" r="10"/>
+								<line x1="12" y1="8" x2="12" y2="12"/>
+								<line x1="12" y1="16" x2="12.01" y2="16"/>
 							</svg>
-						</a>
+							<span>{{ error }}</span>
+						</div>
+						{% endif %}
+						
+						<form class="login-form" method="post" action="/login">
+							<div class="form-group">
+								<label for="username" class="form-label">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+										<circle cx="12" cy="7" r="4"/>
+									</svg>
+									<span>Username</span>
+								</label>
+								<input 
+									type="text" 
+									id="username" 
+									name="username" 
+									class="form-input" 
+									placeholder="Enter your username" 
+									required 
+									autofocus
+									autocomplete="username"
+								>
+							</div>
+							
+							<div class="form-group">
+								<label for="password" class="form-label">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+										<path d="M7 11V7a5 5 0 0110 0v4"/>
+									</svg>
+									<span>Password</span>
+								</label>
+								<input 
+									type="password" 
+									id="password" 
+									name="password" 
+									class="form-input" 
+									placeholder="Enter your password" 
+									required
+									autocomplete="current-password"
+								>
+							</div>
+							
+							<button type="submit" class="login-btn">
+								<span>Sign In</span>
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<line x1="5" y1="12" x2="19" y2="12"/>
+									<polyline points="12 5 19 12 12 19"/>
+								</svg>
+							</button>
+						</form>
+						
+						<div class="login-footer">
+							<div class="login-info">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="12" r="10"/>
+									<line x1="12" y1="16" x2="12" y2="12"/>
+									<line x1="12" y1="8" x2="12.01" y2="8"/>
+								</svg>
+								<span>Enter your credentials to access admin or student features</span>
+							</div>
+						</div>
 					</div>
 					
-					<div class="login-card user-card">
-						<div class="card-icon">👨‍🎓</div>
-						<h2>Student Portal</h2>
-						<p>Access your assigned classroom activities and take scheduled coding tests.</p>
-						<div class="card-features">
-							<span class="feature">💻 Code Practice</span>
-							<span class="feature">🤖 AI Feedback</span>
-							<span class="feature">📊 Progress Tracking</span>
+					<div class="login-features">
+						<div class="feature-card">
+							<div class="feature-icon admin-icon">
+								<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+									<circle cx="9" cy="7" r="4"/>
+									<path d="M23 21v-2a4 4 0 00-3-3.87"/>
+									<path d="M16 3.13a4 4 0 010 7.75"/>
+								</svg>
+							</div>
+							<h3>Admin Portal</h3>
+							<p>Manage users, create activities, schedule tests</p>
 						</div>
-						<a class="btn user-btn" href="/user/login">
-							<span>Student Login</span>
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M5 12h14M12 5l7 7-7 7"/>
-							</svg>
-						</a>
+						
+						<div class="feature-card">
+							<div class="feature-icon student-icon">
+								<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+									<path d="M6 12v5c3 3 9 3 12 0v-5"/>
+								</svg>
+							</div>
+							<h3>Student Portal</h3>
+							<p>Practice coding, take tests, get AI feedback</p>
+						</div>
 					</div>
 				</div>
-			</section>
+			</div>
 		{% endif %}
 
-		{# Admin Login #}
-		{% if view == 'admin_login' %}
-			<section class="container narrow">
-				<h2>Admin Login</h2>
-				{% if error %}<div class="alert">{{ error }}</div>{% endif %}
-				<form method="post">
-					<label>Username<input type="text" name="username" required></label>
-					<label>Password<input type="password" name="password" required></label>
-					<button class="btn" type="submit">Log in</button>
-				</form>
-			</section>
-		{% endif %}
-
-		{# Admin Login #}
 
 		{# Admin Dashboard #}
 		{% if view == 'admin_dashboard' %}
@@ -1009,6 +1562,7 @@ pre, code {
 						<a href="/admin/tests" class="btn">Manage Tests</a>
 					</div>
 					<div class="mt">
+						<a href="/admin/submissions" class="btn">📊 View Submissions & Logs</a>
 						<a href="/admin/classroom-activities" class="btn secondary">🎯 Try Activities</a>
 					</div>
 				</div>
@@ -1412,18 +1966,377 @@ pre, code {
 			</div>
 		{% endif %}
 
-		{# User Login #}
-		{% if view == 'user_login' %}
-			<section class="container narrow">
-				<h2>User Login</h2>
-				{% if error %}<div class="alert">{{ error }}</div>{% endif %}
-				<form method="post">
-					<label>Username<input type="text" name="username" required></label>
-					<label>Password<input type="password" name="password" required></label>
-					<button class="btn" type="submit">Log in</button>
+		{# Admin Submissions & Logs Viewer #}
+		{% if view == 'admin_submissions' %}
+			<div class="manage-page">
+			<section class="card">
+				<div class="flex-between">
+					<h2>📊 Submissions & Violation Logs</h2>
+					<div>
+						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">📥 Export CSV</a>
+						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
+					</div>
+				</div>
+			</section>
+
+			{# Statistics Cards #}
+			<section class="grid">
+				<div class="card">
+					<h3>📈 Total Submissions</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ stats.total_submissions }}</p>
+					<p class="muted">All submission types</p>
+				</div>
+				<div class="card">
+					<h3>✅ Tests Completed</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #10b981;">{{ stats.total_test_completions }}</p>
+					<p class="muted">Final scores available</p>
+				</div>
+				<div class="card">
+					<h3>⚠️ Violations</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #dc2626;">{{ stats.total_violations }}</p>
+					<p class="muted">Anti-cheat warnings</p>
+				</div>
+				<div class="card">
+					<h3>👥 Active Users</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #f59e0b;">{{ stats.unique_users }}</p>
+					<p class="muted">Users with submissions</p>
+				</div>
+			</section>
+
+			{# Violation Statistics #}
+			{% if violation_stats %}
+			<section class="card">
+				<h3>🔍 Violation Breakdown</h3>
+				<div class="table-container">
+					<table>
+						<thead>
+							<tr>
+								<th>Violation Type</th>
+								<th>Count</th>
+								<th>Percentage</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for stat in violation_stats %}
+							<tr>
+								<td><strong>{{ stat._id }}</strong></td>
+								<td>{{ stat.count }}</td>
+								<td>{{ "%.1f"|format((stat.count / stats.total_violations * 100) if stats.total_violations > 0 else 0) }}%</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</section>
+			{% endif %}
+
+			{# Top Violators #}
+			{% if user_violations %}
+			<section class="card">
+				<h3>⚠️ Users with Most Violations (Top 10)</h3>
+				<div class="table-container">
+					<table>
+						<thead>
+							<tr>
+								<th>Username</th>
+								<th>Violation Count</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for user_stat in user_violations %}
+							<tr>
+								<td><strong>{{ user_stat._id }}</strong></td>
+								<td><span class="role-badge role-test">{{ user_stat.count }} violations</span></td>
+								<td>
+									<a href="/admin/submissions?username={{ user_stat._id }}&context=test_violation" class="btn secondary small">View Details</a>
+								</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</section>
+			{% endif %}
+
+			{# Filters #}
+			<section class="card">
+				<h3>🔎 Filter Submissions</h3>
+				<form method="get" action="/admin/submissions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+					<div>
+						<label>Context Type</label>
+						<select name="context">
+							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Types</option>
+							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Final Scores</option>
+							<option value="test_violation" {% if filter_context == 'test_violation' %}selected{% endif %}>⚠️ Violations</option>
+							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Submissions</option>
+							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom</option>
+						</select>
+					</div>
+					<div>
+						<label>Test ID</label>
+						<select name="test_id">
+							<option value="all" {% if filter_test == 'all' %}selected{% endif %}>All Tests</option>
+							{% for test in all_tests %}
+								{% if test %}
+								<option value="{{ test }}" {% if filter_test == test %}selected{% endif %}>{{ test }}</option>
+								{% endif %}
+							{% endfor %}
+						</select>
+					</div>
+					<div>
+						<label>Username</label>
+						<select name="username">
+							<option value="all" {% if filter_user == 'all' %}selected{% endif %}>All Users</option>
+							{% for user in all_users %}
+							<option value="{{ user }}" {% if filter_user == user %}selected{% endif %}>{{ user }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					<div style="display: flex; align-items: flex-end;">
+						<button class="btn" type="submit">Apply Filters</button>
+						<a href="/admin/submissions" class="btn secondary" style="margin-left: 0.5rem;">Clear</a>
+					</div>
 				</form>
 			</section>
+
+			{# Submissions Table #}
+			<section class="card">
+				<div class="flex-between" style="margin-bottom: 1rem;">
+					<h3>📋 Submissions List ({{ total_submissions }} total)</h3>
+					<p class="muted">Showing {{ submissions|length }} entries</p>
+				</div>
+				
+				{% if submissions %}
+				<div class="table-container">
+					<table>
+						<thead>
+							<tr>
+								<th>Date/Time</th>
+								<th>Username</th>
+								<th>Context</th>
+								<th>Test ID</th>
+								<th>Details</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for sub in submissions %}
+							<tr>
+								<td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M:%S') if sub.created_at else 'N/A' }}</td>
+								<td><strong>{{ sub.username }}</strong></td>
+								<td>
+									{% if sub.context == 'test_violation' %}
+										<span class="role-badge role-test">⚠️ Violation</span>
+									{% elif sub.context == 'test_complete' %}
+										<span class="role-badge" style="background: #10b981; color: white;">✅ Test Complete</span>
+									{% elif sub.context == 'test' %}
+										<span class="role-badge role-classroom">📝 Test</span>
+									{% elif sub.context == 'classroom' %}
+										<span class="role-badge role-both">🎓 Classroom</span>
+									{% else %}
+										<span class="role-badge">{{ sub.context }}</span>
+									{% endif %}
+								</td>
+								<td>{{ sub.test_id if sub.test_id else '-' }}</td>
+								<td>
+									{% if sub.context == 'test_violation' %}
+										<strong style="color: #dc2626;">{{ sub.violation_type }}</strong>
+										{% if sub.warning_number %}
+										<br><small class="muted">Warning {{ sub.warning_number }}/3</small>
+										{% endif %}
+									{% elif sub.context == 'test_complete' %}
+										<strong style="color: #10b981;">Final Score: {{ sub.final_score }}%</strong>
+										<br><small class="muted">Grade: 
+										{% if sub.final_score >= 90 %}A
+										{% elif sub.final_score >= 80 %}B
+										{% elif sub.final_score >= 70 %}C
+										{% elif sub.final_score >= 60 %}D
+										{% else %}F
+										{% endif %}
+										</small>
+									{% elif sub.context == 'test' %}
+										Question {{ sub.question_index if sub.question_index is not none else 'N/A' }}
+										{% if sub.question_type %}
+										<br><small class="muted">Type: {{ sub.question_type }}</small>
+										{% endif %}
+									{% else %}
+										-
+									{% endif %}
+								</td>
+								<td>
+									<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small" target="_blank">View Details</a>
+								</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+				{# Pagination #}
+				{% if total_pages > 1 %}
+				<div class="pagination" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center; justify-content: center;">
+					{% if page > 1 %}
+						<a href="?page={{ page - 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">← Previous</a>
+					{% endif %}
+					<span class="muted">Page {{ page }} of {{ total_pages }}</span>
+					{% if page < total_pages %}
+						<a href="?page={{ page + 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">Next →</a>
+					{% endif %}
+				</div>
+				{% endif %}
+
+				{% else %}
+				<p class="muted">No submissions found matching the current filters.</p>
+				{% endif %}
+			</section>
+			</div>
 		{% endif %}
+
+		{# Admin Submission Detail #}
+		{% if view == 'admin_submission_detail' %}
+			<section class="card">
+				<div class="flex-between">
+					<h2>📄 Submission Details</h2>
+					<a href="/admin/submissions" class="btn secondary">← Back to Submissions</a>
+				</div>
+			</section>
+
+			<section class="card">
+				<h3>Basic Information</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+					<div>
+						<p class="muted">Username</p>
+						<p><strong>{{ submission.username }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Context</p>
+						<p><strong>{{ submission.context }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Test ID</p>
+						<p><strong>{{ submission.test_id if submission.test_id else 'N/A' }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Created At</p>
+						<p><strong>{{ submission.created_at.strftime('%Y-%m-%d %H:%M:%S') if submission.created_at else 'N/A' }}</strong></p>
+					</div>
+				</div>
+			</section>
+
+			{% if submission.context == 'test_violation' %}
+			<section class="card" style="border-left: 4px solid #dc2626;">
+				<h3>⚠️ Violation Details</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+					<div>
+						<p class="muted">Violation Type</p>
+						<p><strong style="color: #dc2626;">{{ submission.violation_type }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Warning Number</p>
+						<p><strong>{{ submission.warning_number }}/3</strong></p>
+					</div>
+				</div>
+			</section>
+			{% endif %}
+
+			{% if submission.context == 'test' %}
+			<section class="card">
+				<h3>📝 Test Submission Details</h3>
+				<div style="margin-bottom: 1rem;">
+					<p class="muted">Question Index</p>
+					<p><strong>{{ submission.question_index if submission.question_index is not none else 'N/A' }}</strong></p>
+				</div>
+				
+				{% if submission.user_code %}
+				<div style="margin-bottom: 1rem;">
+					<p class="muted">Student's Code</p>
+					<pre class="scroll" style="max-height: 300px;">{{ submission.user_code }}</pre>
+				</div>
+				{% endif %}
+				
+				{% if submission.ai_grading %}
+				<div>
+					<p class="muted">AI Grading Result</p>
+					<pre class="scroll" style="max-height: 300px;">{{ submission.ai_grading }}</pre>
+				</div>
+				{% endif %}
+			</section>
+			{% endif %}
+
+			{% if submission.context == 'classroom' %}
+			<section class="card">
+				<h3>🎓 Classroom Submission Details</h3>
+				
+				{% if submission.question_text %}
+				<div style="margin-bottom: 1rem;">
+					<p class="muted">Question</p>
+					<p>{{ submission.question_text }}</p>
+				</div>
+				{% endif %}
+				
+				{% if submission.user_code %}
+				<div style="margin-bottom: 1rem;">
+					<p class="muted">Student's Code</p>
+					<pre class="scroll" style="max-height: 300px;">{{ submission.user_code }}</pre>
+				</div>
+				{% endif %}
+				
+				{% if submission.ai_feedback %}
+				<div>
+					<p class="muted">AI Feedback</p>
+					<pre class="scroll" style="max-height: 400px;">{{ submission.ai_feedback }}</pre>
+				</div>
+				{% endif %}
+			</section>
+			{% endif %}
+
+			{% if submission.context == 'test_complete' %}
+			<section class="card" style="border-left: 4px solid #10b981;">
+				<h3>📊 Final Test Score</h3>
+				<div style="text-align: center; margin: 2rem 0;">
+					<div style="font-size: 4rem; font-weight: 700; color: #10b981;">
+						{{ submission.final_score }}%
+					</div>
+					<p class="muted">Final Score</p>
+				</div>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+					<div style="text-align: center; padding: 1rem; background: #1e293b; border-radius: 8px;">
+						<p class="muted">Total Questions</p>
+						<p style="font-size: 2rem; font-weight: 700;">{{ submission.total_questions }}</p>
+					</div>
+					<div style="text-align: center; padding: 1rem; background: #1e293b; border-radius: 8px;">
+						<p class="muted">Grade</p>
+						<p style="font-size: 2rem; font-weight: 700;">
+							{% if submission.final_score >= 90 %}
+								A
+							{% elif submission.final_score >= 80 %}
+								B
+							{% elif submission.final_score >= 70 %}
+								C
+							{% elif submission.final_score >= 60 %}
+								D
+							{% else %}
+								F
+							{% endif %}
+						</p>
+					</div>
+				</div>
+				<div style="margin-top: 2rem;">
+					<a href="/admin/submissions?username={{ submission.username }}&test_id={{ submission.test_id }}&context=test" class="btn">View All Answers</a>
+				</div>
+			</section>
+			{% endif %}
+
+			<section class="card">
+				<h3>🔍 Raw Data (JSON)</h3>
+				<details>
+					<summary>Click to view full submission document</summary>
+					<pre class="scroll" style="max-height: 500px;">{{ submission | tojson(indent=2) }}</pre>
+				</details>
+			</section>
+		{% endif %}
+
 
 		{# User Selection (for "both" role) #}
 		{% if view == 'user_selection' %}
@@ -1483,13 +2396,52 @@ pre, code {
 				<section class="card question-card">
 					<div class="question-header">
 						<h3>Question {{ loop.index }}: {{ question.title }}</h3>
-						<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
+						<div style="display: flex; gap: 0.5rem; align-items: center;">
+							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
+								{% if question.difficulty == 'medium_plus' %}
+									Medium+ (Coding)
+								{% else %}
+									{{ question.difficulty|title }}
+								{% endif %}
+							</span>
+							{% if question.question_type == 'mcq' %}
+							<span class="role-badge role-classroom">📝 MCQ</span>
+							{% elif question.question_type == 'coding' %}
+							<span class="role-badge role-test">💻 Coding</span>
+							{% endif %}
+						</div>
 					</div>
 					
 					<div class="question-content">
 						<p><strong>Description:</strong></p>
-						<p>{{ question.description }}</p>
+						<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
 						
+						{# MCQ Questions #}
+						{% if question.question_type == 'mcq' and question.options %}
+						<div style="margin-top: 1.5rem;">
+							<p><strong>Select the correct answer:</strong></p>
+							<div style="margin: 1rem 0;">
+								{% for option in question.options %}
+								<div style="padding: 0.75rem; margin: 0.5rem 0; background: #1e293b; border-radius: 8px; border-left: 3px solid #3b82f6;">
+									{{ option }}
+								</div>
+								{% endfor %}
+							</div>
+							{% if question.hints %}
+							<details style="margin-top: 1rem;">
+								<summary style="cursor: pointer; color: #60a5fa;">💡 Show Hints</summary>
+								<div style="margin-top: 0.5rem; padding: 1rem; background: #1e3a8a; border-radius: 8px;">
+									{% for hint in question.hints %}
+									<p>• {{ hint }}</p>
+									{% endfor %}
+								</div>
+							</details>
+							{% endif %}
+						</div>
+						{% endif %}
+						
+						{# Coding Questions #}
+						{% if question.question_type == 'coding' or not question.question_type %}
 						{% if question.input_format %}
 						<p><strong>Input Format:</strong></p>
 						<pre class="format-box">{{ question.input_format }}</pre>
@@ -1508,6 +2460,12 @@ pre, code {
 						{% if question.sample_output %}
 						<p><strong>Sample Output:</strong></p>
 						<pre class="sample-box">{{ question.sample_output }}</pre>
+						{% endif %}
+						
+						{% if question.constraints %}
+						<p><strong>Constraints:</strong></p>
+						<p style="color: #f59e0b;">{{ question.constraints }}</p>
+						{% endif %}
 						{% endif %}
 					</div>
 					
@@ -1555,7 +2513,38 @@ pre, code {
 		{# Test View #}
 		{% if view == 'test' %}
 			{% if error %}
-				<div class="alert">{{ error }}</div>
+				<section class="container narrow">
+					<div class="card" style="border-left: 4px solid #dc2626;">
+						<h2>⚠️ Test Error</h2>
+						<p style="font-size: 1.1rem; margin: 1.5rem 0;">{{ error }}</p>
+						
+						{% if already_completed %}
+						<div style="background: #1e3a8a; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0;">
+							<h3 style="color: #93c5fd; margin: 0 0 0.5rem 0;">📋 Test Details</h3>
+							{% if test %}
+							<p style="color: #bfdbfe; margin: 0.5rem 0;"><strong>Test:</strong> {{ test.subject }}</p>
+							{% endif %}
+							{% if completion_time %}
+							<p style="color: #bfdbfe; margin: 0.5rem 0;"><strong>Completed At:</strong> {{ completion_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+							{% endif %}
+							<p style="color: #fbbf24; margin-top: 1rem;">
+								⚠️ <strong>Once submitted, tests cannot be retaken.</strong>
+							</p>
+						</div>
+						
+						<div style="background: #1e293b; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+							<p style="color: #94a3b8; margin: 0;">
+								Your responses have been recorded and are being evaluated by your instructor. Results will be shared at a later time.
+							</p>
+						</div>
+						{% endif %}
+						
+						<div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+							<a class="btn" href="/home">Return Home</a>
+							<a class="btn secondary" href="/user/logout">Logout</a>
+						</div>
+					</div>
+				</section>
 			{% elif test %}
 				<div class="flex-between">
 					<h2>{{ test.subject }}</h2>
@@ -1636,6 +2625,23 @@ pre, code {
 				<h2>{{ test.subject }} - Test</h2>
 				<div class="test-progress">
 					<span class="progress-badge">Question {{ progress + 1 }} of {{ test.num_questions }}</span>
+					{% if warning_count > 0 %}
+					<span class="warning-indicator" id="warning-indicator">⚠️ Warnings: <span id="warning-count-display">{{ warning_count }}</span>/3</span>
+					{% endif %}
+				</div>
+			</div>
+			
+			<!-- Warning Modal -->
+			<div id="warningModal" class="warning-modal">
+				<div class="warning-modal-content">
+					<div class="warning-icon">⚠️</div>
+					<h2 class="warning-title">TEST VIOLATION DETECTED</h2>
+					<p class="warning-message" id="warning-message">Unauthorized action detected</p>
+					<div class="warning-counter" id="warning-counter">Warning 1/3</div>
+					<p style="color: #fef2f2; font-size: 0.9rem;">After 3 warnings, your test will be automatically submitted.</p>
+					<div class="warning-actions">
+						<button class="warning-btn warning-btn-primary" onclick="closeWarningModal()">I Understand</button>
+					</div>
 				</div>
 			</div>
 			
@@ -1651,13 +2657,56 @@ pre, code {
 			<section class="card question-card">
 				<div class="question-header">
 					<h3>{{ current_question.title }}</h3>
-					<span class="difficulty-badge difficulty-{{ current_question.difficulty }}">{{ current_question.difficulty|title }}</span>
+					<div style="display: flex; gap: 0.5rem; align-items: center;">
+						<span class="difficulty-badge difficulty-{{ current_question.difficulty }}">
+							{% if current_question.difficulty == 'medium_plus' %}
+								Medium+ (Coding)
+							{% else %}
+								{{ current_question.difficulty|title }}
+							{% endif %}
+						</span>
+						{% if current_question.question_type == 'mcq' %}
+						<span class="role-badge role-classroom">📝 MCQ</span>
+						{% elif current_question.question_type == 'coding' %}
+						<span class="role-badge role-test">💻 Coding</span>
+						{% endif %}
+						{% if current_question.points %}
+						<span class="role-badge role-both">{{ current_question.points }} points</span>
+						{% endif %}
+					</div>
 				</div>
 				
 				<div class="question-content">
 					<p><strong>Description:</strong></p>
-					<p>{{ current_question.description }}</p>
+					<div style="white-space: pre-wrap; line-height: 1.6;">{{ current_question.description }}</div>
 					
+					{# MCQ Questions #}
+					{% if current_question.question_type == 'mcq' and current_question.options %}
+					<div style="margin-top: 1.5rem;">
+						<p><strong>Select your answer:</strong></p>
+						<div id="mcq-options-{{ progress }}" style="margin: 1rem 0;">
+							{% for option in current_question.options %}
+							<div class="mcq-option" data-option="{{ option[0] }}" onclick="selectMCQOption(this)" style="padding: 0.75rem; margin: 0.5rem 0; background: #1e293b; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s;">
+								{{ option }}
+							</div>
+							{% endfor %}
+						</div>
+						<input type="hidden" id="mcq-answer-{{ progress }}" name="mcq_answer" value="">
+						{% if current_question.hints %}
+						<details style="margin-top: 1rem;">
+							<summary style="cursor: pointer; color: #60a5fa;">💡 Show Hints</summary>
+							<div style="margin-top: 0.5rem; padding: 1rem; background: #1e3a8a; border-radius: 8px;">
+								{% for hint in current_question.hints %}
+								<p>• {{ hint }}</p>
+								{% endfor %}
+							</div>
+						</details>
+						{% endif %}
+					</div>
+					{% endif %}
+					
+					{# Coding Questions #}
+					{% if current_question.question_type == 'coding' or not current_question.question_type %}
 					{% if current_question.input_format %}
 					<p><strong>Input Format:</strong></p>
 					<pre class="format-box">{{ current_question.input_format }}</pre>
@@ -1676,6 +2725,12 @@ pre, code {
 					{% if current_question.sample_output %}
 					<p><strong>Sample Output:</strong></p>
 					<pre class="sample-box">{{ current_question.sample_output }}</pre>
+					{% endif %}
+					
+					{% if current_question.constraints %}
+					<p><strong>Constraints:</strong></p>
+					<p style="color: #f59e0b;">{{ current_question.constraints }}</p>
+					{% endif %}
 					{% endif %}
 				</div>
 				
@@ -1705,6 +2760,8 @@ pre, code {
 			
 			<form id="testForm" method="post" action="/test/submit" class="mt">
 				<input type="hidden" name="user_code" id="hidden_user_code">
+				<input type="hidden" name="mcq_answer" id="hidden_mcq_answer">
+				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type if current_question else 'coding' }}">
 				<button class="btn" type="submit">Submit Answer</button>
 			</form>
 			{% else %}
@@ -1731,24 +2788,271 @@ pre, code {
 			</section>
 			{% endif %}
 			<script>
+			// Anti-Cheat System for Test Interface
 			(function(){
-				document.addEventListener('contextmenu', e => e.preventDefault());
-				document.addEventListener('copy', e => e.preventDefault());
-				document.addEventListener('cut', e => e.preventDefault());
-				document.addEventListener('paste', e => e.preventDefault());
-				document.addEventListener('keydown', e => {
-					const blocked = (
-						e.ctrlKey && (e.key === 'c' || e.key === 'x' || e.key === 'v' || e.key === 's')
-						|| e.key === 'PrintScreen'
-						|| (e.ctrlKey && e.shiftKey && (e.key.toLowerCase() === 'i' || e.key.toLowerCase() === 'j'))
-					);
-					if (blocked) { e.preventDefault(); }
+				// Configuration
+				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
+				const MAX_WARNINGS = 3;
+				
+				// State
+				let warningCount = {{ warning_count }};
+				let inactivityTimer = null;
+				let lastActivityTime = Date.now();
+				let isInactivityWarningShown = false;
+				
+				// Record violation and show warning
+				async function recordViolation(violationType) {
+					try {
+						const response = await fetch('/test/violation', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								type: violationType
+							})
+						});
+						
+						const data = await response.json();
+						
+						if (data.ok) {
+							warningCount = data.warning_count;
+							showWarningModal(violationType, data.warning_count, data.auto_close);
+							return data.auto_close;
+						}
+					} catch (error) {
+						console.error('Failed to record violation:', error);
+					}
+					return false;
+				}
+				
+				// Show warning modal
+				function showWarningModal(violationType, count, autoClose) {
+					const modal = document.getElementById('warningModal');
+					const messageEl = document.getElementById('warning-message');
+					const counterEl = document.getElementById('warning-counter');
+					const warningIndicator = document.getElementById('warning-indicator');
+					const warningCountDisplay = document.getElementById('warning-count-display');
+					
+					// Set message based on violation type
+					const messages = {
+						'tab_switch': 'You switched tabs or left the test window. Stay focused on the test!',
+						'window_blur': 'You clicked outside the test window. Keep your focus on the test!',
+						'copy_attempt': 'Copying content is not allowed during the test.',
+						'paste_attempt': 'Pasting content is not allowed during the test.',
+						'cut_attempt': 'Cutting content is not allowed during the test.',
+						'inactivity': 'You were inactive for too long. Stay active during the test!',
+						'devtools': 'Developer tools are not allowed during the test.',
+						'print_screen': 'Screenshots are not allowed during the test.'
+					};
+					
+					messageEl.textContent = messages[violationType] || 'Unauthorized action detected.';
+					counterEl.textContent = `Warning ${count}/${MAX_WARNINGS}`;
+					
+					// Update warning indicator
+					if (warningIndicator) {
+						warningCountDisplay.textContent = count;
+					} else if (count === 1) {
+						// Create warning indicator if it doesn't exist
+						const progressDiv = document.querySelector('.test-progress');
+						if (progressDiv) {
+							const indicator = document.createElement('span');
+							indicator.className = 'warning-indicator';
+							indicator.id = 'warning-indicator';
+							indicator.innerHTML = `⚠️ Warnings: <span id="warning-count-display">${count}</span>/3`;
+							progressDiv.appendChild(indicator);
+						}
+					}
+					
+					modal.style.display = 'block';
+					
+					// Auto-close test if max warnings reached
+					if (autoClose) {
+						setTimeout(() => {
+							alert('Maximum warnings reached. Your test will now be submitted.');
+							document.getElementById('testForm').submit();
+						}, 3000);
+					}
+				}
+				
+				// Close warning modal
+				window.closeWarningModal = function() {
+					document.getElementById('warningModal').style.display = 'none';
+				}
+				
+				// Track user activity
+				function resetActivityTimer() {
+					lastActivityTime = Date.now();
+					isInactivityWarningShown = false;
+					
+					// Clear and restart inactivity timer
+					if (inactivityTimer) {
+						clearTimeout(inactivityTimer);
+					}
+					
+					inactivityTimer = setTimeout(() => {
+						if (!isInactivityWarningShown) {
+							isInactivityWarningShown = true;
+							recordViolation('inactivity');
+						}
+					}, INACTIVITY_TIMEOUT);
+				}
+				
+				// === EVENT LISTENERS ===
+				
+				// 1. Tab switching / Window visibility
+				document.addEventListener('visibilitychange', function() {
+					if (document.hidden) {
+						recordViolation('tab_switch');
+					} else {
+						resetActivityTimer();
+					}
 				});
+				
+				// 2. Window blur (clicking outside)
+				window.addEventListener('blur', function() {
+					recordViolation('window_blur');
+				});
+				
+				window.addEventListener('focus', function() {
+					resetActivityTimer();
+				});
+				
+				// 3. Copy/Cut/Paste prevention
+				document.addEventListener('copy', function(e) {
+					e.preventDefault();
+					recordViolation('copy_attempt');
+				});
+				
+				document.addEventListener('cut', function(e) {
+					e.preventDefault();
+					recordViolation('cut_attempt');
+				});
+				
+				document.addEventListener('paste', function(e) {
+					e.preventDefault();
+					recordViolation('paste_attempt');
+				});
+				
+				// 4. Context menu (right-click)
+				document.addEventListener('contextmenu', function(e) {
+					e.preventDefault();
+					return false;
+				});
+				
+				// 5. Keyboard shortcuts
+				document.addEventListener('keydown', function(e) {
+					// Block copy/paste/cut
+					if (e.ctrlKey || e.metaKey) {
+						if (e.key === 'c' || e.key === 'C') {
+							e.preventDefault();
+							recordViolation('copy_attempt');
+							return false;
+						}
+						if (e.key === 'x' || e.key === 'X') {
+							e.preventDefault();
+							recordViolation('cut_attempt');
+							return false;
+						}
+						if (e.key === 'v' || e.key === 'V') {
+							e.preventDefault();
+							recordViolation('paste_attempt');
+							return false;
+						}
+						// Block Ctrl+S (save)
+						if (e.key === 's' || e.key === 'S') {
+							e.preventDefault();
+							return false;
+						}
+						// Block Ctrl+P (print)
+						if (e.key === 'p' || e.key === 'P') {
+							e.preventDefault();
+							return false;
+						}
+					}
+					
+					// Block F12, Ctrl+Shift+I, Ctrl+Shift+J (DevTools)
+					if (e.key === 'F12' || 
+						(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j'))) {
+						e.preventDefault();
+						recordViolation('devtools');
+						return false;
+					}
+					
+					// Block Print Screen
+					if (e.key === 'PrintScreen') {
+						e.preventDefault();
+						recordViolation('print_screen');
+						return false;
+					}
+					
+					// Track activity
+					resetActivityTimer();
+				});
+				
+				// 6. Mouse activity tracking
+				document.addEventListener('mousemove', resetActivityTimer);
+				document.addEventListener('click', resetActivityTimer);
+				document.addEventListener('scroll', resetActivityTimer);
+				
+				// 7. Prevent browser back button
 				history.pushState(null, document.title, location.href);
-				window.addEventListener('popstate', function () {
+				window.addEventListener('popstate', function() {
 					history.pushState(null, document.title, location.href);
 				});
+				
+				// 8. Warn before leaving page
+				window.addEventListener('beforeunload', function(e) {
+					e.preventDefault();
+					e.returnValue = 'Are you sure you want to leave the test? Your progress may be lost.';
+					return e.returnValue;
+				});
+				
+				// 9. Detect devtools open (advanced)
+				let devtoolsOpen = false;
+				const detectDevTools = () => {
+					const threshold = 160;
+					const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+					const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+					
+					if ((widthThreshold || heightThreshold) && !devtoolsOpen) {
+						devtoolsOpen = true;
+						recordViolation('devtools');
+					} else if (!widthThreshold && !heightThreshold && devtoolsOpen) {
+						devtoolsOpen = false;
+					}
+				};
+				
+				// Check for devtools periodically
+				setInterval(detectDevTools, 1000);
+				
+				// Initialize activity timer
+				resetActivityTimer();
+				
+				console.log('🔒 Anti-cheat system active');
+				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
 			})();
+			
+			// MCQ Selection Handler
+			window.selectMCQOption = function(element) {
+				// Remove selection from all options in this question
+				const parent = element.parentElement;
+				parent.querySelectorAll('.mcq-option').forEach(opt => {
+					opt.style.background = '#1e293b';
+					opt.style.borderLeft = '3px solid #3b82f6';
+				});
+				
+				// Highlight selected option
+				element.style.background = '#1e3a8a';
+				element.style.borderLeft = '3px solid #10b981';
+				
+				// Store selected answer
+				const option = element.getAttribute('data-option');
+				const hiddenInput = document.querySelector('input[name="mcq_answer"]');
+				if (hiddenInput) {
+					hiddenInput.value = option;
+				}
+			};
 			
 			// Test interface compiler functionality
 			document.addEventListener('DOMContentLoaded', function() {
@@ -1828,10 +3132,47 @@ pre, code {
 						}
 					});
 					
-					// Update hidden field when form is submitted
-					if (testForm && hiddenUserCode) {
-						testForm.addEventListener('submit', function() {
-							hiddenUserCode.value = codeTextarea.value;
+					// Update hidden fields when form is submitted
+					if (testForm) {
+						testForm.addEventListener('submit', function(e) {
+							// Copy code textarea value
+							if (hiddenUserCode && codeTextarea) {
+								hiddenUserCode.value = codeTextarea.value;
+							}
+							
+							// Copy MCQ answer if it exists
+							const mcqAnswerInput = document.querySelector('input[name="mcq_answer"]:not([id*="hidden"])');
+							const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
+							if (mcqAnswerInput && hiddenMcqAnswer) {
+								hiddenMcqAnswer.value = mcqAnswerInput.value;
+							}
+							
+							// MANDATORY: Validate that an answer is provided
+							const questionType = document.getElementById('hidden_question_type').value;
+							if (questionType === 'mcq') {
+								if (!hiddenMcqAnswer || !hiddenMcqAnswer.value) {
+									e.preventDefault();
+									alert('⚠️ You MUST select an answer before proceeding to the next question.\n\nYou cannot skip questions.');
+									return false;
+								}
+								// Confirm MCQ selection
+								const selectedAnswer = hiddenMcqAnswer.value;
+								if (!confirm(`You selected: ${selectedAnswer}\n\nAre you sure? You cannot change your answer after submitting.`)) {
+									e.preventDefault();
+									return false;
+								}
+							} else if (questionType === 'coding') {
+								if (!hiddenUserCode || !hiddenUserCode.value.trim()) {
+									e.preventDefault();
+									alert('⚠️ You MUST write code before proceeding to the next question.\n\nYou cannot skip questions.');
+									return false;
+								}
+								// Confirm code submission
+								if (!confirm('Are you sure you want to submit your code?\n\nYou cannot change your answer after submitting.')) {
+									e.preventDefault();
+									return false;
+								}
+							}
 						});
 					}
 				}
@@ -1948,10 +3289,39 @@ pre, code {
 		{# Test Result #}
 		{% if view == 'test_result' %}
 			<section class="container narrow">
-				<h2>Test Completed</h2>
-				<p>Your final score: <strong>{{ score }}%</strong></p>
-				<p>Questions graded: <strong>{{ total }}</strong></p>
-				<a class="btn" href="/user/logout">Logout</a>
+				<div class="card" style="text-align: center;">
+					<div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+					<h2>Test Submitted Successfully!</h2>
+					<p class="muted" style="font-size: 1.1rem; margin: 1.5rem 0;">
+						Thank you for completing the test.
+					</p>
+					
+					{% if test %}
+					<div style="background: #1e293b; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+						<p><strong>Test:</strong> {{ test.subject }}</p>
+						{% if total_questions %}
+						<p><strong>Questions Answered:</strong> {{ total_questions }}</p>
+						{% endif %}
+					</div>
+					{% endif %}
+					
+					<div style="background: #1e3a8a; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+						<p style="color: #93c5fd;">
+							<strong>📊 Results</strong><br>
+							Your responses have been recorded and will be evaluated by your instructor.<br>
+							Results will be shared by your instructor at a later time.
+						</p>
+					</div>
+					
+					<p class="muted" style="margin: 1.5rem 0;">
+						You may now safely close this window or logout.
+					</p>
+					
+					<div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+						<a class="btn" href="/home">Return Home</a>
+						<a class="btn secondary" href="/user/logout">Logout</a>
+					</div>
+				</div>
 			</section>
 		{% endif %}
 
