@@ -161,13 +161,6 @@ def login():
 		
 		# Check if admin credentials (hardcoded: Ayushman / ayushman9277)
 		if username == "Ayushman" and password == "ayushman9277":
-			# Create admin entry if it doesn't exist
-			if admins_col.count_documents({"username": "Ayushman"}) == 0:
-			admins_col.insert_one({
-				"username": "Ayushman",
-				"password_hash": generate_password_hash("ayushman9277"),
-				"created_at": datetime.now(timezone.utc)
-			})
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
