@@ -1429,6 +1429,101 @@ pre, pre *, code {
     color: #000000 !important;
     opacity: 0.6;
 }
+
+/* ========================================
+   TEST INTERFACE - WHITE TEXT ON DARK BG
+   ======================================== */
+.test-interface, .test-interface *,
+.question-card, .question-card *,
+.test-header, .test-header * {
+    color: #ffffff !important;
+}
+
+/* Keep input fields readable */
+.test-interface input,
+.test-interface textarea,
+.test-interface select,
+.question-card input,
+.question-card textarea,
+.question-card select {
+    color: #000000 !important;
+    background: #ffffff !important;
+}
+
+/* Dark backgrounds need white text */
+[style*="background: #0e1630"],
+[style*="background: #0b1020"],
+[style*="background: #1e293b"],
+[style*="background: #1e3a8a"] {
+    color: #ffffff !important;
+}
+
+[style*="background: #0e1630"] *,
+[style*="background: #0b1020"] *,
+[style*="background: #1e293b"] *,
+[style*="background: #1e3a8a"] * {
+    color: #ffffff !important;
+}
+
+/* Code editor text should be white on dark bg */
+.test-interface pre,
+.test-interface code,
+.question-card pre,
+.question-card code {
+    color: #ffffff !important;
+}
+
+/* Format boxes with dark backgrounds */
+.format-box, .sample-box {
+    color: #ffffff !important;
+    background: #1e293b !important;
+}
+
+/* MCQ options on dark background */
+.mcq-option {
+    color: #ffffff !important;
+}
+
+/* Admin attempt activity with dark cards */
+.admin-attempt-activity .question-card,
+.admin-attempt-activity .question-card * {
+    color: #ffffff !important;
+}
+
+/* Compiler output on dark background */
+.output-box {
+    color: #ffffff !important;
+    background: #1e293b !important;
+}
+
+/* Test result page elements */
+.test-result {
+    color: #000000 !important;
+}
+
+/* Warning modal text */
+.warning-modal, .warning-modal * {
+    color: #ffffff !important;
+}
+
+/* Any element with explicit dark inline background */
+[style*="background:#0e1630"],
+[style*="background:#0b1020"],
+[style*="background:#1e293b"],
+[style*="background-color:#0e1630"],
+[style*="background-color:#0b1020"],
+[style*="background-color:#1e293b"] {
+    color: #ffffff !important;
+}
+
+/* Preserve button text colors */
+button, .btn, a.btn {
+    color: #ffffff !important;
+}
+
+button.secondary, .btn.secondary, a.btn.secondary {
+    color: #667eea !important;
+}
 </style>
 </head>
 <body>
@@ -2131,13 +2226,13 @@ pre, pre *, code {
 								<td><strong>{{ sub.username }}</strong></td>
 								<td>
 									{% if sub.context == 'test_violation' %}
-										<span class="role-badge role-test">⚠️ Violation</span>
+										<span class="role-badge" style="background: #dc2626; color: white;">⚠️ Violation</span>
 									{% elif sub.context == 'test_complete' %}
-										<span class="role-badge" style="background: #10b981; color: white;">✅ Test Complete</span>
+										<span class="role-badge" style="background: #10b981; color: white;">✅ Complete</span>
 									{% elif sub.context == 'test' %}
-										<span class="role-badge role-classroom">📝 Test</span>
+										<span class="role-badge role-test">📝 Test</span>
 									{% elif sub.context == 'classroom' %}
-										<span class="role-badge role-both">🎓 Classroom</span>
+										<span class="role-badge role-classroom">🎓 Classroom</span>
 									{% else %}
 										<span class="role-badge">{{ sub.context }}</span>
 									{% endif %}
@@ -2794,6 +2889,24 @@ pre, pre *, code {
 			<script>
 			// Anti-Cheat System for Test Interface
 			(function(){
+				// FULLSCREEN MODE - Request fullscreen immediately
+				function enterFullscreen() {
+					const elem = document.documentElement;
+					if (elem.requestFullscreen) {
+						elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+					} else if (elem.webkitRequestFullscreen) {
+						elem.webkitRequestFullscreen();
+					} else if (elem.msRequestFullscreen) {
+						elem.msRequestFullscreen();
+					}
+				}
+				
+				// Try to enter fullscreen
+				enterFullscreen();
+				
+				// Alert user about fullscreen requirement
+				alert('⚠️ TEST MODE ACTIVATED\n\n✓ The test will open in fullscreen mode\n✓ Do not switch tabs or windows\n✓ Do not press F11 or Esc\n✓ Violations will be recorded\n\nClick OK to continue');
+				
 				// Configuration
 				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
 				const MAX_WARNINGS = 3;

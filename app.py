@@ -772,7 +772,33 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 	# Check if OpenAI API key is available
 	if not openai.api_key:
 		print("OpenAI API key not available, using mock response")
-		return f'{{"questions": [{{"title": "Sample Question", "description": "This is a sample coding question generated for testing. The actual OpenAI integration is not working properly.", "input_format": "Input format here", "output_format": "Output format here", "sample_input": "sample input", "sample_output": "sample output"}}]}}'
+		return '''{
+	"questions": [
+		{
+			"question_type": "mcq",
+			"difficulty": "easy",
+			"title": "Python Basics - Variables",
+			"description": "What is the correct way to assign a value to a variable in Python?",
+			"options": ["A) var x = 5", "B) x = 5", "C) set x to 5", "D) x := 5"],
+			"correct_answer": "B",
+			"explanation": "In Python, variables are assigned using the = operator: x = 5"
+		},
+		{
+			"question_type": "coding",
+			"difficulty": "medium_plus",
+			"title": "Sum of Numbers",
+			"description": "Write a function that takes a list of numbers and returns their sum.",
+			"input_format": "A list of integers",
+			"output_format": "The sum of all integers",
+			"sample_input": "[1, 2, 3, 4, 5]",
+			"sample_output": "15",
+			"test_cases": [
+				{"input": "[1, 2, 3]", "expected_output": "6"},
+				{"input": "[10, 20]", "expected_output": "30"}
+			]
+		}
+	]
+}'''
 	
 	try:
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
@@ -793,10 +819,42 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		return response.choices[0].message.content
 		
 	except Exception as e:
-		print(f"OpenAI API error: {e}")
+		error_message = str(e)
+		print(f"OpenAI API error: {error_message}")
 		print(f"Error type: {type(e)}")
-		# Fallback response
-		return f'{{"questions": [{{"title": "Sample Question", "description": "This is a sample coding question. OpenAI API error: {str(e)}", "input_format": "Input format here", "output_format": "Output format here", "sample_input": "sample input", "sample_output": "sample output"}}]}}'
+		
+		# Check if it's a quota error
+		if "quota" in error_message.lower() or "429" in error_message:
+			print("⚠️ OpenAI API quota exceeded! Using fallback questions.")
+		
+		# Return valid fallback JSON with proper structure
+		return '''{
+	"questions": [
+		{
+			"question_type": "mcq",
+			"difficulty": "easy",
+			"title": "Sample MCQ Question",
+			"description": "This is a sample question because OpenAI API is unavailable (quota exceeded or API error). Please check your OpenAI API key and billing status.",
+			"options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+			"correct_answer": "A",
+			"explanation": "This is a sample question generated due to API unavailability."
+		},
+		{
+			"question_type": "coding",
+			"difficulty": "medium_plus",
+			"title": "Sample Coding Question",
+			"description": "Write a simple function. Note: This is a placeholder question due to OpenAI API unavailability.",
+			"input_format": "Any input",
+			"output_format": "Any output",
+			"sample_input": "test",
+			"sample_output": "result",
+			"test_cases": [
+				{"input": "test1", "expected_output": "result1"},
+				{"input": "test2", "expected_output": "result2"}
+			]
+		}
+	]
+}'''
 
 
 def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
