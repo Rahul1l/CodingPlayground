@@ -155,32 +155,50 @@ def test_mongodb():
 @app.route("/login", methods=["GET", "POST"])
 def login():
 	"""Unified login for both admin and users"""
-	if request.method == "POST":
+	if request.method == "GET":
+		return render_template("index.html", view="login")
+	
+	try:
 		username = request.form.get("username", "").strip()
 		password = request.form.get("password", "")
 		
-		# Check hardcoded admin credentials
+		if not username or not password:
+			return render_template("index.html", view="login", error="Username and password required")
+		
+		# Check hardcoded admin (Ayushman / ayushman9277)
 		if username == "Ayushman" and password == "ayushman9277":
 			session["admin_username"] = "Ayushman"
 			return redirect(url_for("admin_dashboard"))
 		
 		# Check database admin
+		try:
 		admin = admins_col.find_one({"username": username})
-		if admin and check_password_hash(admin.get("password_hash", ""), password):
+			if admin:
+				if check_password_hash(admin.get("password_hash", ""), password):
 			session["admin_username"] = username
 			return redirect(url_for("admin_dashboard"))
+		except Exception as e:
+			print(f"Admin lookup error: {e}")
 		
 		# Check regular user
-		user = users_col.find_one({"username": username})
-		if user and check_password_hash(user.get("password_hash", ""), password):
-			session["user_username"] = username
-			session["user_role"] = user.get("role")
-			return redirect(url_for("user_home"))
+		try:
+			user = users_col.find_one({"username": username})
+			if user:
+				if check_password_hash(user.get("password_hash", ""), password):
+					session["user_username"] = username
+					session["user_role"] = user.get("role")
+					return redirect(url_for("user_home"))
+		except Exception as e:
+			print(f"User lookup error: {e}")
 		
 		# Invalid credentials
 		return render_template("index.html", view="login", error="Invalid username or password")
 	
-	return render_template("index.html", view="login")
+	except Exception as e:
+		print(f"Login error: {e}")
+		import traceback
+		traceback.print_exc()
+		return render_template("index.html", view="login", error="Login system error. Please try again.")
 
 
 @app.route("/admin/logout")
@@ -1261,23 +1279,23 @@ def admin_create_classroom_activity():
 		return jsonify({"ok": False, "error": str(e)}), 500
 	
 	try:
-		activity_id = str(uuid4())
+	activity_id = str(uuid4())
 		print(f"Storing activity in database: {activity_id}")
-		activities_col.insert_one({
-			"activity_id": activity_id,
-			"classroom_id": classroom_id,
-			"subject": subject,
-			"toc": toc,
-			"num_questions": num_questions,
+	activities_col.insert_one({
+		"activity_id": activity_id,
+		"classroom_id": classroom_id,
+		"subject": subject,
+		"toc": toc,
+		"num_questions": num_questions,
 			"num_mcq": num_mcq,
 			"num_coding": num_coding,
-			"generated": content,
-			"created_at": datetime.now(timezone.utc)
-		})
+		"generated": content,
+		"created_at": datetime.now(timezone.utc)
+	})
 		print(f"Activity stored successfully")
-		# Track classroom → activities
-		classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
-		return redirect(url_for("admin_dashboard"))
+	# Track classroom → activities
+	classroom_col.update_one({"classroom_id": classroom_id}, {"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}}, upsert=True)
+	return redirect(url_for("admin_dashboard"))
 	except Exception as e:
 		print(f"ERROR storing activity: {str(e)}")
 		import traceback
