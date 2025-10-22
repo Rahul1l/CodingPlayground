@@ -1661,8 +1661,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<form method="post" action="/admin/create_classroom_activity">
 						<label>Subject<input type="text" name="subject" required></label>
 						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of Questions<input type="number" min="1" max="20" value="3" name="num_questions"></label>
+						<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq" required></label>
+						<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding" required></label>
 						<label>Classroom ID<input type="text" name="classroom_id" required></label>
+						<p class="muted" style="margin-top: 0.5rem;">Note: Set to 0 to skip that question type. At least one type must be > 0.</p>
 						<button class="btn" type="submit">Generate Activity</button>
 					</form>
 				</div>
@@ -1671,10 +1673,12 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<form method="post" action="/admin/create_test">
 						<label>Subject<input type="text" name="subject" required></label>
 						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of Questions<input type="number" min="1" max="20" value="3" name="num_questions"></label>
+						<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq" required></label>
+						<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding" required></label>
 						<label>Test ID<input type="text" name="test_id" required></label>
 						<label>Test Start Time<input type="datetime-local" name="start_datetime" required></label>
 						<label>Test End Time<input type="datetime-local" name="end_datetime" required></label>
+						<p class="muted" style="margin-top: 0.5rem;">Note: Set to 0 to skip that question type. At least one type must be > 0.</p>
 						<button class="btn" type="submit">Create Test</button>
 					</form>
 				</div>
@@ -2730,6 +2734,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 		{# Test Interface (when test is actually open) #}
 		{% if view == 'test_interface' %}
+		
+			{# Check if we have valid questions first #}
+			{% if current_question %}
 			<div class="flex-between">
 				<h2>{{ test.subject }} - Test</h2>
 				<div class="test-progress">
@@ -2753,16 +2760,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					</div>
 				</div>
 			</div>
-			
-			{% if parse_error %}
-			<div class="alert">
-				<strong>⚠️ Error loading test questions:</strong><br>
-				{{ parse_error }}<br>
-				<small>The test content may not be in the expected format. Please check the test generation.</small>
-			</div>
-			{% endif %}
-			
-			{% if current_question %}
 			<section class="card question-card">
 				<div class="question-header">
 					<h3>{{ current_question.title }}</h3>
@@ -2870,32 +2867,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<form id="testForm" method="post" action="/test/submit" class="mt">
 				<input type="hidden" name="user_code" id="hidden_user_code">
 				<input type="hidden" name="mcq_answer" id="hidden_mcq_answer">
-				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type if current_question else 'coding' }}">
+				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type }}">
 				<button class="btn" type="submit">Submit Answer</button>
 			</form>
-			{% else %}
-			<section class="card">
-				<h2>⚠️ Unable to Display Question</h2>
-				<div class="alert">
-					<p><strong>Debug Information:</strong></p>
-					<ul>
-						<li>Number of questions parsed: {{ questions|length }}</li>
-						<li>Current progress: {{ progress }}</li>
-						<li>Expected questions: {{ test.num_questions }}</li>
-					</ul>
-				</div>
-				
-				<h3>Raw Test Content:</h3>
-				<details open>
-					<summary>Click to view test content structure</summary>
-					<pre class="scroll">{{ test.generated }}</pre>
-				</details>
-				
-				<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
-				
-				<a href="/test" class="btn secondary">← Back to Test Info</a>
-			</section>
-			{% endif %}
+			
+			{# Anti-Cheat System - Only runs when question exists #}
 			<script>
 			// Anti-Cheat System for Test Interface
 			(function(){
@@ -3412,6 +3388,47 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			alert('Test has expired. The test window has closed and you can no longer attempt this test.');
 		}
 		</script>
+		{% else %}
+		{# Error: No questions could be loaded #}
+		<section class="card" style="max-width: 800px; margin: 2rem auto;">
+			<h2 style="color: #dc2626;">⚠️ Unable to Load Test Questions</h2>
+			
+			{% if parse_error %}
+			<div class="alert" style="background: #fecaca; border-color: #dc2626; margin: 1.5rem 0;">
+				<strong>Error Details:</strong><br>
+				{{ parse_error }}
+			</div>
+			{% endif %}
+			
+			<div class="alert" style="margin: 1.5rem 0;">
+				<p><strong>Debug Information:</strong></p>
+				<ul style="text-align: left; margin: 1rem 0;">
+					<li><strong>Test:</strong> {{ test.subject if test else 'Unknown' }}</li>
+					<li><strong>Expected Questions:</strong> {{ test.num_questions if test else 'Unknown' }}</li>
+					<li><strong>Questions Parsed:</strong> {{ questions|length }}</li>
+					<li><strong>Current Progress:</strong> {{ progress }}</li>
+				</ul>
+			</div>
+			
+			<details style="margin: 1.5rem 0; text-align: left;">
+				<summary style="cursor: pointer; color: #2563eb; font-weight: 600; padding: 0.5rem;">📄 View Raw Test Content</summary>
+				<pre style="background: #f1f5f9; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 400px; margin-top: 1rem;">{{ test.generated if test else 'No content available' }}</pre>
+			</details>
+			
+			<div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border: 2px solid #fbbf24;">
+				<p style="color: #92400e; margin: 0;"><strong>💡 What to do:</strong></p>
+				<ol style="color: #000000; text-align: left; margin: 1rem 0;">
+					<li>Contact your instructor/admin about this error</li>
+					<li>They may need to recreate the test</li>
+					<li>Try refreshing the page (if test was just created)</li>
+				</ol>
+			</div>
+			
+			<div style="margin-top: 2rem;">
+				<a href="/test" class="btn secondary">← Back to Test Info</a>
+				<a href="/user/home" class="btn">🏠 Home</a>
+			</div>
+		</section>
 		{% endif %}
 		{% endif %}
 

@@ -875,22 +875,129 @@ def execute_python_code(code: str, timeout: int = 5) -> dict:
 		}
 
 
-def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.", num_questions: int = 2) -> str:
-	def generate_fallback_questions(n):
+def _ai_generate_batch(prompt: str, system_role: str, num_questions: int, num_mcq: int = None, num_coding: int = None, batch_size: int = 5) -> str:
+	"""Generate questions in batches to avoid OpenAI timeout"""
+	import json
+	
+	# If requesting small number, generate all at once
+	if num_questions <= batch_size:
+		return _ai_generate(prompt, system_role, num_questions, num_mcq, num_coding)
+	
+	# For large requests, generate in batches
+	print(f"Generating {num_questions} questions in batches of {batch_size}...")
+	all_questions = []
+	
+	# Calculate batches for each type
+	if num_mcq is not None and num_coding is not None:
+		# Generate MCQ in batches
+		mcq_questions = []
+		mcq_remaining = num_mcq
+		while mcq_remaining > 0:
+			batch_count = min(batch_size, mcq_remaining)
+			print(f"Generating batch: {batch_count} MCQ questions...")
+			try:
+				result = _ai_generate(
+					prompt.replace(f"{num_mcq} MCQ Questions", f"{batch_count} MCQ Questions")
+					      .replace(f"{num_coding} Coding Questions", "0 Coding Questions")
+					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
+					system_role,
+					batch_count,
+					batch_count,
+					0
+				)
+				batch_data = json.loads(result)
+				mcq_questions.extend(batch_data.get("questions", []))
+				mcq_remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				# Use fallback for remaining
+				for i in range(mcq_remaining):
+					mcq_questions.append({
+						"question_type": "mcq",
+						"difficulty": "easy",
+						"title": f"Sample MCQ Question {len(mcq_questions)+1}",
+						"description": "Fallback question due to generation error.",
+						"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
+						"correct_answer": "A",
+						"explanation": "Sample explanation."
+					})
+				break
+		
+		# Generate Coding in batches
+		coding_questions = []
+		coding_remaining = num_coding
+		while coding_remaining > 0:
+			batch_count = min(batch_size, coding_remaining)
+			print(f"Generating batch: {batch_count} Coding questions...")
+			try:
+				result = _ai_generate(
+					prompt.replace(f"{num_mcq} MCQ Questions", "0 MCQ Questions")
+					      .replace(f"{num_coding} Coding Questions", f"{batch_count} Coding Questions")
+					      .replace(f"Total: {num_questions} questions", f"Total: {batch_count} questions"),
+					system_role,
+					batch_count,
+					0,
+					batch_count
+				)
+				batch_data = json.loads(result)
+				coding_questions.extend(batch_data.get("questions", []))
+				coding_remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				# Use fallback for remaining
+				for i in range(coding_remaining):
+					coding_questions.append({
+						"question_type": "coding",
+						"difficulty": "medium_plus",
+						"title": f"Sample Coding Question {len(coding_questions)+1}",
+						"description": "Write a function. Fallback question due to generation error.",
+						"input_format": "Input description",
+						"output_format": "Output description",
+						"sample_input": "sample",
+						"sample_output": "output",
+						"test_cases": []
+					})
+				break
+		
+		all_questions = mcq_questions + coding_questions
+	else:
+		# Legacy: alternate batches
+		remaining = num_questions
+		while remaining > 0:
+			batch_count = min(batch_size, remaining)
+			print(f"Generating batch: {batch_count} questions...")
+			try:
+				result = _ai_generate(prompt, system_role, batch_count, None, None)
+				batch_data = json.loads(result)
+				all_questions.extend(batch_data.get("questions", []))
+				remaining -= batch_count
+			except Exception as e:
+				print(f"Batch generation error: {e}")
+				break
+	
+	print(f"Batch generation complete: {len(all_questions)} questions generated")
+	return json.dumps({"questions": all_questions}, indent=2)
+
+
+def _ai_generate(prompt: str, system_role: str = "You are an expert coding instructor.", num_questions: int = 2, num_mcq: int = None, num_coding: int = None) -> str:
+	def generate_fallback_questions(total, mcq_count=None, coding_count=None):
 		"""Generate fallback questions when AI is unavailable"""
 		questions = []
-		for i in range(n):
-			if i % 2 == 0:  # MCQ question
+		
+		# If specific counts provided, use them; otherwise alternate
+		if mcq_count is not None and coding_count is not None:
+			# Generate exact number of each type
+			for i in range(mcq_count):
 				questions.append({
 					"question_type": "mcq",
-					"difficulty": "easy" if i < n//2 else "medium",
+					"difficulty": "easy" if i < mcq_count//2 else "medium",
 					"title": f"Sample MCQ Question {i+1}",
 					"description": f"This is sample MCQ question {i+1}. OpenAI API is unavailable. Please check your API key and billing status.",
 					"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
 					"correct_answer": "A",
 					"explanation": "This is a sample question generated due to API unavailability."
 				})
-			else:  # Coding question
+			for i in range(coding_count):
 				questions.append({
 					"question_type": "coding",
 					"difficulty": "medium_plus",
@@ -905,19 +1012,47 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 						{"input": "test2", "expected_output": "result2"}
 					]
 				})
+		else:
+			# Alternate between MCQ and Coding
+			for i in range(total):
+				if i % 2 == 0:  # MCQ question
+					questions.append({
+						"question_type": "mcq",
+						"difficulty": "easy" if i < total//2 else "medium",
+						"title": f"Sample MCQ Question {i+1}",
+						"description": f"This is sample MCQ question {i+1}. OpenAI API is unavailable. Please check your API key and billing status.",
+						"options": [f"{chr(65+j)}) Option {j+1}" for j in range(4)],
+						"correct_answer": "A",
+						"explanation": "This is a sample question generated due to API unavailability."
+					})
+				else:  # Coding question
+					questions.append({
+						"question_type": "coding",
+						"difficulty": "medium_plus",
+						"title": f"Sample Coding Question {i+1}",
+						"description": f"Write a simple function for question {i+1}. Note: This is a placeholder question due to OpenAI API unavailability.",
+						"input_format": "Input description",
+						"output_format": "Output description",
+						"sample_input": "sample input",
+						"sample_output": "sample output",
+						"test_cases": [
+							{"input": "test1", "expected_output": "result1"},
+							{"input": "test2", "expected_output": "result2"}
+						]
+					})
 		return {"questions": questions}
 	
 	# Check if OpenAI API key is available
 	if not openai.api_key:
 		print(f"OpenAI API key not available, using {num_questions} fallback questions")
 		import json
-		return json.dumps(generate_fallback_questions(num_questions), indent=2)
+		return json.dumps(generate_fallback_questions(num_questions, num_mcq, num_coding), indent=2)
 	
 	try:
 		# Calculate appropriate max_tokens and timeout based on number of questions
 		# Each question needs ~200-300 tokens, so scale accordingly
 		max_tokens = min(4000, 200 * num_questions + 500)  # Cap at 4000
-		timeout_seconds = min(180, 30 + (num_questions * 10))  # 30s base + 10s per question, max 180s
+		timeout_seconds = min(120, 30 + (num_questions * 15))  # 30s base + 15s per question, max 120s
 		
 		print(f"Making OpenAI API call with model: {os.getenv('OPENAI_MODEL', 'gpt-4')}")
 		print(f"Requesting {num_questions} questions (timeout: {timeout_seconds}s, max_tokens: {max_tokens})")
@@ -948,11 +1083,12 @@ def _ai_generate(prompt: str, system_role: str = "You are an expert coding instr
 		
 		# Return valid fallback JSON with proper structure
 		import json
-		return json.dumps(generate_fallback_questions(num_questions), indent=2)
+		return json.dumps(generate_fallback_questions(num_questions, num_mcq, num_coding), indent=2)
 
 
-def _ai_generate_classroom_activity(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate classroom activities with varied difficulty and question types"""
+def _ai_generate_classroom_activity(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
+	"""Generate classroom activities with specific MCQ and coding question counts"""
+	num_questions = num_mcq + num_coding
 	trainer_role = """You are an expert Educational Content Designer and Assessment Specialist with 15+ years of experience in creating comprehensive, pedagogically sound assessments. 
 
 Your expertise includes:
@@ -965,14 +1101,22 @@ Your expertise includes:
 
 You create assessments that are fair, challenging, and educational."""
 	
-	prompt = f"""Create {num_questions} high-quality practice questions for: **{subject}**
+	prompt = f"""Create exactly {num_questions} high-quality practice questions for: **{subject}**
 
 🎯 **TOPIC/CONTENT GUIDANCE:**
 {toc if toc else "Cover fundamental to advanced concepts in " + subject}
 
-📋 **QUESTION DISTRIBUTION (distribute questions across these types):**
+📋 **REQUIRED QUESTION DISTRIBUTION:**
 
-**1. EASY (25% of questions) - Foundational MCQs:**
+Generate EXACTLY:
+- **{num_mcq} MCQ Questions** (Multiple Choice Questions with 4 options)
+- **{num_coding} Coding Questions** (Programming problems)
+
+Total: {num_questions} questions
+
+**MCQ QUESTION GUIDELINES:**
+
+**EASY MCQs (distribute among the {num_mcq} MCQs):**
    - Test basic concepts, definitions, and fundamental principles
    - 4 well-crafted options with clear correct answer
    - Options should be distinct and plausible
@@ -1049,11 +1193,13 @@ You create assessments that are fair, challenging, and educational."""
 
 ⚠️ **CRITICAL**: Return PURE JSON only. No markdown blocks, no extra text."""
 	
-	return _ai_generate(prompt, trainer_role, num_questions)
+	# Use batch generation for reliability
+	return _ai_generate_batch(prompt, trainer_role, num_questions, num_mcq, num_coding, batch_size=5)
 
 
-def _ai_generate_test(subject: str, toc: str, num_questions: int) -> str:
-	"""Generate tests with varied difficulty and question types"""
+def _ai_generate_test(subject: str, toc: str, num_mcq: int, num_coding: int) -> str:
+	"""Generate tests with specific MCQ and coding question counts"""
+	num_questions = num_mcq + num_coding
 	trainer_role = """You are a Senior Examination Designer and Assessment Expert with expertise in creating fair, comprehensive, and academically rigorous tests.
 
 Your qualifications:
@@ -1071,16 +1217,24 @@ You design tests that:
 - Have clear, unambiguous correct answers
 - Provide comprehensive evaluation of student competency"""
 	
-	prompt = f"""Create {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
+	prompt = f"""Create exactly {num_questions} rigorous test questions for: **{subject}** (EXAM MODE - Higher Standards)
 
 🎯 **SUBJECT/TOPIC COVERAGE:**
 {toc if toc else "Comprehensive coverage of " + subject + " from fundamentals to advanced topics"}
 
 ⚠️ **EXAM STANDARDS:** These are formal test questions - higher difficulty and rigor than practice questions.
 
-📋 **QUESTION DISTRIBUTION:**
+📋 **REQUIRED QUESTION DISTRIBUTION:**
 
-**1. EASY (25%) - Foundation Assessment:**
+Generate EXACTLY:
+- **{num_mcq} MCQ Questions** (Multiple Choice Questions with 4 options)
+- **{num_coding} Coding Questions** (Programming problems)
+
+Total: {num_questions} questions
+
+**MCQ QUESTION GUIDELINES:**
+
+**EASY MCQs (distribute among the {num_mcq} MCQs):**
    - Test essential concepts and core principles
    - 4 carefully designed options (3 plausible distractors)
    - No "freebie" questions - require understanding, not just recall
@@ -1147,7 +1301,8 @@ REQUIRED JSON FORMAT:
 
 ⚠️ **CRITICAL**: Return PURE JSON. No markdown (no ```json), no extra text."""
 	
-	return _ai_generate(prompt, trainer_role, num_questions)
+	# Use batch generation for reliability
+	return _ai_generate_batch(prompt, trainer_role, num_questions, num_mcq, num_coding, batch_size=5)
 
 
 @app.route("/admin/create_classroom_activity", methods=["POST"])  # Generate activities via OpenAI
@@ -1157,13 +1312,22 @@ def admin_create_classroom_activity():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_questions = int(request.form.get("num_questions", "3") or 3)
+	num_mcq = int(request.form.get("num_mcq", "0") or 0)
+	num_coding = int(request.form.get("num_coding", "0") or 0)
 	classroom_id = request.form.get("classroom_id", "").strip()
-	if not subject or not classroom_id or num_questions < 1:
-		return jsonify({"ok": False, "error": "subject, classroom_id, >=1 questions required"}), 400
+	
+	# Validate that at least one question type is requested
+	if not subject or not classroom_id:
+		return jsonify({"ok": False, "error": "subject and classroom_id required"}), 400
+	if num_mcq < 0 or num_coding < 0:
+		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
+	if num_mcq == 0 and num_coding == 0:
+		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
+	
+	num_questions = num_mcq + num_coding
 	try:
-		print(f"Generating classroom activity: {subject}, {num_questions} questions")
-		content = _ai_generate_classroom_activity(subject, toc, num_questions)
+		print(f"Generating classroom activity: {subject}, {num_mcq} MCQ + {num_coding} Coding = {num_questions} total")
+		content = _ai_generate_classroom_activity(subject, toc, num_mcq, num_coding)
 		print(f"Activity generated successfully, length: {len(content)}")
 		
 		# Clean and validate JSON before storing
@@ -1211,6 +1375,8 @@ def admin_create_classroom_activity():
 			"subject": subject,
 			"toc": toc,
 			"num_questions": num_questions,
+			"num_mcq": num_mcq,
+			"num_coding": num_coding,
 			"generated": content,
 			"created_at": datetime.now(timezone.utc)
 		})
@@ -1232,12 +1398,21 @@ def admin_create_test():
 		return redir
 	subject = request.form.get("subject", "").strip()
 	toc = request.form.get("toc", "").strip()
-	num_questions = int(request.form.get("num_questions", "3") or 3)
+	num_mcq = int(request.form.get("num_mcq", "0") or 0)
+	num_coding = int(request.form.get("num_coding", "0") or 0)
 	test_id = request.form.get("test_id", "").strip()
 	start_datetime = request.form.get("start_datetime", "").strip()  # datetime-local input
 	end_datetime = request.form.get("end_datetime", "").strip()  # datetime-local input
-	if not subject or not test_id or num_questions < 1 or not start_datetime or not end_datetime:
-		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime, >=1 questions required"}), 400
+	
+	# Validate inputs
+	if not subject or not test_id or not start_datetime or not end_datetime:
+		return jsonify({"ok": False, "error": "subject, test_id, start_datetime, end_datetime required"}), 400
+	if num_mcq < 0 or num_coding < 0:
+		return jsonify({"ok": False, "error": "Question counts cannot be negative"}), 400
+	if num_mcq == 0 and num_coding == 0:
+		return jsonify({"ok": False, "error": "At least one question type must be > 0"}), 400
+	
+	num_questions = num_mcq + num_coding
 	try:
 		# Parse datetime-local inputs (YYYY-MM-DDTHH:MM format)
 		# These give us naive datetimes in local time
@@ -1258,7 +1433,8 @@ def admin_create_test():
 	except Exception as e:
 		return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 	try:
-		content = _ai_generate_test(subject, toc, num_questions)
+		print(f"Generating test: {subject}, {num_mcq} MCQ + {num_coding} Coding = {num_questions} total")
+		content = _ai_generate_test(subject, toc, num_mcq, num_coding)
 		
 		# Clean and validate JSON before storing
 		import re
@@ -1297,6 +1473,8 @@ def admin_create_test():
 		"subject": subject,
 		"toc": toc,
 		"num_questions": num_questions,
+		"num_mcq": num_mcq,
+		"num_coding": num_coding,
 		"generated": content,
 		"start_time": start_time,
 		"end_time": end_time,
