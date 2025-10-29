@@ -2605,32 +2605,35 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<p><strong>Constraints:</strong></p>
 						<p style="color: #f59e0b;">{{ question.constraints }}</p>
 						{% endif %}
-						{% endif %}
-					</div>
-					
-					<div class="compiler-section">
-						<h4>🐍 Code Editor</h4>
-						<div class="compiler-container">
-							<div class="code-section">
-								<textarea id="code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+					{% endif %}
+				</div>
+				
+				{# Only show code editor for coding questions #}
+				{% if question.question_type == 'coding' or not question.question_type %}
+				<div class="compiler-section">
+					<h4>🐍 Code Editor</h4>
+					<div class="compiler-container">
+						<div class="code-section">
+							<textarea id="code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-								<div class="compiler-controls">
-									<button class="btn run-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-									<button class="btn secondary clear-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
-								</div>
+							<div class="compiler-controls">
+								<button class="btn run-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+								<button class="btn secondary clear-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
 							</div>
-							
-							<div class="output-section">
-								<label>Output:</label>
-								<div id="output-{{ loop.index }}" class="output-box">
-									<p class="muted">Click "Run Code" to see the output here...</p>
-								</div>
+						</div>
+						
+						<div class="output-section">
+							<label>Output:</label>
+							<div id="output-{{ loop.index }}" class="output-box">
+								<p class="muted">Click "Run Code" to see the output here...</p>
 							</div>
 						</div>
 					</div>
-				</section>
+				</div>
+				{% endif %}
+			</section>
 				{% endfor %}
 			{% else %}
 				<section class="card">
@@ -2822,7 +2825,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 						{% endfor %}
 						</div>
-						<input type="hidden" id="mcq-answer-{{ progress }}" name="mcq_answer" value="">
 						{% if current_question.hints %}
 						<details style="margin-top: 1rem;">
 							<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
@@ -2865,6 +2867,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{% endif %}
 				</div>
 				
+				{# Only show code editor for coding questions #}
+				{% if current_question.question_type == 'coding' or not current_question.question_type %}
 				<div class="compiler-section">
 					<h4>🐍 Code Editor</h4>
 					<div class="compiler-container">
@@ -2887,6 +2891,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 					</div>
 				</div>
+				{% endif %}
 			</section>
 			
 			<form id="testForm" method="post" action="/test/submit" class="mt">
@@ -3196,14 +3201,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			element.style.background = '#dbeafe';
 			element.style.borderLeft = '3px solid #10b981';
 			element.style.fontWeight = '600';
-				
-				// Store selected answer
-				const option = element.getAttribute('data-option');
-				const hiddenInput = document.querySelector('input[name="mcq_answer"]');
-				if (hiddenInput) {
-					hiddenInput.value = option;
-				}
-			};
+			
+			// Store selected answer in the hidden input that will be submitted
+			const option = element.getAttribute('data-option');
+			const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
+			if (hiddenMcqAnswer) {
+				hiddenMcqAnswer.value = option;
+			}
+		};
 			
 			// Test interface compiler functionality
 			document.addEventListener('DOMContentLoaded', function() {
@@ -3286,20 +3291,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					// Update hidden fields when form is submitted
 					if (testForm) {
 						testForm.addEventListener('submit', function(e) {
-							// Copy code textarea value
-							if (hiddenUserCode && codeTextarea) {
-							hiddenUserCode.value = codeTextarea.value;
-							}
-							
-							// Copy MCQ answer if it exists
-							const mcqAnswerInput = document.querySelector('input[name="mcq_answer"]:not([id*="hidden"])');
+							// Get question type
+							const questionType = document.getElementById('hidden_question_type').value;
 							const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-							if (mcqAnswerInput && hiddenMcqAnswer) {
-								hiddenMcqAnswer.value = mcqAnswerInput.value;
-							}
 							
 							// MANDATORY: Validate that an answer is provided
-							const questionType = document.getElementById('hidden_question_type').value;
 							if (questionType === 'mcq') {
 								if (!hiddenMcqAnswer || !hiddenMcqAnswer.value) {
 									e.preventDefault();
@@ -3313,6 +3309,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 									return false;
 								}
 							} else if (questionType === 'coding') {
+								// Copy code textarea value for coding questions
+								if (hiddenUserCode && codeTextarea) {
+									hiddenUserCode.value = codeTextarea.value;
+								}
+								
 								if (!hiddenUserCode || !hiddenUserCode.value.trim()) {
 									e.preventDefault();
 									alert('⚠️ You MUST write code before proceeding to the next question.\n\nYou cannot skip questions.');
