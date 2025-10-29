@@ -38,7 +38,7 @@ try:
     print("Connecting to MongoDB...")
     client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
     client.admin.command('ping')
-    print("✅ MongoDB connected successfully")
+    print("MongoDB connected successfully")
     
     db = client[Config.DATABASE_NAME]
     admins_col = db["admins"]
@@ -47,7 +47,7 @@ try:
     submissions_col = db["submissions"]
     
 except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+    print(f"MongoDB connection failed: {e}")
     sys.exit(1)
 
 # OpenAI Setup
