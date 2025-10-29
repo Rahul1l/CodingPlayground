@@ -1800,33 +1800,61 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 					</div>
 					
-					<div class="question-content">
-						<p><strong>Description:</strong></p>
-						<p>{{ question.description }}</p>
-						
-						{% if question.input_format %}
-						<p><strong>Input Format:</strong></p>
-						<pre class="format-box">{{ question.input_format }}</pre>
-						{% endif %}
-						
-						{% if question.output_format %}
-						<p><strong>Output Format:</strong></p>
-						<pre class="format-box">{{ question.output_format }}</pre>
-						{% endif %}
-						
-						{% if question.sample_input %}
-						<p><strong>Sample Input:</strong></p>
-						<pre class="sample-box">{{ question.sample_input }}</pre>
-						{% endif %}
-						
-						{% if question.sample_output %}
-						<p><strong>Sample Output:</strong></p>
-						<pre class="sample-box">{{ question.sample_output }}</pre>
+				<div class="question-content">
+					<p><strong>Description:</strong></p>
+					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+					
+					{# MCQ Questions for Admin #}
+					{% if question.question_type == 'mcq' and question.options %}
+					<div style="margin-top: 1.5rem;">
+						<p><strong>Options (Admin Preview - View Only):</strong></p>
+						<div style="margin: 1rem 0;">
+							{% for option in question.options %}
+							<div style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000; border: 1px solid #bfdbfe;">
+								{{ option }}
+								{% if option[0] == question.correct_answer %}
+								<span style="color: #10b981; font-weight: 700; margin-left: 1rem;">✓ Correct Answer</span>
+								{% endif %}
+							</div>
+							{% endfor %}
+						</div>
+						{% if question.explanation %}
+						<div style="margin-top: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+							<p style="color: #000000; font-weight: 600;">Explanation:</p>
+							<p style="color: #000000;">{{ question.explanation }}</p>
+						</div>
 						{% endif %}
 					</div>
+					{% endif %}
 					
-					<div class="compiler-section">
-						<h4>🐍 Code Editor (Admin Preview)</h4>
+					{# Coding Question Details #}
+					{% if question.question_type == 'coding' or not question.question_type %}
+					{% if question.input_format %}
+					<p><strong>Input Format:</strong></p>
+					<pre class="format-box">{{ question.input_format }}</pre>
+					{% endif %}
+					
+					{% if question.output_format %}
+					<p><strong>Output Format:</strong></p>
+					<pre class="format-box">{{ question.output_format }}</pre>
+					{% endif %}
+					
+					{% if question.sample_input %}
+					<p><strong>Sample Input:</strong></p>
+					<pre class="sample-box">{{ question.sample_input }}</pre>
+					{% endif %}
+					
+					{% if question.sample_output %}
+					<p><strong>Sample Output:</strong></p>
+					<pre class="sample-box">{{ question.sample_output }}</pre>
+					{% endif %}
+					{% endif %}
+				</div>
+				
+				{# Only show code editor for coding questions #}
+				{% if question.question_type == 'coding' or not question.question_type %}
+				<div class="compiler-section">
+					<h4>🐍 Code Editor (Admin Preview)</h4>
 						<div class="compiler-container">
 							<div class="code-section">
 								<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
@@ -1844,11 +1872,12 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<div id="admin-output-{{ loop.index }}" class="output-box">
 									<p class="muted">Click "Run Code" to see the output here...</p>
 								</div>
-							</div>
 						</div>
 					</div>
-				</section>
-				{% endfor %}
+				</div>
+				{% endif %}
+			</section>
+			{% endfor %}
 			{% else %}
 				<section class="card">
 					<h2>Activity Content</h2>
@@ -2561,7 +2590,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<p><strong>Select the correct answer:</strong></p>
 							<div style="margin: 1rem 0;">
 								{% for option in question.options %}
-								<div style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; color: #000000;">
+								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question="{{ loop.index }}" onclick="selectClassroomMCQ(this)" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 									{{ option }}
 								</div>
 								{% endfor %}
@@ -3526,6 +3555,27 @@ print(f'Sum: {x + y}')"></textarea>
 	<script src="/static/app.js"></script>
 	{% if view == 'activity' %}
 	<script>
+	// MCQ Selection Handler for Classroom Activities
+	window.selectClassroomMCQ = function(element) {
+		const questionNum = element.getAttribute('data-question');
+		
+		// Remove selection from all options in this question
+		document.querySelectorAll(`.mcq-option-classroom[data-question="${questionNum}"]`).forEach(opt => {
+			opt.style.background = '#f0f9ff';
+			opt.style.borderLeft = '3px solid #3b82f6';
+			opt.style.fontWeight = 'normal';
+		});
+		
+		// Highlight selected option
+		element.style.background = '#dbeafe';
+		element.style.borderLeft = '3px solid #10b981';
+		element.style.fontWeight = '600';
+		
+		// Show selected answer
+		const option = element.getAttribute('data-option');
+		console.log(`Selected option ${option} for question ${questionNum}`);
+	};
+	
 	document.addEventListener('DOMContentLoaded', function() {
 		// Handle question-specific code execution
 		document.querySelectorAll('.run-question-code').forEach(button => {
