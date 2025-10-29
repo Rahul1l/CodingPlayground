@@ -2028,6 +2028,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<th>Subject</th>
 								<th>Test ID</th>
 								<th>Questions</th>
+								<th>Status</th>
 								<th>Scheduled</th>
 								<th>Created</th>
 								<th>Actions</th>
@@ -2038,7 +2039,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<tr>
 								<td>{{ test.subject }}</td>
 								<td>{{ test.test_id }}</td>
-								<td>{{ test.num_questions }}</td>
+								<td>{{ test.num_questions }} ({{ test.num_mcq }} MCQ, {{ test.num_coding }} coding)</td>
+								<td>
+									{% if test.generated %}
+										<span style="color: #10b981; font-weight: 600;">✓ Ready</span>
+									{% else %}
+										<span style="color: #f59e0b; font-weight: 600;">⚠️ No Questions</span>
+									{% endif %}
+								</td>
 								<td>
 									{% if test.start_time and test.end_time %}
 										{{ test.start_time.strftime('%Y-%m-%d %H:%M') }} - {{ test.end_time.strftime('%Y-%m-%d %H:%M') }}
@@ -2050,6 +2058,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								</td>
 								<td>{{ test.created_at.strftime('%Y-%m-%d %H:%M') if test.created_at else '-' }}</td>
 								<td>
+									<button class="btn secondary small" onclick="regenerateTest('{{ test.test_id }}')">🔄 Regenerate</button>
 									<a href="/debug/test/{{ test.test_id }}" class="btn secondary small" target="_blank">🔍 Debug</a>
 									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">🗑️ Delete</button>
 								</td>
@@ -3054,12 +3063,28 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<div class="flex-between">
 				<h2>{{ test.subject }} - Test</h2>
 				<div class="test-progress">
+					{% if questions|length > 0 %}
 					<span class="progress-badge">Question {{ progress + 1 }} of {{ questions|length }}</span>
+					{% else %}
+					<span class="progress-badge">⚠️ No Questions Available</span>
+					{% endif %}
 					{% if warning_count > 0 %}
 					<span class="warning-indicator" id="warning-indicator">⚠️ Warnings: <span id="warning-count-display">{{ warning_count }}</span>/3</span>
 					{% endif %}
 				</div>
 			</div>
+			
+			{% if error_details %}
+			<section class="card">
+				<h2>⚠️ Test Loading Error</h2>
+				<div class="alert" style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+					<p style="color: #991b1b; font-weight: 600; margin-bottom: 0.5rem;">Error Details:</p>
+					<p style="color: #7f1d1d;">{{ error_details }}</p>
+				</div>
+				<p class="muted">Please contact your administrator to resolve this issue.</p>
+				<a href="/test" class="btn secondary">← Back to Test Info</a>
+			</section>
+			{% endif %}
 			
 			<!-- Warning Modal -->
 			<div id="warningModal" class="warning-modal">
@@ -3219,6 +3244,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<a href="/test" class="btn secondary">← Back to Test Info</a>
 			</section>
 			{% endif %}
+			
+			{% if current_question %}
 			<script>
 			// Anti-Cheat System for Test Interface
 			(function(){
@@ -3482,7 +3509,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				console.log('🔒 Anti-cheat system active');
 				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
 			})();
+			</script>
+			{% endif %}
 			
+			<script>
 		// MCQ Selection Handler for Tests (Works for ANY question number)
 	window.selectMCQOption = function(element, questionProgress) {
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -4756,6 +4786,42 @@ print(f'Sum: {x + y}')"></textarea>
 
 	{% if view == 'admin_tests' %}
 	<script>
+	async function regenerateTest(testId) {
+		if (!confirm(`Regenerate questions for test "${testId}"?\n\nThis will create new AI-generated questions and replace the existing ones.`)) {
+			return;
+		}
+		
+		// Show loading state
+		const btn = event.target;
+		const originalText = btn.innerHTML;
+		btn.disabled = true;
+		btn.innerHTML = '⏳ Generating...';
+		
+		try {
+			const response = await fetch(`/admin/test/regenerate/${testId}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				}
+			});
+			
+			const data = await response.json();
+			
+			if (data.ok) {
+				alert('✅ ' + data.message + '\n\nTest questions have been regenerated successfully!');
+				location.reload();
+			} else {
+				alert('❌ Error: ' + (data.error || 'Failed to regenerate test'));
+				btn.disabled = false;
+				btn.innerHTML = originalText;
+			}
+		} catch (error) {
+			alert('❌ Error regenerating test: ' + error.message);
+			btn.disabled = false;
+			btn.innerHTML = originalText;
+		}
+	}
+	
 	async function deleteTest(testId) {
 		if (!confirm(`Are you sure you want to delete test "${testId}"?`)) {
 			return;
