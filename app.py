@@ -2479,6 +2479,170 @@ Your evaluation approach:
 	return redirect(url_for("test_start"))
 
 
+@app.route("/test/submit_all", methods=["POST"])
+def test_submit_all():
+	"""Submit all test answers at once (like classroom activities)"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("test", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	test_id = data.get("test_id")
+	answers = data.get("answers", [])
+	
+	if not test_id or not answers:
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Check if already submitted
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id
+	})
+	
+	if already_completed:
+		return jsonify({"ok": False, "error": "Test already submitted"}), 403
+	
+	# Evaluate all answers
+	results = []
+	correct_count = 0
+	total_questions = len(answers)
+	
+	for answer in answers:
+		question_index = answer.get("question_index")
+		question_type = answer.get("question_type")
+		question_data = answer.get("question_data", {})
+		
+		if question_type == "mcq":
+			selected_answer = answer.get("selected_answer")
+			correct_answer = question_data.get("correct_answer", "")
+			
+			# Check if correct
+			is_correct = False
+			if selected_answer and correct_answer:
+				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "mcq",
+				"question_title": question_data.get("title", ""),
+				"selected_answer": selected_answer,
+				"correct_answer": correct_answer,
+				"is_correct": is_correct
+			})
+			
+		elif question_type == "coding":
+			user_code = answer.get("user_code")
+			
+			# Get AI feedback for coding question (same as classroom)
+			ai_feedback = ""
+			score = 0.0
+			if user_code and openai.api_key:
+				try:
+					trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
+
+Your approach:
+- **Student-Centered**: Provide constructive feedback
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply
+
+Return a JSON with:
+{
+  "score": 0.0 to 1.0,
+  "is_correct": true/false,
+  "feedback": "Your evaluation"
+}"""
+
+					prompt = f"""Evaluate this student's code for a test. Provide clear, educational feedback.
+
+**Problem:** {question_data.get('description', 'N/A')}
+
+**Student's Code:**
+```python
+{user_code}
+```
+
+**Provide Feedback as JSON:**
+{{
+  "score": 0.0 to 1.0,
+  "is_correct": true if mostly correct, false otherwise,
+  "feedback": "Clear feedback with evaluation"
+}}"""
+
+					response_text = _ai_generate(prompt, trainer_role)
+					# Try to parse JSON from response
+					import re
+					json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+					if json_match:
+						feedback_data = json.loads(json_match.group())
+						score = float(feedback_data.get("score", 0.5))
+						is_correct = feedback_data.get("is_correct", score >= 0.7)
+						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+					else:
+						ai_feedback = response_text
+						is_correct = True
+						score = 0.7
+				except Exception as e:
+					print(f"AI feedback error: {e}")
+					ai_feedback = "Your code has been submitted successfully."
+					is_correct = True
+					score = 0.7
+			else:
+				ai_feedback = "Your code has been submitted successfully."
+				is_correct = True
+				score = 0.7
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "coding",
+				"question_title": question_data.get("title", ""),
+				"user_code": user_code,
+				"ai_feedback": ai_feedback,
+				"is_correct": is_correct,
+				"score": score
+			})
+	
+	# Calculate percentage
+	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
+	
+	# Store aggregate submission in database
+	submission_doc = {
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"test_id": test_id,
+		"context": "test_complete",
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results,
+		"created_at": datetime.now(timezone.utc)
+	}
+	
+	submissions_col.insert_one(submission_doc)
+	
+	# Clear session
+	session.pop("test_progress", None)
+	session.pop("test_warnings", None)
+	session.pop("test_violations", None)
+	
+	print(f"Test submitted: {user['username']} - {test_id} - Score: {correct_count}/{total_questions}")
+	
+	# For tests, we don't return the score to the user
+	return jsonify({"ok": True, "message": "Test submitted successfully"})
+
+
 @app.route("/test/complete")
 def test_complete():
 	redir = require_user()

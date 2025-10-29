@@ -3049,83 +3049,69 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 			{% endif %}
 
-		{# Test Interface (when test is actually open) #}
-		{% if view == 'test_interface' %}
-			<div class="flex-between">
-				<h2>{{ test.subject }} - Test</h2>
-				<div class="test-progress">
-					<span class="progress-badge">Question {{ progress + 1 }} of {{ questions|length }}</span>
-					{% if warning_count > 0 %}
-					<span class="warning-indicator" id="warning-indicator">⚠️ Warnings: <span id="warning-count-display">{{ warning_count }}</span>/3</span>
-					{% endif %}
-				</div>
-			</div>
-			
-			<!-- Warning Modal -->
-			<div id="warningModal" class="warning-modal">
-				<div class="warning-modal-content">
-					<div class="warning-icon">⚠️</div>
-					<h2 class="warning-title">TEST VIOLATION DETECTED</h2>
-					<p class="warning-message" id="warning-message">Unauthorized action detected</p>
-					<div class="warning-counter" id="warning-counter">Warning 1/3</div>
-					<p style="color: #fef2f2; font-size: 0.9rem;">After 3 warnings, your test will be automatically submitted.</p>
-					<div class="warning-actions">
-						<button class="warning-btn warning-btn-primary" onclick="closeWarningModal()">I Understand</button>
-					</div>
-				</div>
-			</div>
-			
-			{% if current_question %}
+	{# Test Interface - Rewritten to match Classroom Activity (No Anti-Cheat) #}
+	{% if view == 'test_interface' %}
+		<div class="flex-between">
+			<h2>{{ test.subject }} - Test</h2>
+			<a class="btn secondary" href="/test">← Back</a>
+		</div>
+		
+		<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #bfdbfe;">
+			<p style="color: #1e40af; margin: 0;">
+				<strong>📋 Instructions:</strong> Answer all questions below, then click "Submit All Answers" at the end. You can change your answers before submitting.
+			</p>
+		</div>
+		
+		{% if questions %}
+			{% for question in questions %}
+			{% set test_question_num = loop.index %}
 			<section class="card question-card">
 				<div class="question-header">
-					<h3>{{ current_question.title }}</h3>
+					<h3>Question {{ test_question_num }}: {{ question.title }}</h3>
 					<div style="display: flex; gap: 0.5rem; align-items: center;">
-						<span class="difficulty-badge difficulty-{{ current_question.difficulty }}">
-							{% if current_question.difficulty == 'medium_plus' %}
+						<span class="difficulty-badge difficulty-{{ question.difficulty }}">
+							{% if question.difficulty == 'medium_plus' %}
 								Medium+ (Coding)
 							{% else %}
-								{{ current_question.difficulty|title }}
+								{{ question.difficulty|title }}
 							{% endif %}
 						</span>
-						{% if current_question.question_type == 'mcq' %}
+						{% if question.question_type == 'mcq' %}
 						<span class="role-badge role-classroom">📝 MCQ</span>
-						{% elif current_question.question_type == 'coding' %}
+						{% elif question.question_type == 'coding' %}
 						<span class="role-badge role-test">💻 Coding</span>
-						{% endif %}
-						{% if current_question.points %}
-						<span class="role-badge role-both">{{ current_question.points }} points</span>
 						{% endif %}
 					</div>
 				</div>
 				
 				<div class="question-content">
 					<p><strong>Description:</strong></p>
-					<div style="white-space: pre-wrap; line-height: 1.6;">{{ current_question.description }}</div>
+					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
 					
 					{# MCQ Questions #}
-					{% if current_question.question_type == 'mcq' and current_question.options %}
-					<div style="margin-top: 1.5rem;">
-						<p><strong>Select your answer:</strong></p>
-						<div id="mcq-options-{{ progress }}" style="margin: 1rem 0;">
-						{% for option in current_question.options %}
-						<div class="mcq-option" data-option="{{ option[0] }}" data-question-progress="{{ progress }}" onclick="selectMCQOption(this, {{ progress }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
-							{{ option }}
-						</div>
-						{% endfor %}
+					{% if question.question_type == 'mcq' and question.options %}
+					<div style="margin-top: 1.5rem;" id="test-mcq-question-{{ test_question_num }}">
+						<p><strong>Select the correct answer:</strong></p>
+						<div style="margin: 1rem 0;" id="test-mcq-options-{{ test_question_num }}">
+							{% for option in question.options %}
+							<div class="mcq-option-test" data-option="{{ option[0] }}" data-question-idx="{{ test_question_num }}" onclick="selectTestMCQ(this, {{ test_question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+								{{ option }}
+							</div>
+							{% endfor %}
 						</div>
 						
 						<div style="margin-top: 1rem;">
-							<button type="button" class="btn secondary" onclick="clearTestMCQSelection({{ progress }});">
+							<button class="btn secondary" onclick="clearTestMCQ({{ test_question_num }});">
 								Clear Selection
 							</button>
-							<span id="test-mcq-status-{{ progress }}" class="muted" style="margin-left: 1rem;"></span>
+							<span id="test-mcq-status-{{ test_question_num }}" class="muted" style="margin-left: 1rem;"></span>
 						</div>
 						
-						{% if current_question.hints %}
+						{% if question.hints %}
 						<details style="margin-top: 1rem;">
 							<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
 							<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
-								{% for hint in current_question.hints %}
+								{% for hint in question.hints %}
 								<p>• {{ hint }}</p>
 								{% endfor %}
 							</div>
@@ -3135,642 +3121,302 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{% endif %}
 					
 					{# Coding Questions #}
-					{% if current_question.question_type == 'coding' or not current_question.question_type %}
-					{% if current_question.input_format %}
+					{% if question.question_type == 'coding' or not question.question_type %}
+					{% if question.input_format %}
 					<p><strong>Input Format:</strong></p>
-					<pre class="format-box">{{ current_question.input_format }}</pre>
+					<pre class="format-box">{{ question.input_format }}</pre>
 					{% endif %}
 					
-					{% if current_question.output_format %}
+					{% if question.output_format %}
 					<p><strong>Output Format:</strong></p>
-					<pre class="format-box">{{ current_question.output_format }}</pre>
+					<pre class="format-box">{{ question.output_format }}</pre>
 					{% endif %}
 					
-					{% if current_question.sample_input %}
+					{% if question.sample_input %}
 					<p><strong>Sample Input:</strong></p>
-					<pre class="sample-box">{{ current_question.sample_input }}</pre>
+					<pre class="sample-box">{{ question.sample_input }}</pre>
 					{% endif %}
 					
-					{% if current_question.sample_output %}
+					{% if question.sample_output %}
 					<p><strong>Sample Output:</strong></p>
-					<pre class="sample-box">{{ current_question.sample_output }}</pre>
+					<pre class="sample-box">{{ question.sample_output }}</pre>
 					{% endif %}
 					
-					{% if current_question.constraints %}
+					{% if question.constraints %}
 					<p><strong>Constraints:</strong></p>
-					<p style="color: #f59e0b;">{{ current_question.constraints }}</p>
+					<p style="color: #f59e0b;">{{ question.constraints }}</p>
 					{% endif %}
 					{% endif %}
 				</div>
 				
 				{# Only show code editor for coding questions #}
-				{% if current_question.question_type == 'coding' or not current_question.question_type %}
-				<div class="compiler-section">
+				{% if question.question_type == 'coding' or not question.question_type %}
+				<div class="compiler-section" id="test-coding-question-{{ test_question_num }}">
 					<h4>🐍 Code Editor</h4>
 					<div class="compiler-container">
 						<div class="code-section">
-							<textarea id="test-code" class="question-code" rows="10" placeholder="# Write your solution here
+							<textarea id="test-code-{{ test_question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
-#     return 'Hello World'"></textarea>
+#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
 							<div class="compiler-controls">
-								<button id="run-test-code" class="btn">▶️ Run Code</button>
-								<button id="clear-test-code" class="btn secondary">🗑️ Clear</button>
+								<button class="btn run-test-question-code" data-question="{{ test_question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+								<button class="btn secondary clear-test-question-code" data-question="{{ test_question_num }}">🗑️ Clear</button>
 							</div>
 						</div>
 						
 						<div class="output-section">
 							<label>Output:</label>
-							<div id="test-output" class="output-box">
+							<div id="test-output-{{ test_question_num }}" class="output-box">
 								<p class="muted">Click "Run Code" to see the output here...</p>
 							</div>
 						</div>
 					</div>
+					
+					<div style="margin-top: 1rem;">
+						<span id="test-coding-status-{{ test_question_num }}" class="muted"></span>
+					</div>
 				</div>
 				{% endif %}
 			</section>
+			{% endfor %}
+		{% else %}
+		<section class="card">
+			<h2>⚠️ No Questions Available</h2>
+			<p class="muted">No test questions have been generated yet. Please contact your administrator.</p>
+			<a href="/test" class="btn secondary">← Back to Test Info</a>
+		</section>
+		{% endif %}
+		
+		{% if questions %}
+		<section class="card" style="border-left: 4px solid #10b981;">
+			<h3>📝 Submit Your Test</h3>
+			<p class="muted">Review all your answers above and click Submit when ready. Once submitted, you cannot change your answers.</p>
+			<div style="margin-top: 1.5rem;">
+				<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions|tojson }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+					✅ Submit All Answers
+				</button>
+				<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
+					Cancel
+				</button>
+			</div>
+			<!-- No results shown to user for tests - only admin sees in submission logs -->
+		</section>
+		{% endif %}
+		
+		<script>
+		// Test JavaScript Functions (Same as classroom activities, no anti-cheat)
+		window.testAnswers = {}; // Store MCQ answers
+		window.testCode = {};     // Store coding answers
+		
+		console.log('🎯 Test interface loaded (simplified, no anti-cheat)');
+		
+		// MCQ Selection Handler for Tests
+		window.selectTestMCQ = function(element, questionIdx) {
+			console.log('Select MCQ - Question #' + questionIdx);
 			
-			<form id="testForm" method="post" action="/test/submit" class="mt">
-				<input type="hidden" name="user_code" id="hidden_user_code">
-				<input type="hidden" name="mcq_answer" id="hidden_mcq_answer">
-				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type if current_question else 'coding' }}">
-				<button class="btn" type="submit">Submit Answer</button>
-			</form>
-			{% else %}
-			<section class="card">
-				<h2>⚠️ Unable to Display Question</h2>
-				<div class="alert">
-					<p><strong>Debug Information:</strong></p>
-					<ul>
-						<li>Number of questions parsed: {{ questions|length }}</li>
-						<li>Current progress: {{ progress }}</li>
-						<li>Expected questions: {{ test.num_questions }}</li>
-					</ul>
-				</div>
-				
-				<h3>Raw Test Content:</h3>
-				<details open>
-					<summary>Click to view test content structure</summary>
-					<pre class="scroll">{{ test.generated }}</pre>
-				</details>
-				
-				<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
-				
-				<a href="/test" class="btn secondary">← Back to Test Info</a>
-			</section>
-			{% endif %}
-			<script>
-			// Anti-Cheat System for Test Interface
-			(function(){
-				// FULLSCREEN MODE - Request fullscreen immediately
-				function enterFullscreen() {
-					const elem = document.documentElement;
-					if (elem.requestFullscreen) {
-						elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-					} else if (elem.webkitRequestFullscreen) {
-						elem.webkitRequestFullscreen();
-					} else if (elem.msRequestFullscreen) {
-						elem.msRequestFullscreen();
-					}
-				}
-				
-				// Try to enter fullscreen
-				enterFullscreen();
-				
-				// Alert user about fullscreen requirement
-				alert('⚠️ TEST MODE ACTIVATED\n\n✓ The test will open in fullscreen mode\n✓ Do not switch tabs or windows\n✓ Do not press F11 or Esc\n✓ Violations will be recorded\n\nClick OK to continue');
-				
-				// Configuration
-				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
-				const MAX_WARNINGS = 3;
-				
-				// State
-				let warningCount = {{ warning_count }};
-				let inactivityTimer = null;
-				let lastActivityTime = Date.now();
-				let isInactivityWarningShown = false;
-				
-				// Record violation and show warning
-				async function recordViolation(violationType) {
-					try {
-						const response = await fetch('/test/violation', {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-							},
-							body: JSON.stringify({
-								type: violationType
-							})
-						});
-						
-						const data = await response.json();
-						
-						if (data.ok) {
-							warningCount = data.warning_count;
-							showWarningModal(violationType, data.warning_count, data.auto_close);
-							return data.auto_close;
-						}
-					} catch (error) {
-						console.error('Failed to record violation:', error);
-					}
-					return false;
-				}
-				
-				// Show warning modal
-				function showWarningModal(violationType, count, autoClose) {
-					const modal = document.getElementById('warningModal');
-					const messageEl = document.getElementById('warning-message');
-					const counterEl = document.getElementById('warning-counter');
-					const warningIndicator = document.getElementById('warning-indicator');
-					const warningCountDisplay = document.getElementById('warning-count-display');
-					
-					// Set message based on violation type
-					const messages = {
-						'tab_switch': 'You switched tabs or left the test window. Stay focused on the test!',
-						'window_blur': 'You clicked outside the test window. Keep your focus on the test!',
-						'copy_attempt': 'Copying content is not allowed during the test.',
-						'paste_attempt': 'Pasting content is not allowed during the test.',
-						'cut_attempt': 'Cutting content is not allowed during the test.',
-						'inactivity': 'You were inactive for too long. Stay active during the test!',
-						'devtools': 'Developer tools are not allowed during the test.',
-						'print_screen': 'Screenshots are not allowed during the test.'
-					};
-					
-					messageEl.textContent = messages[violationType] || 'Unauthorized action detected.';
-					counterEl.textContent = `Warning ${count}/${MAX_WARNINGS}`;
-					
-					// Update warning indicator
-					if (warningIndicator) {
-						warningCountDisplay.textContent = count;
-					} else if (count === 1) {
-						// Create warning indicator if it doesn't exist
-						const progressDiv = document.querySelector('.test-progress');
-						if (progressDiv) {
-							const indicator = document.createElement('span');
-							indicator.className = 'warning-indicator';
-							indicator.id = 'warning-indicator';
-							indicator.innerHTML = `⚠️ Warnings: <span id="warning-count-display">${count}</span>/3`;
-							progressDiv.appendChild(indicator);
-						}
-					}
-					
-					modal.style.display = 'block';
-					
-					// Auto-close test if max warnings reached
-					if (autoClose) {
-						setTimeout(() => {
-							alert('Maximum warnings reached. Your test will now be submitted.');
-							document.getElementById('testForm').submit();
-						}, 3000);
-					}
-				}
-				
-				// Close warning modal
-				window.closeWarningModal = function() {
-					document.getElementById('warningModal').style.display = 'none';
-				}
-				
-				// Track user activity
-				function resetActivityTimer() {
-					lastActivityTime = Date.now();
-					isInactivityWarningShown = false;
-					
-					// Clear and restart inactivity timer
-					if (inactivityTimer) {
-						clearTimeout(inactivityTimer);
-					}
-					
-					inactivityTimer = setTimeout(() => {
-						if (!isInactivityWarningShown) {
-							isInactivityWarningShown = true;
-							recordViolation('inactivity');
-						}
-					}, INACTIVITY_TIMEOUT);
-				}
-				
-				// === EVENT LISTENERS ===
-				
-				// 1. Tab switching / Window visibility
-				document.addEventListener('visibilitychange', function() {
-					if (document.hidden) {
-						recordViolation('tab_switch');
-					} else {
-						resetActivityTimer();
-					}
-				});
-				
-				// 2. Window blur (clicking outside)
-				window.addEventListener('blur', function() {
-					recordViolation('window_blur');
-				});
-				
-				window.addEventListener('focus', function() {
-					resetActivityTimer();
-				});
-				
-				// 3. Copy/Cut/Paste prevention
-				document.addEventListener('copy', function(e) {
-					e.preventDefault();
-					recordViolation('copy_attempt');
-				});
-				
-				document.addEventListener('cut', function(e) {
-					e.preventDefault();
-					recordViolation('cut_attempt');
-				});
-				
-				document.addEventListener('paste', function(e) {
-					e.preventDefault();
-					recordViolation('paste_attempt');
-				});
-				
-				// 4. Context menu (right-click)
-				document.addEventListener('contextmenu', function(e) {
-					e.preventDefault();
-					return false;
-				});
-				
-				// 5. Keyboard shortcuts
-				document.addEventListener('keydown', function(e) {
-					// Block copy/paste/cut
-					if (e.ctrlKey || e.metaKey) {
-						if (e.key === 'c' || e.key === 'C') {
-							e.preventDefault();
-							recordViolation('copy_attempt');
-							return false;
-						}
-						if (e.key === 'x' || e.key === 'X') {
-							e.preventDefault();
-							recordViolation('cut_attempt');
-							return false;
-						}
-						if (e.key === 'v' || e.key === 'V') {
-							e.preventDefault();
-							recordViolation('paste_attempt');
-							return false;
-						}
-						// Block Ctrl+S (save)
-						if (e.key === 's' || e.key === 'S') {
-							e.preventDefault();
-							return false;
-						}
-						// Block Ctrl+P (print)
-						if (e.key === 'p' || e.key === 'P') {
-							e.preventDefault();
-							return false;
-						}
-					}
-					
-					// Block F12, Ctrl+Shift+I, Ctrl+Shift+J (DevTools)
-					if (e.key === 'F12' || 
-						(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j'))) {
-						e.preventDefault();
-						recordViolation('devtools');
-						return false;
-					}
-					
-					// Block Print Screen
-					if (e.key === 'PrintScreen') {
-						e.preventDefault();
-						recordViolation('print_screen');
-						return false;
-					}
-					
-					// Track activity
-					resetActivityTimer();
-				});
-				
-				// 6. Mouse activity tracking
-				document.addEventListener('mousemove', resetActivityTimer);
-				document.addEventListener('click', resetActivityTimer);
-				document.addEventListener('scroll', resetActivityTimer);
-				
-				// 7. Prevent browser back button
-				history.pushState(null, document.title, location.href);
-				window.addEventListener('popstate', function() {
-					history.pushState(null, document.title, location.href);
-				});
-				
-				// 8. Warn before leaving page
-				window.addEventListener('beforeunload', function(e) {
-					e.preventDefault();
-					e.returnValue = 'Are you sure you want to leave the test? Your progress may be lost.';
-					return e.returnValue;
-				});
-				
-				// 9. Detect devtools open (advanced)
-				let devtoolsOpen = false;
-				const detectDevTools = () => {
-					const threshold = 160;
-					const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-					const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-					
-					if ((widthThreshold || heightThreshold) && !devtoolsOpen) {
-						devtoolsOpen = true;
-						recordViolation('devtools');
-					} else if (!widthThreshold && !heightThreshold && devtoolsOpen) {
-						devtoolsOpen = false;
-					}
-				};
-				
-				// Check for devtools periodically
-				setInterval(detectDevTools, 1000);
-				
-				// Initialize activity timer
-				resetActivityTimer();
-				
-				console.log('🔒 Anti-cheat system active');
-				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
-			})();
-			
-		// MCQ Selection Handler for Tests (Works for ANY question number)
-	window.selectMCQOption = function(element, questionProgress) {
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('🔵 SELECT TEST MCQ - Question Progress: ' + questionProgress);
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		
-		// Validate inputs
-		if (!element) {
-			console.error('❌ ERROR: No element provided!');
-			return;
-		}
-		if (questionProgress === undefined || questionProgress === null) {
-			console.error('❌ ERROR: No question progress provided!');
-			return;
-		}
-		
-		// Get the option value and data attributes
-		const option = element.getAttribute('data-option');
-		const optionDataProgress = element.getAttribute('data-question-progress');
-		
-		console.log('📋 Element Details:');
-		console.log('   - data-option:', option);
-		console.log('   - data-question-progress:', optionDataProgress);
-		console.log('   - Passed questionProgress:', questionProgress);
-		
-		// Security check: Make sure data-question-progress matches questionProgress
-		if (optionDataProgress != questionProgress) {
-			console.error('❌ MISMATCH! Element has data-question-progress="' + optionDataProgress + '" but function received questionProgress=' + questionProgress);
-			console.error('   This indicates a template bug. All options should have the same data-question-progress.');
-			return;
-		}
-		
-		// Find all options for THIS specific question
-		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
-		const allOptionsInQuestion = document.querySelectorAll(selector);
-		console.log('🔍 Selector:', selector);
-		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
-		
-		if (allOptionsInQuestion.length === 0) {
-			console.error('❌ ERROR: No options found for question progress', questionProgress);
-			console.error('   Check that data-question-progress attributes are set correctly in HTML');
-			return;
-		}
-		
-		// Log all found options for debugging
-		allOptionsInQuestion.forEach((opt, idx) => {
-			console.log(`   Option ${idx + 1}: data-option="${opt.getAttribute('data-option')}", data-question-progress="${opt.getAttribute('data-question-progress')}"`);
-		});
-		
-		// STEP 1: Clear all selections in THIS question
-		console.log('🔄 Clearing all selections for question progress', questionProgress);
-		allOptionsInQuestion.forEach(opt => {
-			opt.style.background = '#f0f9ff';
-			opt.style.borderLeft = '3px solid #3b82f6';
-			opt.style.fontWeight = 'normal';
-			opt.style.border = '1px solid #bfdbfe';
-		});
-		
-		// STEP 2: Highlight the selected option
-		console.log('✨ Highlighting selected option:', option);
-		element.style.background = '#dbeafe';
-		element.style.borderLeft = '3px solid #10b981';
-		element.style.fontWeight = '600';
-		element.style.border = '2px solid #10b981';
-		
-		// STEP 3: Store in hidden input (for test submission)
-		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-		if (hiddenMcqAnswer) {
-			const previousValue = hiddenMcqAnswer.value;
-			hiddenMcqAnswer.value = option;
-			if (previousValue) {
-				console.log('🔄 RESELECTED: Changed from "' + previousValue + '" to "' + option + '"');
-			} else {
-				console.log('✅ NEW SELECTION: Stored "' + option + '" in hidden input');
+			if (!element || !questionIdx) {
+				console.error('Invalid inputs');
+				return;
 			}
-			console.log('📝 Hidden input value:', hiddenMcqAnswer.value);
-		} else {
-			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
-		}
-		
-		// STEP 4: Update visual status indicator
-		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
-		if (statusEl) {
-			statusEl.textContent = `✓ Selected: ${option}`;
-			statusEl.style.color = '#10b981';
-			statusEl.style.fontWeight = '600';
-			console.log('✅ Status updated for question progress', questionProgress);
-		} else {
-			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
-		}
-		
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('✅ TEST SELECTION COMPLETE - Question Progress ' + questionProgress + ' → Answer: "' + option + '"');
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-	};
-	
-	// Clear Test MCQ Selection (Works for ANY question number)
-	window.clearTestMCQSelection = function(questionProgress) {
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('🔴 CLEAR TEST SELECTION - Question Progress: ' + questionProgress);
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		
-		// Validate input
-		if (questionProgress === undefined || questionProgress === null) {
-			console.error('❌ ERROR: No question progress provided!');
-			return;
-		}
-		
-		// Check current hidden input value
-		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-		if (hiddenMcqAnswer && hiddenMcqAnswer.value) {
-			console.log('📋 Currently selected answer in hidden input:', hiddenMcqAnswer.value);
-		} else {
-			console.log('📋 No answer currently selected');
-		}
-		
-		// Find all options for THIS specific question
-		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
-		const allOptionsInQuestion = document.querySelectorAll(selector);
-		console.log('🔍 Selector:', selector);
-		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
-		
-		if (allOptionsInQuestion.length === 0) {
-			console.error('❌ ERROR: No options found for question progress', questionProgress);
-			console.error('   Check that data-question-progress attributes are set correctly in HTML');
-			return;
-		}
-		
-		// STEP 1: Reset all option styles to default
-		console.log('🔄 Resetting all option styles for question progress', questionProgress);
-		let clearedCount = 0;
-		allOptionsInQuestion.forEach(opt => {
-			opt.style.background = '#f0f9ff';
-			opt.style.borderLeft = '3px solid #3b82f6';
-			opt.style.fontWeight = 'normal';
-			opt.style.border = '1px solid #bfdbfe';
-			clearedCount++;
-		});
-		console.log('✅ Cleared', clearedCount, 'option elements');
-		
-		// STEP 2: Clear hidden input
-		if (hiddenMcqAnswer) {
-			const clearedValue = hiddenMcqAnswer.value;
-			hiddenMcqAnswer.value = '';
-			if (clearedValue) {
-				console.log('🗑️  Removed answer "' + clearedValue + '" from hidden input');
-			} else {
-				console.log('ℹ️  Hidden input was already empty');
-			}
-		} else {
-			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
-		}
-		
-		// STEP 3: Clear visual status indicator
-		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
-		if (statusEl) {
-			statusEl.textContent = '';
-			console.log('✅ Status indicator cleared for question progress', questionProgress);
-		} else {
-			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
-		}
-		
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('✅ TEST CLEAR COMPLETE - Question Progress ' + questionProgress + ' is now unselected');
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-	};
 			
-			// Test interface compiler functionality
-			document.addEventListener('DOMContentLoaded', function() {
-				const codeTextarea = document.getElementById('test-code');
-				const runButton = document.getElementById('run-test-code');
-				const clearButton = document.getElementById('clear-test-code');
-				const outputDiv = document.getElementById('test-output');
-				const testForm = document.getElementById('testForm');
-				const hiddenUserCode = document.getElementById('hidden_user_code');
+			// Clear all selections in this question
+			const allOptions = document.querySelectorAll(`.mcq-option-test[data-question-idx="${questionIdx}"]`);
+			allOptions.forEach(opt => {
+				opt.style.background = '#f0f9ff';
+				opt.style.borderLeft = '3px solid #3b82f6';
+				opt.style.fontWeight = 'normal';
+				opt.style.border = '1px solid #bfdbfe';
+			});
+			
+			// Highlight selected option
+			element.style.background = '#dbeafe';
+			element.style.borderLeft = '3px solid #10b981';
+			element.style.fontWeight = '600';
+			element.style.border = '2px solid #10b981';
+			
+			// Store answer
+			const option = element.getAttribute('data-option');
+			window.testAnswers[questionIdx] = option;
+			
+			// Update status
+			const statusEl = document.getElementById(`test-mcq-status-${questionIdx}`);
+			if (statusEl) {
+				statusEl.textContent = `✓ Selected: ${option}`;
+				statusEl.style.color = '#10b981';
+				statusEl.style.fontWeight = '600';
+			}
+			
+			console.log('Stored answer:', option, 'for question:', questionIdx);
+		};
+		
+		// Clear Test MCQ Selection
+		window.clearTestMCQ = function(questionIdx) {
+			console.log('Clear MCQ - Question #' + questionIdx);
+			
+			const allOptions = document.querySelectorAll(`.mcq-option-test[data-question-idx="${questionIdx}"]`);
+			allOptions.forEach(opt => {
+				opt.style.background = '#f0f9ff';
+				opt.style.borderLeft = '3px solid #3b82f6';
+				opt.style.fontWeight = 'normal';
+				opt.style.border = '1px solid #bfdbfe';
+			});
+			
+			delete window.testAnswers[questionIdx];
+			
+			const statusEl = document.getElementById(`test-mcq-status-${questionIdx}`);
+			if (statusEl) {
+				statusEl.textContent = '';
+			}
+			
+			console.log('Cleared answer for question:', questionIdx);
+		};
+		
+		// Submit all test answers
+		window.submitAllTestAnswers = async function(testId, questions) {
+			console.log('Submitting test:', testId);
+			console.log('Total questions:', questions.length);
+			
+			// Collect all answers
+			const answers = [];
+			let missingAnswers = [];
+			
+			for (let i = 0; i < questions.length; i++) {
+				const question = questions[i];
+				const questionNum = i + 1;
 				
-				if (codeTextarea && runButton && outputDiv) {
-					// Run code function
-					async function runCode() {
-						const code = codeTextarea.value.trim();
-						if (!code) {
-							outputDiv.innerHTML = '<p class="muted">Please enter some Python code to run.</p>';
-							return;
-						}
-						
-						// Show loading state
-						runButton.disabled = true;
-						runButton.textContent = '⏳ Running...';
-						outputDiv.innerHTML = '<p class="muted">Executing code...</p>';
-						
-						try {
-							const formData = new FormData();
-							formData.append('code', code);
-							
-							const response = await fetch('/compiler/execute', {
-								method: 'POST',
-								body: formData
-							});
-							
-							const result = await response.json();
-							
-							// Display results
-							if (result.success) {
-								outputDiv.className = 'output-box output-success';
-								let output = '';
-								if (result.output) {
-									output += result.output;
-								}
-								if (result.error) {
-									output += '\n--- Errors ---\n' + result.error;
-								}
-								outputDiv.textContent = output || 'Code executed successfully (no output)';
-							} else {
-								outputDiv.className = 'output-box output-error';
-								outputDiv.textContent = `Error: ${result.error}`;
-							}
-						} catch (error) {
-							outputDiv.className = 'output-box output-error';
-							outputDiv.textContent = `Network error: ${error.message}`;
-						} finally {
-							// Reset button state
-							runButton.disabled = false;
-							runButton.textContent = '▶️ Run Code';
-						}
+				if (question.question_type === 'mcq') {
+					const answer = window.testAnswers[questionNum];
+					if (!answer) {
+						missingAnswers.push(`Question ${questionNum} (MCQ)`);
 					}
-					
-					// Clear code function
-					function clearCode() {
-						codeTextarea.value = '';
-						outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
-						outputDiv.className = 'output-box';
+					answers.push({
+						question_index: questionNum,
+						question_type: 'mcq',
+						selected_answer: answer || '',
+						question_data: question
+					});
+				} else if (question.question_type === 'coding') {
+					const codeTextarea = document.getElementById(`test-code-${questionNum}`);
+					const code = codeTextarea ? codeTextarea.value.trim() : '';
+					if (!code) {
+						missingAnswers.push(`Question ${questionNum} (Coding)`);
 					}
-					
-					// Event listeners
-					runButton.addEventListener('click', runCode);
-					clearButton.addEventListener('click', clearCode);
-					
-					// Keyboard shortcut: Ctrl+Enter to run code
-					codeTextarea.addEventListener('keydown', function(e) {
-						if (e.ctrlKey && e.key === 'Enter') {
-							e.preventDefault();
-							runCode();
-						}
+					answers.push({
+						question_index: questionNum,
+						question_type: 'coding',
+						user_code: code,
+						question_data: question
+					});
+				}
+			}
+			
+			// Warn about missing answers
+			if (missingAnswers.length > 0) {
+				const confirmSubmit = confirm(`⚠️ You haven't answered:\n${missingAnswers.join('\n')}\n\nSubmit anyway?`);
+				if (!confirmSubmit) {
+					return;
+				}
+			}
+			
+			// Final confirmation
+			if (!confirm('Are you sure you want to submit your test?\n\nYou will NOT be able to change your answers after submission.')) {
+				return;
+			}
+			
+			// Submit to backend
+			try {
+				const response = await fetch('/test/submit_all', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({
+						test_id: testId,
+						answers: answers
+					})
+				});
+				
+				const result = await response.json();
+				
+				if (result.ok) {
+					alert('✅ Test submitted successfully!\n\nYour answers have been recorded.');
+					window.location.href = '/test';
+				} else {
+					alert('❌ Error: ' + (result.error || 'Failed to submit test'));
+				}
+			} catch (error) {
+				alert('❌ Error submitting test: ' + error.message);
+			}
+		};
+		
+		// Run Code buttons for test questions
+		document.querySelectorAll('.run-test-question-code').forEach(btn => {
+			btn.addEventListener('click', async function() {
+				const questionNum = this.getAttribute('data-question');
+				const codeTextarea = document.getElementById(`test-code-${questionNum}`);
+				const outputDiv = document.getElementById(`test-output-${questionNum}`);
+				const code = codeTextarea.value;
+				
+				if (!code.trim()) {
+					outputDiv.className = 'output-box output-error';
+					outputDiv.textContent = 'Error: No code to run';
+					return;
+				}
+				
+				this.disabled = true;
+				this.textContent = '⏳ Running...';
+				outputDiv.className = 'output-box';
+				outputDiv.textContent = 'Executing code...';
+				
+				try {
+					const response = await fetch('/question/execute', {
+						method: 'POST',
+						headers: {'Content-Type': 'application/json'},
+						body: JSON.stringify({ code: code })
 					});
 					
-					// Update hidden fields when form is submitted
-					if (testForm) {
-						testForm.addEventListener('submit', function(e) {
-							// Get question type
-							const questionType = document.getElementById('hidden_question_type').value;
-							const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-							
-							// MANDATORY: Validate that an answer is provided
-							if (questionType === 'mcq') {
-								if (!hiddenMcqAnswer || !hiddenMcqAnswer.value) {
-									e.preventDefault();
-									alert('⚠️ You MUST select an answer before proceeding to the next question.\n\nYou cannot skip questions.');
-									return false;
-								}
-								// Confirm MCQ selection
-								const selectedAnswer = hiddenMcqAnswer.value;
-								if (!confirm(`You selected: ${selectedAnswer}\n\nAre you sure? You cannot change your answer after submitting.`)) {
-									e.preventDefault();
-									return false;
-								}
-							} else if (questionType === 'coding') {
-								// Copy code textarea value for coding questions
-								if (hiddenUserCode && codeTextarea) {
-									hiddenUserCode.value = codeTextarea.value;
-								}
-								
-								if (!hiddenUserCode || !hiddenUserCode.value.trim()) {
-									e.preventDefault();
-									alert('⚠️ You MUST write code before proceeding to the next question.\n\nYou cannot skip questions.');
-									return false;
-								}
-								// Confirm code submission
-								if (!confirm('Are you sure you want to submit your code?\n\nYou cannot change your answer after submitting.')) {
-									e.preventDefault();
-									return false;
-								}
-							}
-						});
+					const result = await response.json();
+					
+					if (result.ok) {
+						outputDiv.className = 'output-box output-success';
+						let output = '';
+						if (result.output) {
+							output += result.output;
+						}
+						if (result.error) {
+							output += '\n--- Errors ---\n' + result.error;
+						}
+						outputDiv.textContent = output || 'Code executed successfully (no output)';
+					} else {
+						outputDiv.className = 'output-box output-error';
+						outputDiv.textContent = `Error: ${result.error}`;
 					}
+				} catch (error) {
+					outputDiv.className = 'output-box output-error';
+					outputDiv.textContent = `Network error: ${error.message}`;
+				} finally {
+					this.disabled = false;
+					this.textContent = '▶️ Run Code';
 				}
 			});
-			</script>
-		{% endif %}
+		});
+		
+		// Clear Code buttons for test questions
+		document.querySelectorAll('.clear-test-question-code').forEach(btn => {
+			btn.addEventListener('click', function() {
+				const questionNum = this.getAttribute('data-question');
+				const codeTextarea = document.getElementById(`test-code-${questionNum}`);
+				const outputDiv = document.getElementById(`test-output-${questionNum}`);
+				codeTextarea.value = '';
+				outputDiv.className = 'output-box';
+				outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
+			});
+		});
+		
+		console.log('✅ Test functions ready');
+		</script>
+	{% endif %}
+
+
 
 		{# JavaScript for test preview #}
 		{% if view == 'test' %}
