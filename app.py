@@ -1451,27 +1451,31 @@ def activity(activity_id: str):
 	if not act or act.get("classroom_id") != user.get("classroom_id"):
 		abort(404)
 	
-	# Parse the generated JSON to extract questions and filter by type (SAME LOGIC AS TESTS)
+	# Parse the generated JSON to extract questions (SAME ROBUST LOGIC AS TESTS)
 	questions = []
 	try:
 		import json
 		generated_data = json.loads(act.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
 		
-		# Read configuration from database
-		num_mcq = act.get("num_mcq", 0)
-		num_coding = act.get("num_coding", 0)
+		# Get configuration (if set)
+		num_mcq = act.get("num_mcq", None)
+		num_coding = act.get("num_coding", None)
 		
-		# Filter by question type
-		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
-		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
-		
-		# Select EXACTLY the requested number (SAME LOGIC AS TESTS)
-		selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
-		selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
-		questions = selected_mcq + selected_coding
-		
-		print(f"Activity {activity_id}: Requested {num_mcq} MCQ + {num_coding} Coding → Displaying {len(selected_mcq)} MCQ + {len(selected_coding)} Coding = {len(questions)} total")
+		# ROBUST LOGIC: Use configuration if valid, otherwise show ALL
+		if num_mcq is not None and num_coding is not None and (num_mcq > 0 or num_coding > 0):
+			# Configuration exists - filter
+			mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+			coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+			selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
+			selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
+			questions = selected_mcq + selected_coding
+			print(f"Activity {activity_id}: Configured - {len(questions)} questions ({len(selected_mcq)} MCQ + {len(selected_coding)} Coding)")
+		else:
+			# No configuration - show all
+			questions = all_questions
+			print(f"Activity {activity_id}: Showing all {len(questions)} questions")
+			
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -2078,10 +2082,18 @@ def debug_time():
 
 @app.route("/test/start")  # Start the actual test
 def test_start():
+	print("\n" + "="*60)
+	print("🚀 /test/start ROUTE CALLED!")
+	print("="*60 + "\n")
+	
 	redir = require_user()
 	if redir:
+		print("❌ Authentication failed - redirecting to login")
 		return redir
 	user = users_col.find_one({"username": session["user_username"]})
+	print(f"✅ User authenticated: {user.get('username')}")
+	print(f"   Role: {user.get('role')}")
+	print(f"   Test ID: {user.get('test_id')}")
 	if user.get("role") not in ("test", "both"):
 		abort(403)
 	test_doc = tests_col.find_one({"test_id": user.get("test_id")})
@@ -2174,40 +2186,36 @@ def test_start():
 				print(f"❌ FATAL: JSON parsed but 'questions' array is empty!")
 				questions = []
 			else:
-				# Step 3: Get test configuration
-				num_mcq = test_doc.get("num_mcq", 0)
-				num_coding = test_doc.get("num_coding", 0)
-				print(f"Step 3: Test configuration from database")
-				print(f"        Requested: {num_mcq} MCQ + {num_coding} Coding")
+				# Step 3: Get test configuration (if set)
+				num_mcq = test_doc.get("num_mcq", None)
+				num_coding = test_doc.get("num_coding", None)
 				
-				# Step 4: Filter by question type
-				mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
-				coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
-				print(f"Step 4: Filtered questions by type")
-				print(f"        Available: {len(mcq_questions)} MCQ, {len(coding_questions)} Coding")
+				# ROBUST LOGIC: If configuration exists and is valid, use it. Otherwise show ALL questions.
+				if num_mcq is not None and num_coding is not None and (num_mcq > 0 or num_coding > 0):
+					# Configuration is set - filter by type
+					print(f"Step 3: Using configured selection")
+					print(f"        Requested: {num_mcq} MCQ + {num_coding} Coding")
+					
+					mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+					coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+					
+					selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
+					selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
+					questions = selected_mcq + selected_coding
+					
+					print(f"Step 4: Selected {len(questions)} questions ({len(selected_mcq)} MCQ + {len(selected_coding)} Coding)")
+				else:
+					# No configuration or invalid - show ALL questions (robust default)
+					print(f"Step 3: Configuration not set - showing ALL {len(all_questions)} questions")
+					questions = all_questions
 				
-				# Step 5: Select EXACTLY the requested number (SIMPLE LOGIC)
-				# If admin wants 2 MCQ + 0 Coding → take first 2 MCQ + 0 Coding
-				# If admin wants 5 MCQ + 3 Coding → take first 5 MCQ + first 3 Coding
-				selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
-				selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
-				questions = selected_mcq + selected_coding
-				
-				print(f"Step 5: Selected questions")
-				print(f"        Taking: {len(selected_mcq)} MCQ + {len(selected_coding)} Coding")
-				print(f"        Total: {len(questions)} questions")
-				
-				# Step 6: Show what will be displayed
+				# Show what will be displayed
 				if questions:
 					print(f"\n📋 QUESTIONS TO DISPLAY:")
 					for i, q in enumerate(questions):
 						print(f"  {i+1}. [{q.get('question_type', 'unknown').upper()}] {q.get('title', 'NO TITLE')[:60]}")
 				else:
-					print(f"\n⚠️ WARNING: 0 questions selected!")
-					print(f"   Check: Admin requested {num_mcq} MCQ + {num_coding} Coding")
-					print(f"   Check: Database has {len(mcq_questions)} MCQ + {len(coding_questions)} Coding")
-					if num_mcq == 0 and num_coding == 0:
-						print(f"   ISSUE: Admin requested 0 MCQ + 0 Coding = no questions!")
+					print(f"\n⚠️ WARNING: No questions available!")
 		
 	except json.JSONDecodeError as e:
 		print(f"\n❌ JSON PARSE ERROR: {e}")
