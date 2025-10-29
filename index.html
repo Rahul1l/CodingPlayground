@@ -4736,34 +4736,7 @@ print(f'Sum: {x + y}')"></textarea>
 			}
 		}
 
-		// Test restrictions (disable copy/paste, right-click, etc.)
-		function enableTestRestrictions() {
-			// Disable right-click
-			document.addEventListener('contextmenu', e => e.preventDefault());
-			
-			// Disable copy/paste
-			document.addEventListener('copy', e => e.preventDefault());
-			document.addEventListener('paste', e => e.preventDefault());
-			document.addEventListener('cut', e => e.preventDefault());
-			
-			// Disable F12, Ctrl+Shift+I, etc.
-			document.addEventListener('keydown', e => {
-				if (e.key === 'F12' || 
-					(e.ctrlKey && e.shiftKey && e.key === 'I') ||
-					(e.ctrlKey && e.shiftKey && e.key === 'C') ||
-					(e.ctrlKey && e.key === 'U')) {
-					e.preventDefault();
-				}
-			});
-			
-			// Disable text selection
-			document.addEventListener('selectstart', e => e.preventDefault());
-		}
-
-		// Initialize test restrictions if on test page
-		if (window.location.pathname.includes('/test/start')) {
-			enableTestRestrictions();
-		}
+	// No test restrictions - users can freely copy, paste, and use developer tools
 
 		// Auto-save form data
 		function autoSaveForm(formId) {

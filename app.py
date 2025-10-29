@@ -1407,8 +1407,6 @@ def user_logout():
 	session.pop("user_username", None)
 	session.pop("user_role", None)
 	session.pop("test_progress", None)
-	session.pop("test_warnings", None)
-	session.pop("test_violations", None)
 	return redirect(url_for("login"))
 
 
@@ -2128,13 +2126,9 @@ def test_start():
 	else:
 		return render_template("index.html", view="test", error="No test scheduled" )
 	
-	# Initialize progress and anti-cheat tracking
+	# Initialize progress
 	if session.get("test_progress") is None:
 		session["test_progress"] = 0
-	if session.get("test_warnings") is None:
-		session["test_warnings"] = 0
-	if session.get("test_violations") is None:
-		session["test_violations"] = []
 	
 	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
 	questions = []
@@ -2171,63 +2165,7 @@ def test_start():
 	
 	# Show the actual test interface
 	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question, 
-		warning_count=session.get("test_warnings", 0))
-
-
-@app.route("/test/violation", methods=["POST"])  # Record test violations
-def test_violation():
-	"""Record anti-cheat violations during test"""
-	redir = require_user()
-	if redir:
-		return jsonify({"ok": False, "error": "Not authenticated"}), 401
-	
-	user = users_col.find_one({"username": session["user_username"]})
-	if user.get("role") not in ("test", "both"):
-		return jsonify({"ok": False, "error": "Not authorized"}), 403
-	
-	violation_type = request.json.get("type", "unknown")
-	timestamp = datetime.now(timezone.utc)
-	
-	# Initialize warnings if not present
-	if session.get("test_warnings") is None:
-		session["test_warnings"] = 0
-	if session.get("test_violations") is None:
-		session["test_violations"] = []
-	
-	# Increment warning count
-	session["test_warnings"] += 1
-	warning_count = session["test_warnings"]
-	
-	# Record violation
-	violation_record = {
-		"type": violation_type,
-		"timestamp": timestamp.isoformat(),
-		"warning_number": warning_count
-	}
-	session["test_violations"].append(violation_record)
-	session.modified = True
-	
-	# Log violation to database for audit
-	test_id = user.get("test_id")
-	submissions_col.insert_one({
-		"username": user["username"],
-		"context": "test_violation",
-		"test_id": test_id,
-		"violation_type": violation_type,
-		"warning_number": warning_count,
-		"created_at": timestamp
-	})
-	
-	# Check if test should be auto-closed
-	auto_close = warning_count >= 3
-	
-	return jsonify({
-		"ok": True,
-		"warning_count": warning_count,
-		"auto_close": auto_close,
-		"message": f"Warning {warning_count}/3: {violation_type}"
-	})
+		questions=questions, current_question=current_question)
 
 
 @app.route("/test/submit", methods=["POST"])  # Sequential submission, no output displayed
@@ -2634,8 +2572,6 @@ Return a JSON with:
 	
 	# Clear session
 	session.pop("test_progress", None)
-	session.pop("test_warnings", None)
-	session.pop("test_violations", None)
 	
 	print(f"Test submitted: {user['username']} - {test_id} - Score: {correct_count}/{total_questions}")
 	
@@ -2676,15 +2612,11 @@ def test_complete():
 		"test_id": test_id,
 		"final_score": final_score,
 		"total_questions": total,
-		"violations": session.get("test_violations", []),
-		"warning_count": session.get("test_warnings", 0),
 		"created_at": datetime.now(timezone.utc)
 	})
 	
-	# Reset progress and warnings
+	# Reset progress
 	session.pop("test_progress", None)
-	session.pop("test_warnings", None)
-	session.pop("test_violations", None)
 	
 	# Don't pass score to template - user won't see it
 	return render_template("index.html", view="test_result", 
