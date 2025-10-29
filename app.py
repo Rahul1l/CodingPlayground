@@ -2130,7 +2130,7 @@ def test_start():
 	if session.get("test_progress") is None:
 		session["test_progress"] = 0
 	
-	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
+	# Parse the generated JSON to extract questions and filter by type (EXACT SAME LOGIC AS CLASSROOM ACTIVITY)
 	questions = []
 	try:
 		import json
@@ -2141,31 +2141,17 @@ def test_start():
 		num_mcq = test_doc.get("num_mcq", 0)
 		num_coding = test_doc.get("num_coding", 0)
 		
-		print(f"DEBUG: Test {test_doc.get('test_id')}: Found {len(all_questions)} total questions")
-		print(f"DEBUG: Requested {num_mcq} MCQ, {num_coding} coding")
-		
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
-		
-		print(f"DEBUG: Available - {len(mcq_questions)} MCQ, {len(coding_questions)} coding")
 		
 		# Take exactly the requested number of each type
 		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
 		
-		print(f"DEBUG: Final questions list has {len(questions)} questions")
-		if questions:
-			for i, q in enumerate(questions):
-				print(f"  Question {i+1}: {q.get('title', 'No title')} ({q.get('question_type', 'unknown')})")
-		else:
-			print("WARNING: No questions to display!")
-			
+		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
 	except Exception as e:
-		print(f"ERROR parsing test JSON: {e}")
-		import traceback
-		traceback.print_exc()
+		print(f"Error parsing test JSON: {e}")
 		questions = []
 	
-	# Show the actual test interface (multi-question view)
 	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
 
 
