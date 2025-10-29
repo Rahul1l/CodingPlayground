@@ -839,6 +839,10 @@ def admin_submission_detail(submission_id):
 			return render_template("index.html", view="admin_submission_detail", 
 				error=f"Submission not found: {submission_id}")
 		
+		# Convert ObjectId to string for JSON serialization
+		if "_id" in submission:
+			submission["_id"] = str(submission["_id"])
+		
 		logger.info(f"Found submission: {submission_id}, context: {submission.get('context')}")
 		return render_template("index.html", view="admin_submission_detail", submission=submission)
 	except Exception as e:
