@@ -3245,37 +3245,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</section>
 			{% endif %}
 			
-			{% if current_question %}
-			<script>
-			// Anti-Cheat System for Test Interface
-			(function(){
-				// FULLSCREEN MODE - Request fullscreen immediately
-				function enterFullscreen() {
-					const elem = document.documentElement;
-					if (elem.requestFullscreen) {
-						elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-					} else if (elem.webkitRequestFullscreen) {
-						elem.webkitRequestFullscreen();
-					} else if (elem.msRequestFullscreen) {
-						elem.msRequestFullscreen();
-					}
-				}
+		{% if current_question %}
+		<script>
+		// Lightweight Monitoring for Test Interface (NO FULLSCREEN)
+		(function(){
+			console.log('🔒 Test Mode: Basic monitoring active (no fullscreen)');
+			console.log('⚠️ Tab switching will be logged');
 				
-				// Try to enter fullscreen
-				enterFullscreen();
-				
-				// Alert user about fullscreen requirement
-				alert('⚠️ TEST MODE ACTIVATED\n\n✓ The test will open in fullscreen mode\n✓ Do not switch tabs or windows\n✓ Do not press F11 or Esc\n✓ Violations will be recorded\n\nClick OK to continue');
-				
-				// Configuration
-				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
+				// Simple configuration
 				const MAX_WARNINGS = 3;
-				
-				// State
 				let warningCount = {{ warning_count }};
-				let inactivityTimer = null;
-				let lastActivityTime = Date.now();
-				let isInactivityWarningShown = false;
+				let tabSwitchCount = 0;
 				
 				// Record violation and show warning
 				async function recordViolation(violationType) {
@@ -3506,11 +3486,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				// Initialize activity timer
 				resetActivityTimer();
 				
-				console.log('🔒 Anti-cheat system active');
-				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
-			})();
-			</script>
-			{% endif %}
+			console.log('🔒 Lightweight anti-cheat active');
+			console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
+		})();
+		</script>
+		{% endif %}
 			
 			<script>
 		// MCQ Selection Handler for Tests (Works for ANY question number)
