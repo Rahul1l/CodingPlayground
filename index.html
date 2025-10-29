@@ -1551,7 +1551,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					</div>
 						{% endif %}
 						
-						<form class="login-form" method="post" action="/login">
+						<form class="login-form" method="post" action="/admin/login">
 							<div class="form-group">
 								<label for="username" class="form-label">
 									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2011,7 +2011,7 @@ student3,unique003,Stanford,classroom,act002</pre>
 			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
-					<h2>📊 Submissions & Violation Logs</h2>
+					<h2>📊 Submissions</h2>
 					<div>
 						<a href="/admin/submissions/export?context={{ filter_context }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">📥 Export CSV</a>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
@@ -2025,16 +2025,6 @@ student3,unique003,Stanford,classroom,act002</pre>
 					<h3>📈 Total Submissions</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ stats.total_submissions }}</p>
 					<p class="muted">All submission types</p>
-				</div>
-				<div class="card">
-					<h3>✅ Tests Completed</h3>
-					<p style="font-size: 2rem; font-weight: 700; color: #10b981;">{{ stats.total_test_completions }}</p>
-					<p class="muted">Final scores available</p>
-				</div>
-				<div class="card">
-					<h3>⚠️ Violations</h3>
-					<p style="font-size: 2rem; font-weight: 700; color: #dc2626;">{{ stats.total_violations }}</p>
-					<p class="muted">Anti-cheat warnings</p>
 				</div>
 				<div class="card">
 					<h3>👥 Active Users</h3>
@@ -2089,61 +2079,6 @@ student3,unique003,Stanford,classroom,act002</pre>
 			</section>
 			{% endif %}
 
-			{# Violation Statistics #}
-			{% if violation_stats %}
-			<section class="card">
-				<h3>🔍 Violation Breakdown</h3>
-				<div class="table-container">
-					<table>
-						<thead>
-							<tr>
-								<th>Violation Type</th>
-								<th>Count</th>
-								<th>Percentage</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for stat in violation_stats %}
-							<tr>
-								<td><strong>{{ stat._id }}</strong></td>
-								<td>{{ stat.count }}</td>
-								<td>{{ "%.1f"|format((stat.count / stats.total_violations * 100) if stats.total_violations > 0 else 0) }}%</td>
-							</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-			</section>
-			{% endif %}
-
-			{# Top Violators #}
-			{% if user_violations %}
-			<section class="card">
-				<h3>⚠️ Users with Most Violations (Top 10)</h3>
-				<div class="table-container">
-					<table>
-						<thead>
-							<tr>
-								<th>Username</th>
-								<th>Violation Count</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for user_stat in user_violations %}
-							<tr>
-								<td><strong>{{ user_stat._id }}</strong></td>
-								<td><span class="role-badge role-test">{{ user_stat.count }} violations</span></td>
-								<td>
-									<a href="/admin/submissions?username={{ user_stat._id }}" class="btn secondary small">View Details</a>
-								</td>
-							</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-			</section>
-			{% endif %}
 
 			{# Filters #}
 			<section class="card">
@@ -2650,11 +2585,6 @@ student3,unique003,Stanford,classroom,act002</pre>
 						<h3>Classroom Activities</h3>
 						<p>Work on coding exercises and get AI feedback.</p>
 						<a class="btn" href="/classroom">Go to Classroom</a>
-					</div>
-					<div class="card">
-						<h3>Take Test</h3>
-						<p>Take your scheduled coding test.</p>
-						<a class="btn" href="/test">Go to Test</a>
 					</div>
 					<div class="card">
 						<h3>🐍 Python Compiler</h3>
@@ -3687,35 +3617,6 @@ print(f'Sum: {x + y}')"></textarea>
 	</script>
 	{% endif %}
 
-	{% if view == 'admin_tests' %}
-	<script>
-	async function deleteTest(testId) {
-		if (!confirm(`Are you sure you want to delete test "${testId}"?`)) {
-			return;
-		}
-		
-		try {
-			const response = await fetch(`/admin/tests/delete/${testId}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				}
-			});
-			
-			const data = await response.json();
-			
-			if (data.ok) {
-				alert(data.message);
-				location.reload();
-			} else {
-				alert(data.message || 'Error deleting test');
-			}
-		} catch (error) {
-			alert('Error deleting test: ' + error.message);
-		}
-	}
-	</script>
-	{% endif %}
 
 	{% if view == 'compiler' %}
 	<script>
