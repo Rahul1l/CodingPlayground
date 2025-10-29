@@ -3209,9 +3209,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<h3>📝 Submit Your Test</h3>
 			<p class="muted">Review all your answers above and click Submit when ready. Once submitted, you cannot change your answers.</p>
 			<div style="margin-top: 1.5rem;">
-				<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions|tojson }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-					✅ Submit All Answers
-				</button>
+			<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+				✅ Submit All Answers
+			</button>
 				<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
 					Cancel
 				</button>
