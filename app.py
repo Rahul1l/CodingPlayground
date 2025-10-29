@@ -2132,7 +2132,6 @@ def test_start():
 	
 	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
 	questions = []
-	current_question = None
 	try:
 		import json
 		generated_data = json.loads(test_doc.get("generated", "{}"))
@@ -2142,30 +2141,32 @@ def test_start():
 		num_mcq = test_doc.get("num_mcq", 0)
 		num_coding = test_doc.get("num_coding", 0)
 		
+		print(f"DEBUG: Test {test_doc.get('test_id')}: Found {len(all_questions)} total questions")
+		print(f"DEBUG: Requested {num_mcq} MCQ, {num_coding} coding")
+		
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		print(f"DEBUG: Available - {len(mcq_questions)} MCQ, {len(coding_questions)} coding")
 		
 		# Take exactly the requested number of each type
 		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
 		
-		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
-		
-		# Get current question based on progress
-		progress = session["test_progress"]
-		if progress < len(questions):
-			current_question = questions[progress]
-			print(f"Current question (progress {progress}): {current_question.get('title', 'No title') if current_question else 'None'}")
+		print(f"DEBUG: Final questions list has {len(questions)} questions")
+		if questions:
+			for i, q in enumerate(questions):
+				print(f"  Question {i+1}: {q.get('title', 'No title')} ({q.get('question_type', 'unknown')})")
 		else:
-			print(f"Progress {progress} is beyond question count {len(questions)}")
+			print("WARNING: No questions to display!")
+			
 	except Exception as e:
-		print(f"Error parsing test JSON: {e}")
+		print(f"ERROR parsing test JSON: {e}")
 		import traceback
 		traceback.print_exc()
 		questions = []
 	
-	# Show the actual test interface
-	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question)
+	# Show the actual test interface (multi-question view)
+	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
 
 
 @app.route("/test/submit", methods=["POST"])  # Sequential submission, no output displayed
