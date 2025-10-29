@@ -1312,60 +1312,6 @@ def admin_create_classroom_activity():
 	return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/test/regenerate/<test_id>", methods=["POST"])
-def admin_regenerate_test(test_id):
-	"""Regenerate questions for an existing test"""
-	redir = require_admin()
-	if redir:
-		return redir
-	
-	test_doc = tests_col.find_one({"test_id": test_id})
-	if not test_doc:
-		return jsonify({"ok": False, "error": "Test not found"}), 404
-	
-	subject = test_doc.get("subject")
-	toc = test_doc.get("toc", "")
-	num_mcq = test_doc.get("num_mcq", 0)
-	num_coding = test_doc.get("num_coding", 0)
-	
-	try:
-		print(f"Regenerating test {test_id}: {subject}, {num_mcq} MCQ + {num_coding} coding")
-		content = _ai_generate_test(subject, toc, num_mcq, num_coding)
-		
-		# Clean and validate JSON
-		import re, json
-		json_content = content
-		
-		if "```json" in content or "```" in content:
-			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
-			if match:
-				json_content = match.group(1)
-		
-		if not json_content.strip().startswith('{'):
-			match = re.search(r'\{.*\}', content, re.DOTALL)
-			if match:
-				json_content = match.group(0)
-		
-		parsed = json.loads(json_content)
-		if "questions" not in parsed or not parsed["questions"]:
-			return jsonify({"ok": False, "error": "Generated content has no questions"}), 500
-		
-		# Update test with new questions
-		tests_col.update_one(
-			{"test_id": test_id},
-			{"$set": {"generated": json_content, "regenerated_at": datetime.now(timezone.utc)}}
-		)
-		
-		print(f"Successfully regenerated {len(parsed['questions'])} questions for test {test_id}")
-		return jsonify({"ok": True, "message": f"Regenerated {len(parsed['questions'])} questions"})
-		
-	except Exception as e:
-		print(f"Error regenerating test: {e}")
-		import traceback
-		traceback.print_exc()
-		return jsonify({"ok": False, "error": str(e)}), 500
-
-
 @app.route("/admin/create_test", methods=["POST"])  # Generate test; scheduled
 def admin_create_test():
 	redir = require_admin()
@@ -2193,71 +2139,32 @@ def test_start():
 	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
 	questions = []
 	current_question = None
-	error_details = None
-	
 	try:
 		import json
-		
-		# Get the generated content
-		generated_str = test_doc.get("generated", "{}")
-		print(f"DEBUG: Generated string type: {type(generated_str)}, length: {len(str(generated_str))}")
-		print(f"DEBUG: First 200 chars of generated: {str(generated_str)[:200]}")
-		
-		# Parse the JSON
-		if isinstance(generated_str, str):
-			generated_data = json.loads(generated_str)
-		else:
-			generated_data = generated_str  # Already a dict
-		
-		print(f"DEBUG: Generated data type: {type(generated_data)}, keys: {generated_data.keys() if isinstance(generated_data, dict) else 'not a dict'}")
-		
+		generated_data = json.loads(test_doc.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
-		print(f"DEBUG: All questions count: {len(all_questions)}")
-		
-		if not all_questions:
-			error_details = f"No questions found in test. Generated data keys: {list(generated_data.keys())}"
-			print(f"ERROR: {error_details}")
 		
 		# Filter questions by type according to num_mcq and num_coding
 		num_mcq = test_doc.get("num_mcq", 0)
 		num_coding = test_doc.get("num_coding", 0)
 		
-		print(f"DEBUG: Requested num_mcq={num_mcq}, num_coding={num_coding}")
-		
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
-		
-		print(f"DEBUG: Found {len(mcq_questions)} MCQ questions, {len(coding_questions)} coding questions")
 		
 		# Take exactly the requested number of each type
 		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
 		
-		print(f"DEBUG: Final questions list has {len(questions)} questions")
-		
-		if not questions:
-			error_details = f"No questions after filtering. Requested {num_mcq} MCQ + {num_coding} coding, but found {len(mcq_questions)} MCQ + {len(coding_questions)} coding in generated data."
-			print(f"ERROR: {error_details}")
+		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
 		
 		# Get current question based on progress
 		progress = session["test_progress"]
-		print(f"DEBUG: Current progress: {progress}")
-		
 		if progress < len(questions):
 			current_question = questions[progress]
-			print(f"DEBUG: Current question type: {current_question.get('question_type')}, title: {current_question.get('title', 'No title')}")
+			print(f"Current question (progress {progress}): {current_question.get('title', 'No title') if current_question else 'None'}")
 		else:
-			error_details = f"Progress {progress} is beyond question count {len(questions)}"
-			print(f"ERROR: {error_details}")
-			
-	except json.JSONDecodeError as e:
-		error_details = f"JSON parsing error: {str(e)}"
-		print(f"ERROR: {error_details}")
-		import traceback
-		traceback.print_exc()
-		questions = []
+			print(f"Progress {progress} is beyond question count {len(questions)}")
 	except Exception as e:
-		error_details = f"Unexpected error: {str(e)}"
-		print(f"ERROR: {error_details}")
+		print(f"Error parsing test JSON: {e}")
 		import traceback
 		traceback.print_exc()
 		questions = []
@@ -2265,7 +2172,7 @@ def test_start():
 	# Show the actual test interface
 	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
 		questions=questions, current_question=current_question, 
-		warning_count=session.get("test_warnings", 0), error_details=error_details)
+		warning_count=session.get("test_warnings", 0))
 
 
 @app.route("/test/violation", methods=["POST"])  # Record test violations
@@ -2570,109 +2477,6 @@ Your evaluation approach:
 	if idx >= total_questions:
 		return redirect(url_for("test_complete"))
 	return redirect(url_for("test_start"))
-
-
-@app.route("/test/submit_all", methods=["POST"])
-def test_submit_all():
-	"""Submit all test answers at once (like classroom activities)"""
-	redir = require_user()
-	if redir:
-		return jsonify({"ok": False, "error": "Not authenticated"}), 401
-	
-	user = users_col.find_one({"username": session["user_username"]})
-	if user.get("role") not in ("test", "both"):
-		return jsonify({"ok": False, "error": "Not authorized"}), 403
-	
-	data = request.json
-	test_id = data.get("test_id")
-	answers = data.get("answers", [])
-	
-	if not test_id or not answers:
-		return jsonify({"ok": False, "error": "Missing required fields"}), 400
-	
-	# Check if already submitted
-	already_completed = submissions_col.find_one({
-		"username": user["username"],
-		"context": "test_complete",
-		"test_id": test_id
-	})
-	
-	if already_completed:
-		return jsonify({"ok": False, "error": "Test already submitted"}), 403
-	
-	# Evaluate all answers
-	results = []
-	correct_count = 0
-	total_questions = len(answers)
-	
-	for answer in answers:
-		question_index = answer.get("question_index")
-		question_type = answer.get("question_type")
-		question_data = answer.get("question_data", {})
-		
-		if question_type == "mcq":
-			selected_answer = answer.get("selected_answer")
-			correct_answer = question_data.get("correct_answer", "")
-			
-			# Check if correct
-			is_correct = False
-			if selected_answer and correct_answer:
-				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
-			
-			if is_correct:
-				correct_count += 1
-			
-			results.append({
-				"question_index": question_index,
-				"question_type": "mcq",
-				"question_title": question_data.get("title", ""),
-				"selected_answer": selected_answer,
-				"correct_answer": correct_answer,
-				"is_correct": is_correct
-			})
-			
-		elif question_type == "coding":
-			user_code = answer.get("user_code")
-			
-			# For tests, we'll mark coding as correct (admin will manually grade)
-			results.append({
-				"question_index": question_index,
-				"question_type": "coding",
-				"question_title": question_data.get("title", ""),
-				"user_code": user_code,
-				"is_correct": True,  # Admin will manually grade
-				"note": "Requires manual grading"
-			})
-			correct_count += 1  # Count as correct for now
-	
-	# Calculate percentage
-	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
-	
-	# Store aggregate submission in database
-	submission_doc = {
-		"username": user["username"],
-		"university": user.get("university", "Unknown"),
-		"test_id": test_id,
-		"context": "test_complete",
-		"total_questions": total_questions,
-		"correct_count": correct_count,
-		"score": f"{correct_count}/{total_questions}",
-		"percentage": percentage,
-		"details": results,
-		"created_at": datetime.now(timezone.utc)
-	}
-	
-	submissions_col.insert_one(submission_doc)
-	
-	# Clear session
-	session.pop("test_progress", None)
-	session.pop("test_warnings", None)
-	session.pop("test_violations", None)
-	
-	print(f"Test submitted: {user['username']} - {test_id} - Score: {correct_count}/{total_questions}")
-	
-	# For tests, we don't return the score to the user
-	return jsonify({"ok": True, "message": "Test submitted successfully"})
 
 
 @app.route("/test/complete")
