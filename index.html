@@ -2273,6 +2273,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 			</section>
 
+			{% if error %}
+			<section class="card" style="border-left: 4px solid #dc2626;">
+				<div class="alert">
+					<strong>⚠️ Error Loading Submission</strong><br>
+					{{ error }}
+				</div>
+				<p class="muted">Please check the submission ID and try again.</p>
+			</section>
+			{% elif submission %}
 			<section class="card">
 				<h3>Basic Information</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
@@ -2406,6 +2415,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<pre class="scroll" style="max-height: 500px;">{{ submission | tojson(indent=2) }}</pre>
 				</details>
 			</section>
+			{% endif %}
 		{% endif %}
 
 

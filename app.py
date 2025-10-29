@@ -498,12 +498,24 @@ def admin_attempt_activity(activity_id: str):
 	if not activity:
 		abort(404)
 	
-	# Parse questions from generated content
+	# Parse questions from generated content and filter by type
 	questions = []
 	try:
 		import json
 		generated_data = json.loads(activity.get("generated", "{}"))
-		questions = generated_data.get("questions", [])
+		all_questions = generated_data.get("questions", [])
+		
+		# Filter questions by type according to num_mcq and num_coding
+		num_mcq = activity.get("num_mcq", 0)
+		num_coding = activity.get("num_coding", 0)
+		
+		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		# Take exactly the requested number of each type
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		
+		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -813,13 +825,28 @@ def admin_submission_detail(submission_id):
 	
 	from bson.objectid import ObjectId
 	try:
-		submission = submissions_col.find_one({"_id": ObjectId(submission_id)})
-		if not submission:
-			abort(404)
+		# Try to convert to ObjectId
+		try:
+			obj_id = ObjectId(submission_id)
+		except Exception as e:
+			logger.error(f"Invalid submission_id format: {submission_id}, error: {e}")
+			return render_template("index.html", view="admin_submission_detail", 
+				error=f"Invalid submission ID format: {submission_id}")
 		
+		submission = submissions_col.find_one({"_id": obj_id})
+		if not submission:
+			logger.error(f"Submission not found: {submission_id}")
+			return render_template("index.html", view="admin_submission_detail", 
+				error=f"Submission not found: {submission_id}")
+		
+		logger.info(f"Found submission: {submission_id}, context: {submission.get('context')}")
 		return render_template("index.html", view="admin_submission_detail", submission=submission)
-	except:
-		abort(404)
+	except Exception as e:
+		logger.error(f"Error retrieving submission {submission_id}: {e}")
+		import traceback
+		traceback.print_exc()
+		return render_template("index.html", view="admin_submission_detail", 
+			error=f"Error retrieving submission: {str(e)}")
 
 
 def execute_python_code(code: str, timeout: int = 5) -> dict:
@@ -1363,12 +1390,24 @@ def activity(activity_id: str):
 	if not act or act.get("classroom_id") != user.get("classroom_id"):
 		abort(404)
 	
-	# Parse the generated JSON to extract questions
+	# Parse the generated JSON to extract questions and filter by type
 	questions = []
 	try:
 		import json
 		generated_data = json.loads(act.get("generated", "{}"))
-		questions = generated_data.get("questions", [])
+		all_questions = generated_data.get("questions", [])
+		
+		# Filter questions by type according to num_mcq and num_coding
+		num_mcq = act.get("num_mcq", 0)
+		num_coding = act.get("num_coding", 0)
+		
+		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		# Take exactly the requested number of each type
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		
+		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -1747,7 +1786,7 @@ def test_start():
 	if session.get("test_violations") is None:
 		session["test_violations"] = []
 	
-	# Parse the generated JSON to extract questions
+	# Parse the generated JSON to extract questions and filter by type
 	questions = []
 	current_question = None
 	parse_error = None
@@ -1777,8 +1816,20 @@ def test_start():
 				print("Extracted JSON object from text")
 		
 		generated_data = json.loads(json_content)
-		questions = generated_data.get("questions", [])
-		print(f"Number of questions parsed: {len(questions)}")
+		all_questions = generated_data.get("questions", [])
+		
+		# Filter questions by type according to num_mcq and num_coding
+		num_mcq = test_doc.get("num_mcq", 0)
+		num_coding = test_doc.get("num_coding", 0)
+		
+		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		# Take exactly the requested number of each type
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		
+		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
+		print(f"Number of questions after filtering: {len(questions)}")
 		
 		# Get current question based on progress
 		progress = session["test_progress"]
@@ -1903,14 +1954,40 @@ def test_submit():
 	question_type = request.form.get("question_type", "coding")
 	question_bank_json = test_doc.get("generated", "")
 	
-	# Get current question details
+	# Get current question details with filtering by type
 	try:
 		import json
-		generated_data = json.loads(question_bank_json)
-		questions = generated_data.get("questions", [])
+		import re
+		
+		# Extract JSON content (handle markdown code blocks)
+		json_content = question_bank_json
+		if "```json" in question_bank_json or "```" in question_bank_json:
+			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', question_bank_json, re.DOTALL)
+			if match:
+				json_content = match.group(1)
+		if not json_content.strip().startswith('{'):
+			match = re.search(r'\{.*\}', question_bank_json, re.DOTALL)
+			if match:
+				json_content = match.group(0)
+		
+		generated_data = json.loads(json_content)
+		all_questions = generated_data.get("questions", [])
+		
+		# Filter questions by type according to num_mcq and num_coding
+		num_mcq = test_doc.get("num_mcq", 0)
+		num_coding = test_doc.get("num_coding", 0)
+		
+		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		# Take exactly the requested number of each type
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		
 		current_question = questions[idx] if idx < len(questions) else None
-	except:
+	except Exception as e:
+		print(f"Error parsing test questions in submit: {e}")
 		current_question = None
+		questions = []
 	
 	# Evaluate based on question type
 	if mcq_answer and question_type == "mcq" and current_question:
@@ -2040,9 +2117,39 @@ Your evaluation approach:
 	# Move to next question
 	idx += 1
 	session["test_progress"] = idx
-	if idx >= int(test_doc.get("num_questions", 0)):
+	# Check if all questions have been answered (use filtered count)
+	try:
+		# Re-filter questions to get the correct count
+		import json
+		import re
+		json_content = test_doc.get("generated", "")
+		if "```json" in json_content or "```" in json_content:
+			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', json_content, re.DOTALL)
+			if match:
+				json_content = match.group(1)
+		if not json_content.strip().startswith('{'):
+			match = re.search(r'\{.*\}', json_content, re.DOTALL)
+			if match:
+				json_content = match.group(0)
+		
+		generated_data = json.loads(json_content)
+		all_questions = generated_data.get("questions", [])
+		
+		num_mcq = test_doc.get("num_mcq", 0)
+		num_coding = test_doc.get("num_coding", 0)
+		
+		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		
+		filtered_questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		total_questions = len(filtered_questions)
+	except Exception as e:
+		print(f"Error counting questions: {e}")
+		total_questions = int(test_doc.get("num_questions", 0))
+	
+	if idx >= total_questions:
 		return redirect(url_for("test_complete"))
-	return redirect(url_for("test"))
+	return redirect(url_for("test_start"))
 
 
 @app.route("/test/complete")
