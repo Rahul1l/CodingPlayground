@@ -2572,6 +2572,109 @@ Your evaluation approach:
 	return redirect(url_for("test_start"))
 
 
+@app.route("/test/submit_all", methods=["POST"])
+def test_submit_all():
+	"""Submit all test answers at once (like classroom activities)"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("test", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	test_id = data.get("test_id")
+	answers = data.get("answers", [])
+	
+	if not test_id or not answers:
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Check if already submitted
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id
+	})
+	
+	if already_completed:
+		return jsonify({"ok": False, "error": "Test already submitted"}), 403
+	
+	# Evaluate all answers
+	results = []
+	correct_count = 0
+	total_questions = len(answers)
+	
+	for answer in answers:
+		question_index = answer.get("question_index")
+		question_type = answer.get("question_type")
+		question_data = answer.get("question_data", {})
+		
+		if question_type == "mcq":
+			selected_answer = answer.get("selected_answer")
+			correct_answer = question_data.get("correct_answer", "")
+			
+			# Check if correct
+			is_correct = False
+			if selected_answer and correct_answer:
+				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "mcq",
+				"question_title": question_data.get("title", ""),
+				"selected_answer": selected_answer,
+				"correct_answer": correct_answer,
+				"is_correct": is_correct
+			})
+			
+		elif question_type == "coding":
+			user_code = answer.get("user_code")
+			
+			# For tests, we'll mark coding as correct (admin will manually grade)
+			results.append({
+				"question_index": question_index,
+				"question_type": "coding",
+				"question_title": question_data.get("title", ""),
+				"user_code": user_code,
+				"is_correct": True,  # Admin will manually grade
+				"note": "Requires manual grading"
+			})
+			correct_count += 1  # Count as correct for now
+	
+	# Calculate percentage
+	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
+	
+	# Store aggregate submission in database
+	submission_doc = {
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"test_id": test_id,
+		"context": "test_complete",
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results,
+		"created_at": datetime.now(timezone.utc)
+	}
+	
+	submissions_col.insert_one(submission_doc)
+	
+	# Clear session
+	session.pop("test_progress", None)
+	session.pop("test_warnings", None)
+	session.pop("test_violations", None)
+	
+	print(f"Test submitted: {user['username']} - {test_id} - Score: {correct_count}/{total_questions}")
+	
+	# For tests, we don't return the score to the user
+	return jsonify({"ok": True, "message": "Test submitted successfully"})
+
+
 @app.route("/test/complete")
 def test_complete():
 	redir = require_user()
