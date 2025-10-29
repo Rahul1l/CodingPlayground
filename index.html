@@ -2219,12 +2219,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<label>Context Type</label>
 						<select name="context">
 							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Types</option>
-							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Final Scores</option>
+							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Test Complete</option>
+							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>✅ Classroom Complete</option>
 							<option value="test_violation" {% if filter_context == 'test_violation' %}selected{% endif %}>⚠️ Violations</option>
-							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Submissions</option>
-							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Legacy)</option>
-							<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ</option>
-							<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding</option>
+							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Questions</option>
+							<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ (Legacy)</option>
+							<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding (Legacy)</option>
+							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Old)</option>
 						</select>
 					</div>
 					<div>
@@ -2296,11 +2297,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 									{% if sub.context == 'test_violation' %}
 										<span class="role-badge" style="background: #dc2626; color: white;">⚠️ Violation</span>
 									{% elif sub.context == 'test_complete' %}
-										<span class="role-badge" style="background: #10b981; color: white;">✅ Complete</span>
+										<span class="role-badge" style="background: #10b981; color: white;">✅ Test Complete</span>
+									{% elif sub.context == 'classroom_activity_complete' %}
+										<span class="role-badge" style="background: #8b5cf6; color: white;">✅ Classroom Complete</span>
 									{% elif sub.context == 'test' %}
-										<span class="role-badge role-test">📝 Test</span>
+										<span class="role-badge role-test">📝 Test Q</span>
 									{% elif sub.context == 'classroom' %}
-										<span class="role-badge role-classroom">🎓 Classroom</span>
+										<span class="role-badge role-classroom">🎓 Old</span>
 									{% elif sub.context == 'classroom_mcq' %}
 										<span class="role-badge" style="background: #8b5cf6; color: white;">🎓 MCQ</span>
 									{% elif sub.context == 'classroom_coding' %}
@@ -2326,6 +2329,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 										{% else %}F
 										{% endif %}
 										</small>
+									{% elif sub.context == 'classroom_activity_complete' %}
+										<strong style="color: #8b5cf6;">Score: {{ sub.score }}</strong>
+										<br><small class="muted">{{ sub.percentage }}% ({{ sub.correct_count }}/{{ sub.total_questions }} correct)</small>
 									{% elif sub.context == 'test' %}
 										Question {{ sub.question_index if sub.question_index is not none else 'N/A' }}
 										{% if sub.question_type %}
@@ -2615,6 +2621,76 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</section>
 			{% endif %}
 
+			{% if submission.context == 'classroom_activity_complete' %}
+			<section class="card" style="border-left: 4px solid #8b5cf6;">
+				<h3>🎓 Classroom Activity - Final Submission</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+					<div>
+						<p class="muted">Activity ID</p>
+						<p><strong>{{ submission.activity_id }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Score</p>
+						<p><strong style="font-size: 1.5rem; color: #8b5cf6;">{{ submission.score }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Percentage</p>
+						<p><strong style="font-size: 1.5rem; color: #10b981;">{{ submission.percentage }}%</strong></p>
+					</div>
+					<div>
+						<p class="muted">Correct Answers</p>
+						<p><strong>{{ submission.correct_count }} / {{ submission.total_questions }}</strong></p>
+					</div>
+				</div>
+				
+				<h4>📊 Question-by-Question Breakdown</h4>
+				{% if submission.details %}
+				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
+					{% for detail in submission.details %}
+					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
+							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+								{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}
+							</span>
+						</div>
+						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else 'Coding' }}</p>
+						
+						{% if detail.question_type == 'mcq' %}
+						<div style="margin-top: 1rem;">
+							<p style="margin: 0.25rem 0; color: #000000;"><strong>Student's Answer:</strong> {{ detail.selected_answer or 'No answer' }}</p>
+							<p style="margin: 0.25rem 0; color: #10b981;"><strong>Correct Answer:</strong> {{ detail.correct_answer }}</p>
+							{% if detail.explanation %}
+							<div style="margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">
+								<p style="margin: 0; color: #000000;"><strong>Explanation:</strong> {{ detail.explanation }}</p>
+							</div>
+							{% endif %}
+						</div>
+						{% elif detail.question_type == 'coding' %}
+						<div style="margin-top: 1rem;">
+							{% if detail.user_code %}
+							<details>
+								<summary style="cursor: pointer; color: #3b82f6; font-weight: 600;">View Code</summary>
+								<pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto; margin-top: 0.5rem;">{{ detail.user_code }}</pre>
+							</details>
+							{% endif %}
+							{% if detail.ai_feedback %}
+							<div style="margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">
+								<p style="margin: 0; color: #000000;"><strong>AI Evaluation:</strong></p>
+								<pre style="white-space: pre-wrap; margin: 0.5rem 0 0 0; color: #000000;">{{ detail.ai_feedback }}</pre>
+							</div>
+							{% endif %}
+						</div>
+						{% endif %}
+					</div>
+					{% endfor %}
+				</div>
+				{% else %}
+				<p class="muted">No detailed breakdown available.</p>
+				{% endif %}
+			</section>
+			{% endif %}
+
 			{% if submission.context == 'test_complete' %}
 			<section class="card" style="border-left: 4px solid #10b981;">
 				<h3>📊 Final Test Score</h3>
@@ -2754,16 +2830,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							</div>
 							
 							<div style="margin-top: 1rem;">
-								<button class="btn" onclick="submitClassroomMCQ({{ loop.index }}, '{{ activity.activity_id }}', {{ question | tojson | forceescape }})">
-									Submit Answer
-								</button>
 								<button class="btn secondary" onclick="clearClassroomMCQ({{ loop.index }})" style="margin-left: 0.5rem;">
 									Clear Selection
 								</button>
+								<span id="mcq-status-{{ loop.index }}" class="muted" style="margin-left: 1rem;"></span>
 							</div>
-							
-							<!-- Feedback area -->
-							<div id="mcq-feedback-{{ loop.index }}" style="margin-top: 1rem; display: none;"></div>
 							
 							{% if question.hints %}
 							<details style="margin-top: 1rem;">
@@ -2832,13 +2903,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 						
 						<div style="margin-top: 1rem;">
-							<button class="btn" onclick="submitClassroomCoding({{ loop.index }}, '{{ activity.activity_id }}', {{ question | tojson | forceescape }})">
-								Submit Code
-							</button>
+							<span id="coding-status-{{ loop.index }}" class="muted"></span>
 						</div>
-						
-						<!-- Feedback area for coding -->
-						<div id="coding-feedback-{{ loop.index }}" style="margin-top: 1rem; display: none;"></div>
 					</div>
 					{% endif %}
 				</section>
@@ -2853,11 +2919,27 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</section>
 			{% endif %}
 			
+			{% if questions %}
+			<section class="card" style="border-left: 4px solid #10b981;">
+				<h3>📝 Submit Your Answers</h3>
+				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
+				<div style="margin-top: 1.5rem;">
+					<button class="btn" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+						✅ Submit All Answers
+					</button>
+					<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
+						Cancel
+					</button>
+				</div>
+				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
+			</section>
+			{% else %}
 			<section class="card">
 				<form method="post" action="/classroom/complete">
 					<button class="btn secondary" type="submit">Complete Activity</button>
 				</form>
 			</section>
+			{% endif %}
 		{% endif %}
 
 		{# Test View #}
@@ -3727,17 +3809,11 @@ print(f'Sum: {x + y}')"></textarea>
 	{% if view == 'activity' %}
 	<script>
 	// Track selected answers for each question
-	window.classroomAnswers = {};
-	window.submittedQuestions = new Set();
+	window.classroomAnswers = {}; // Store MCQ answers
+	window.classroomCode = {};     // Store coding answers
 	
 	// MCQ Selection Handler for Classroom Activities
 	window.selectClassroomMCQ = function(element, questionIdx) {
-		// Check if already submitted
-		if (window.submittedQuestions.has(questionIdx)) {
-			alert('You have already submitted this question. You cannot change your answer.');
-			return;
-		}
-		
 		// Remove selection from all options in this question
 		document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
 			opt.style.background = '#f0f9ff';
@@ -3753,17 +3829,19 @@ print(f'Sum: {x + y}')"></textarea>
 		// Store selected answer
 		const option = element.getAttribute('data-option');
 		window.classroomAnswers[questionIdx] = option;
+		
+		// Update status
+		const statusEl = document.getElementById(`mcq-status-${questionIdx}`);
+		if (statusEl) {
+			statusEl.textContent = `✓ Answer selected: ${option}`;
+			statusEl.style.color = '#10b981';
+		}
+		
 		console.log(`Selected option ${option} for question ${questionIdx}`);
 	};
 	
 	// Clear MCQ selection
 	window.clearClassroomMCQ = function(questionIdx) {
-		// Check if already submitted
-		if (window.submittedQuestions.has(questionIdx)) {
-			alert('You have already submitted this question. You cannot change your answer.');
-			return;
-		}
-		
 		// Remove selection from all options
 		document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
 			opt.style.background = '#f0f9ff';
@@ -3773,178 +3851,140 @@ print(f'Sum: {x + y}')"></textarea>
 		
 		// Clear stored answer
 		delete window.classroomAnswers[questionIdx];
+		
+		// Update status
+		const statusEl = document.getElementById(`mcq-status-${questionIdx}`);
+		if (statusEl) {
+			statusEl.textContent = '';
+		}
+		
 		console.log(`Cleared selection for question ${questionIdx}`);
 	};
 	
-	// Submit MCQ answer
-	window.submitClassroomMCQ = async function(questionIdx, activityId, question) {
-		// Check if already submitted
-		if (window.submittedQuestions.has(questionIdx)) {
-			alert('You have already submitted this question.');
-			return;
-		}
+	// Submit ALL answers at once
+	window.submitAllClassroomAnswers = async function(activityId, questions) {
+		// Collect all answers
+		const answers = [];
+		let missingAnswers = [];
 		
-		// Check if answer is selected
-		const selectedAnswer = window.classroomAnswers[questionIdx];
-		if (!selectedAnswer) {
-			alert('⚠️ Please select an answer before submitting.');
-			return;
-		}
-		
-		// Confirm submission
-		if (!confirm(`Submit your answer: ${selectedAnswer}\n\nYou cannot change your answer after submitting.`)) {
-			return;
-		}
-		
-		try {
-			// Show loading state
-			const feedbackDiv = document.getElementById(`mcq-feedback-${questionIdx}`);
-			feedbackDiv.style.display = 'block';
-			feedbackDiv.innerHTML = '<p style="color: #3b82f6;">⏳ Validating your answer...</p>';
+		// Collect MCQ and coding answers
+		questions.forEach((question, index) => {
+			const questionIdx = index + 1;
 			
-			// Send to backend
-			const response = await fetch('/classroom/submit_mcq', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					activity_id: activityId,
+			if (question.question_type === 'mcq') {
+				const selectedAnswer = window.classroomAnswers[questionIdx];
+				if (!selectedAnswer) {
+					missingAnswers.push(`Question ${questionIdx} (MCQ)`);
+				}
+				answers.push({
 					question_index: questionIdx,
+					question_type: 'mcq',
 					question_data: question,
-					selected_answer: selectedAnswer
-				})
-			});
-			
-			const result = await response.json();
-			
-			if (result.ok) {
-				// Mark as submitted
-				window.submittedQuestions.add(questionIdx);
-				
-				// Disable options
-				document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
-					opt.style.cursor = 'not-allowed';
-					opt.style.opacity = '0.6';
-					opt.onclick = null;
+					selected_answer: selectedAnswer || null
 				});
-				
-				// Display feedback
-				displayMCQFeedback(questionIdx, result);
-			} else {
-				feedbackDiv.innerHTML = `<p style="color: #dc2626;">❌ Error: ${result.error}</p>`;
+			} else if (question.question_type === 'coding') {
+				const codeTextarea = document.getElementById(`code-${questionIdx}`);
+				const code = codeTextarea ? codeTextarea.value.trim() : '';
+				if (!code) {
+					missingAnswers.push(`Question ${questionIdx} (Coding)`);
+				}
+				answers.push({
+					question_index: questionIdx,
+					question_type: 'coding',
+					question_data: question,
+					user_code: code || null
+				});
 			}
-		} catch (error) {
-			console.error('Submission error:', error);
-			alert('Failed to submit answer. Please try again.');
-		}
-	};
-	
-	// Display feedback
-	function displayMCQFeedback(questionIdx, result) {
-		const feedbackDiv = document.getElementById(`mcq-feedback-${questionIdx}`);
+		});
 		
-		let feedbackHTML = '<div style="padding: 1.5rem; border-radius: 12px; ';
-		
-		if (result.is_correct) {
-			feedbackHTML += 'background: #d1fae5; border: 2px solid #10b981;">';
-			feedbackHTML += '<h4 style="color: #065f46; margin: 0 0 0.5rem 0;">✅ Correct!</h4>';
-			feedbackHTML += `<p style="color: #065f46; margin: 0;"><strong>Your answer:</strong> ${result.selected_answer}</p>`;
-		} else {
-			feedbackHTML += 'background: #fee2e2; border: 2px solid #dc2626;">';
-			feedbackHTML += '<h4 style="color: #991b1b; margin: 0 0 0.5rem 0;">❌ Incorrect</h4>';
-			feedbackHTML += `<p style="color: #991b1b; margin: 0 0 0.5rem 0;"><strong>Your answer:</strong> ${result.selected_answer}</p>`;
-			feedbackHTML += `<p style="color: #065f46; margin: 0;"><strong>Correct answer:</strong> ${result.correct_answer}</p>`;
+		// Warn if any answers are missing
+		if (missingAnswers.length > 0) {
+			if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) {
+				return;
+			}
 		}
 		
-		if (result.explanation) {
-			feedbackHTML += `<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1);">`;
-			feedbackHTML += `<p style="color: #000000; margin: 0;"><strong>Explanation:</strong></p>`;
-			feedbackHTML += `<p style="color: #000000; margin: 0.5rem 0 0 0;">${result.explanation}</p>`;
-			feedbackHTML += `</div>`;
-		}
-		
-		feedbackHTML += '</div>';
-		feedbackDiv.innerHTML = feedbackHTML;
-	}
-	
-	// Submit Coding answer
-	window.submitClassroomCoding = async function(questionIdx, activityId, question) {
-		// Check if already submitted
-		if (window.submittedQuestions.has(questionIdx)) {
-			alert('You have already submitted this question.');
-			return;
-		}
-		
-		// Get code
-		const codeTextarea = document.getElementById(`code-${questionIdx}`);
-		const code = codeTextarea.value.trim();
-		
-		if (!code) {
-			alert('⚠️ Please write some code before submitting.');
-			return;
-		}
-		
-		// Confirm submission
-		if (!confirm('Submit your code?\n\nYou cannot change your answer after submitting.')) {
+		// Final confirmation
+		if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) {
 			return;
 		}
 		
 		try {
 			// Show loading state
-			const feedbackDiv = document.getElementById(`coding-feedback-${questionIdx}`);
-			feedbackDiv.style.display = 'block';
-			feedbackDiv.innerHTML = '<p style="color: #3b82f6;">⏳ Evaluating your code... This may take a moment.</p>';
+			const resultDiv = document.getElementById('final-result');
+			resultDiv.style.display = 'block';
+			resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
 			
-			// Disable textarea and button
-			codeTextarea.disabled = true;
+			// Disable all inputs
+			document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => {
+				el.disabled = true;
+				el.style.opacity = '0.6';
+				el.style.cursor = 'not-allowed';
+			});
 			
 			// Send to backend
-			const response = await fetch('/classroom/submit_coding', {
+			const response = await fetch('/classroom/submit_all', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({
 					activity_id: activityId,
-					question_index: questionIdx,
-					question_data: question,
-					user_code: code
+					answers: answers
 				})
 			});
 			
 			const result = await response.json();
 			
 			if (result.ok) {
-				// Mark as submitted
-				window.submittedQuestions.add(questionIdx);
-				
-				// Display feedback
-				displayCodingFeedback(questionIdx, result);
+				// Display final score
+				displayFinalResult(result);
 			} else {
-				feedbackDiv.innerHTML = `<p style="color: #dc2626;">❌ Error: ${result.error}</p>`;
-				codeTextarea.disabled = false;
+				resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
 			}
 		} catch (error) {
 			console.error('Submission error:', error);
-			alert('Failed to submit code. Please try again.');
-			codeTextarea.disabled = false;
+			const resultDiv = document.getElementById('final-result');
+			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
 		}
 	};
 	
-	// Display coding feedback
-	function displayCodingFeedback(questionIdx, result) {
-		const feedbackDiv = document.getElementById(`coding-feedback-${questionIdx}`);
+	// Display final results
+	function displayFinalResult(result) {
+		const resultDiv = document.getElementById('final-result');
 		
-		let feedbackHTML = '<div style="padding: 1.5rem; border-radius: 12px; background: #eff6ff; border: 2px solid #3b82f6;">';
-		feedbackHTML += '<h4 style="color: #1e40af; margin: 0 0 1rem 0;">📊 Evaluation Results</h4>';
+		let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center;">';
+		html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">🎉 Submission Complete!</h2>';
+		html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.score}/${result.total_questions}</div>`;
+		html += `<div style="font-size: 1.5rem; margin: 0.5rem 0;">${result.percentage}%</div>`;
+		html += `<p style="margin: 1rem 0 0 0; opacity: 0.9;">You answered ${result.correct_count} out of ${result.total_questions} questions correctly.</p>`;
+		html += '</div>';
 		
-		if (result.ai_feedback) {
-			feedbackHTML += `<div style="white-space: pre-wrap; color: #000000; line-height: 1.6;">${result.ai_feedback}</div>`;
+		// Detailed breakdown
+		if (result.details && result.details.length > 0) {
+			html += '<div style="margin-top: 2rem;">';
+			html += '<h3>📊 Detailed Breakdown</h3>';
+			
+			result.details.forEach((detail, index) => {
+				html += '<div style="padding: 1rem; margin: 1rem 0; background: #f9fafb; border-radius: 8px; border-left: 4px solid ';
+				html += detail.is_correct ? '#10b981' : '#dc2626';
+				html += ';">';
+				html += `<h4 style="margin: 0 0 0.5rem 0; color: #000000;">Question ${detail.question_index}</h4>`;
+				html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : 'Coding'}</p>`;
+				html += `<p style="margin: 0.5rem 0 0 0; font-weight: 600; color: ${detail.is_correct ? '#10b981' : '#dc2626'};">`;
+				html += detail.is_correct ? '✅ Correct' : '❌ Incorrect';
+				html += '</p>';
+				html += '</div>';
+			});
+			
+			html += '</div>';
 		}
 		
-		feedbackHTML += '</div>';
-		feedbackDiv.innerHTML = feedbackHTML;
+		html += '<div style="margin-top: 2rem; text-align: center;">';
+		html += '<button class="btn" onclick="window.location.href=\'/classroom\'">Return to Classroom</button>';
+		html += '</div>';
+		
+		resultDiv.innerHTML = html;
 	}
 	
 	document.addEventListener('DOMContentLoaded', function() {

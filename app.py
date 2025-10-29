@@ -1713,6 +1713,162 @@ Keep it encouraging and educational!"""
 	})
 
 
+@app.route("/classroom/submit_all", methods=["POST"])
+def classroom_submit_all():
+	"""Submit all answers for a classroom activity at once"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("classroom", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	activity_id = data.get("activity_id")
+	answers = data.get("answers", [])
+	
+	if not activity_id or not answers:
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Evaluate all answers
+	results = []
+	correct_count = 0
+	total_questions = len(answers)
+	
+	for answer in answers:
+		question_index = answer.get("question_index")
+		question_type = answer.get("question_type")
+		question_data = answer.get("question_data", {})
+		
+		if question_type == "mcq":
+			selected_answer = answer.get("selected_answer")
+			correct_answer = question_data.get("correct_answer", "")
+			
+			# Check if correct
+			is_correct = False
+			if selected_answer and correct_answer:
+				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "mcq",
+				"question_title": question_data.get("title", ""),
+				"selected_answer": selected_answer,
+				"correct_answer": correct_answer,
+				"is_correct": is_correct,
+				"explanation": question_data.get("explanation", "")
+			})
+			
+		elif question_type == "coding":
+			user_code = answer.get("user_code")
+			
+			# Get AI feedback for coding question
+			ai_feedback = ""
+			score = 0.0
+			if user_code and openai.api_key:
+				try:
+					trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
+
+Your approach:
+- **Student-Centered**: Provide constructive feedback
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply
+
+Return a JSON with:
+{
+  "score": 0.0 to 1.0,
+  "is_correct": true/false,
+  "feedback": "Your evaluation"
+}"""
+
+					prompt = f"""Evaluate this student's code for a classroom activity. Provide encouraging, educational feedback.
+
+**Problem:** {question_data.get('description', 'N/A')}
+
+**Student's Code:**
+```python
+{user_code}
+```
+
+**Provide Feedback as JSON:**
+{{
+  "score": 0.0 to 1.0,
+  "is_correct": true if mostly correct, false otherwise,
+  "feedback": "Encouraging feedback with strengths and suggestions"
+}}"""
+
+					response_text = _ai_generate(prompt, trainer_role)
+					# Try to parse JSON from response
+					import re
+					json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+					if json_match:
+						feedback_data = json.loads(json_match.group())
+						score = float(feedback_data.get("score", 0.5))
+						is_correct = feedback_data.get("is_correct", score >= 0.7)
+						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+					else:
+						ai_feedback = response_text
+						is_correct = True
+						score = 0.7
+				except Exception as e:
+					print(f"AI feedback error: {e}")
+					ai_feedback = "Your code has been submitted successfully."
+					is_correct = True
+					score = 0.7
+			else:
+				ai_feedback = "Your code has been submitted successfully."
+				is_correct = True
+				score = 0.7
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "coding",
+				"question_title": question_data.get("title", ""),
+				"user_code": user_code,
+				"ai_feedback": ai_feedback,
+				"is_correct": is_correct,
+				"score": score
+			})
+	
+	# Calculate percentage
+	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
+	
+	# Store aggregate submission in database
+	submission_doc = {
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"classroom_id": user.get("classroom_id"),
+		"context": "classroom_activity_complete",
+		"activity_id": activity_id,
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results,
+		"created_at": datetime.now(timezone.utc)
+	}
+	
+	submissions_col.insert_one(submission_doc)
+	
+	# Return results to frontend
+	return jsonify({
+		"ok": True,
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results
+	})
+
+
 @app.route("/classroom/complete", methods=["POST"])  # Simple completion hook
 def classroom_complete():
 	redir = require_user()
