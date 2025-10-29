@@ -1772,33 +1772,35 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<section class="card">
 				<div class="question-navigation">
 					<h4>📋 Question Navigation:</h4>
-					<div class="nav-buttons">
-						{% for question in questions %}
-						<button class="btn secondary nav-btn" data-question="{{ loop.index }}" onclick="showQuestion({{ loop.index }})">
-							Question {{ loop.index }}
-						</button>
-						{% endfor %}
-					</div>
+				<div class="nav-buttons">
+					{% for question in questions %}
+					{% set nav_question_num = loop.index %}
+					<button class="btn secondary nav-btn" data-question="{{ nav_question_num }}" onclick="showQuestion({{ nav_question_num }})">
+						Question {{ nav_question_num }}
+					</button>
+					{% endfor %}
+				</div>
 				</div>
 			</section>
 			{% endif %}
 			
-			{% for question in questions %}
-				<section class="card question-card" id="question-{{ loop.index }}" {% if loop.index > 1 %}style="display: none;"{% endif %}>
-					<div class="question-header">
-						<h3>Question {{ loop.index }}: {{ question.title }} ({{ loop.index }}/{{ questions|length }})</h3>
-						<div class="question-controls">
-							<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
-							{% if questions|length > 1 %}
-								{% if loop.index > 1 %}
-								<button class="btn secondary" onclick="showQuestion({{ loop.index - 1 }})">← Previous</button>
-								{% endif %}
-								{% if loop.index < questions|length %}
-								<button class="btn" onclick="showQuestion({{ loop.index + 1 }})">Next →</button>
-								{% endif %}
+		{% for question in questions %}
+			{% set admin_question_num = loop.index %}
+			<section class="card question-card" id="question-{{ admin_question_num }}" {% if admin_question_num > 1 %}style="display: none;"{% endif %}>
+				<div class="question-header">
+					<h3>Question {{ admin_question_num }}: {{ question.title }} ({{ admin_question_num }}/{{ questions|length }})</h3>
+					<div class="question-controls">
+						<span class="difficulty-badge difficulty-{{ question.difficulty }}">{{ question.difficulty|title }}</span>
+						{% if questions|length > 1 %}
+							{% if admin_question_num > 1 %}
+							<button class="btn secondary" onclick="showQuestion({{ admin_question_num - 1 }})">← Previous</button>
 							{% endif %}
-						</div>
+							{% if admin_question_num < questions|length %}
+							<button class="btn" onclick="showQuestion({{ admin_question_num + 1 }})">Next →</button>
+							{% endif %}
+						{% endif %}
 					</div>
+				</div>
 					
 				<div class="question-content">
 					<p><strong>Description:</strong></p>
@@ -1851,31 +1853,31 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{% endif %}
 				</div>
 				
-				{# Only show code editor for coding questions #}
-				{% if question.question_type == 'coding' or not question.question_type %}
-				<div class="compiler-section">
-					<h4>🐍 Code Editor (Admin Preview)</h4>
-						<div class="compiler-container">
-							<div class="code-section">
-								<textarea id="admin-code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+			{# Only show code editor for coding questions #}
+			{% if question.question_type == 'coding' or not question.question_type %}
+			<div class="compiler-section">
+				<h4>🐍 Code Editor (Admin Preview)</h4>
+					<div class="compiler-container">
+						<div class="code-section">
+							<textarea id="admin-code-{{ admin_question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-								<div class="compiler-controls">
-									<button class="btn run-admin-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-									<button class="btn secondary clear-admin-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
-								</div>
+							<div class="compiler-controls">
+								<button class="btn run-admin-question-code" data-question="{{ admin_question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+								<button class="btn secondary clear-admin-question-code" data-question="{{ admin_question_num }}">🗑️ Clear</button>
 							</div>
-							
-							<div class="output-section">
-								<label>Output:</label>
-								<div id="admin-output-{{ loop.index }}" class="output-box">
-									<p class="muted">Click "Run Code" to see the output here...</p>
-								</div>
+						</div>
+						
+						<div class="output-section">
+							<label>Output:</label>
+							<div id="admin-output-{{ admin_question_num }}" class="output-box">
+								<p class="muted">Click "Run Code" to see the output here...</p>
+							</div>
 						</div>
 					</div>
-				</div>
-				{% endif %}
+			</div>
+			{% endif %}
 			</section>
 			{% endfor %}
 			{% else %}
@@ -2794,9 +2796,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			
 			{% if questions %}
 				{% for question in questions %}
+				{% set question_num = loop.index %}
 				<section class="card question-card">
 					<div class="question-header">
-						<h3>Question {{ loop.index }}: {{ question.title }}</h3>
+						<h3>Question {{ question_num }}: {{ question.title }}</h3>
 						<div style="display: flex; gap: 0.5rem; align-items: center;">
 							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
 								{% if question.difficulty == 'medium_plus' %}
@@ -2819,21 +2822,21 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						
 						{# MCQ Questions #}
 						{% if question.question_type == 'mcq' and question.options %}
-						<div style="margin-top: 1.5rem;" id="mcq-question-{{ loop.index }}">
+						<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
 							<p><strong>Select the correct answer:</strong></p>
-							<div style="margin: 1rem 0;" id="mcq-options-{{ loop.index }}">
+							<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
 								{% for option in question.options %}
-								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ loop.index }}" onclick="selectClassroomMCQ(this, {{ loop.index }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 									{{ option }}
 								</div>
 								{% endfor %}
 							</div>
 							
 							<div style="margin-top: 1rem;">
-								<button class="btn secondary" onclick="clearClassroomMCQ({{ loop.index }});">
+								<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});">
 									Clear Selection
 								</button>
-								<span id="mcq-status-{{ loop.index }}" class="muted" style="margin-left: 1rem;"></span>
+								<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem;"></span>
 							</div>
 							
 							{% if question.hints %}
@@ -2880,30 +2883,30 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 					{# Only show code editor for coding questions #}
 					{% if question.question_type == 'coding' or not question.question_type %}
-					<div class="compiler-section" id="coding-question-{{ loop.index }}">
+					<div class="compiler-section" id="coding-question-{{ question_num }}">
 						<h4>🐍 Code Editor</h4>
 						<div class="compiler-container">
 							<div class="code-section">
-								<textarea id="code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+								<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
 								<div class="compiler-controls">
-									<button class="btn run-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-									<button class="btn secondary clear-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
+									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
 								</div>
 							</div>
 							
 							<div class="output-section">
 								<label>Output:</label>
-								<div id="output-{{ loop.index }}" class="output-box">
+								<div id="output-{{ question_num }}" class="output-box">
 									<p class="muted">Click "Run Code" to see the output here...</p>
 								</div>
 							</div>
 						</div>
 						
 						<div style="margin-top: 1rem;">
-							<span id="coding-status-{{ loop.index }}" class="muted"></span>
+							<span id="coding-status-{{ question_num }}" class="muted"></span>
 						</div>
 					</div>
 					{% endif %}
@@ -3102,17 +3105,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<p><strong>Select your answer:</strong></p>
 						<div id="mcq-options-{{ progress }}" style="margin: 1rem 0;">
 						{% for option in current_question.options %}
-						<div class="mcq-option" data-option="{{ option[0] }}" onclick="selectMCQOption(this);" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+						<div class="mcq-option" data-option="{{ option[0] }}" data-question-progress="{{ progress }}" onclick="selectMCQOption(this, {{ progress }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 							{{ option }}
 						</div>
 						{% endfor %}
 						</div>
 						
 						<div style="margin-top: 1rem;">
-							<button type="button" class="btn secondary" onclick="clearTestMCQSelection();">
+							<button type="button" class="btn secondary" onclick="clearTestMCQSelection({{ progress }});">
 								Clear Selection
 							</button>
-							<span id="test-mcq-status" class="muted" style="margin-left: 1rem;"></span>
+							<span id="test-mcq-status-{{ progress }}" class="muted" style="margin-left: 1rem;"></span>
 						</div>
 						
 						{% if current_question.hints %}
@@ -3477,79 +3480,172 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
 			})();
 			
-			// MCQ Selection Handler
-		window.selectMCQOption = function(element) {
-			console.log('selectMCQOption called', element);
-			
-			// Remove selection from all options in this question
-			const parent = element.parentElement;
-			const allOptions = parent.querySelectorAll('.mcq-option');
-			console.log('Found test MCQ options:', allOptions.length);
-			
-			allOptions.forEach(opt => {
-				opt.style.background = '#f0f9ff';
-				opt.style.borderLeft = '3px solid #3b82f6';
-				opt.style.fontWeight = 'normal';
-				opt.style.border = '1px solid #bfdbfe';
-			});
-			
-			// Highlight selected option
-			element.style.background = '#dbeafe';
-			element.style.borderLeft = '3px solid #10b981';
-			element.style.fontWeight = '600';
-			element.style.border = '2px solid #10b981';
-			
-			// Store selected answer in the hidden input that will be submitted
-			const option = element.getAttribute('data-option');
-			console.log('Selected test MCQ option:', option);
-			
-			const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-			if (hiddenMcqAnswer) {
-				hiddenMcqAnswer.value = option;
-				console.log('Stored in hidden input:', hiddenMcqAnswer.value);
-			} else {
-				console.error('Hidden MCQ answer input not found!');
-			}
-			
-			// Update status
-			const statusEl = document.getElementById('test-mcq-status');
-			if (statusEl) {
-				statusEl.textContent = `✓ Answer selected: ${option}`;
-				statusEl.style.color = '#10b981';
-				statusEl.style.fontWeight = '600';
-			}
-		};
+		// MCQ Selection Handler for Tests (Works for ANY question number)
+	window.selectMCQOption = function(element, questionProgress) {
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('🔵 SELECT TEST MCQ - Question Progress: ' + questionProgress);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 		
-		// Clear Test MCQ Selection
-		window.clearTestMCQSelection = function() {
-			console.log('clearTestMCQSelection called');
-			
-			// Remove selection from all options
-			const allOptions = document.querySelectorAll('.mcq-option');
-			console.log('Clearing test MCQ options, found:', allOptions.length);
-			
-			allOptions.forEach(opt => {
-				opt.style.background = '#f0f9ff';
-				opt.style.borderLeft = '3px solid #3b82f6';
-				opt.style.fontWeight = 'normal';
-				opt.style.border = '1px solid #bfdbfe';
-			});
-			
-			// Clear hidden input
-			const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-			if (hiddenMcqAnswer) {
-				hiddenMcqAnswer.value = '';
-				console.log('Cleared hidden input');
+		// Validate inputs
+		if (!element) {
+			console.error('❌ ERROR: No element provided!');
+			return;
+		}
+		if (questionProgress === undefined || questionProgress === null) {
+			console.error('❌ ERROR: No question progress provided!');
+			return;
+		}
+		
+		// Get the option value and data attributes
+		const option = element.getAttribute('data-option');
+		const optionDataProgress = element.getAttribute('data-question-progress');
+		
+		console.log('📋 Element Details:');
+		console.log('   - data-option:', option);
+		console.log('   - data-question-progress:', optionDataProgress);
+		console.log('   - Passed questionProgress:', questionProgress);
+		
+		// Security check: Make sure data-question-progress matches questionProgress
+		if (optionDataProgress != questionProgress) {
+			console.error('❌ MISMATCH! Element has data-question-progress="' + optionDataProgress + '" but function received questionProgress=' + questionProgress);
+			console.error('   This indicates a template bug. All options should have the same data-question-progress.');
+			return;
+		}
+		
+		// Find all options for THIS specific question
+		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
+		const allOptionsInQuestion = document.querySelectorAll(selector);
+		console.log('🔍 Selector:', selector);
+		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
+		
+		if (allOptionsInQuestion.length === 0) {
+			console.error('❌ ERROR: No options found for question progress', questionProgress);
+			console.error('   Check that data-question-progress attributes are set correctly in HTML');
+			return;
+		}
+		
+		// Log all found options for debugging
+		allOptionsInQuestion.forEach((opt, idx) => {
+			console.log(`   Option ${idx + 1}: data-option="${opt.getAttribute('data-option')}", data-question-progress="${opt.getAttribute('data-question-progress')}"`);
+		});
+		
+		// STEP 1: Clear all selections in THIS question
+		console.log('🔄 Clearing all selections for question progress', questionProgress);
+		allOptionsInQuestion.forEach(opt => {
+			opt.style.background = '#f0f9ff';
+			opt.style.borderLeft = '3px solid #3b82f6';
+			opt.style.fontWeight = 'normal';
+			opt.style.border = '1px solid #bfdbfe';
+		});
+		
+		// STEP 2: Highlight the selected option
+		console.log('✨ Highlighting selected option:', option);
+		element.style.background = '#dbeafe';
+		element.style.borderLeft = '3px solid #10b981';
+		element.style.fontWeight = '600';
+		element.style.border = '2px solid #10b981';
+		
+		// STEP 3: Store in hidden input (for test submission)
+		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
+		if (hiddenMcqAnswer) {
+			const previousValue = hiddenMcqAnswer.value;
+			hiddenMcqAnswer.value = option;
+			if (previousValue) {
+				console.log('🔄 RESELECTED: Changed from "' + previousValue + '" to "' + option + '"');
+			} else {
+				console.log('✅ NEW SELECTION: Stored "' + option + '" in hidden input');
 			}
-			
-			// Clear status
-			const statusEl = document.getElementById('test-mcq-status');
-			if (statusEl) {
-				statusEl.textContent = '';
+			console.log('📝 Hidden input value:', hiddenMcqAnswer.value);
+		} else {
+			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
+		}
+		
+		// STEP 4: Update visual status indicator
+		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
+		if (statusEl) {
+			statusEl.textContent = `✓ Selected: ${option}`;
+			statusEl.style.color = '#10b981';
+			statusEl.style.fontWeight = '600';
+			console.log('✅ Status updated for question progress', questionProgress);
+		} else {
+			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
+		}
+		
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('✅ TEST SELECTION COMPLETE - Question Progress ' + questionProgress + ' → Answer: "' + option + '"');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+	};
+	
+	// Clear Test MCQ Selection (Works for ANY question number)
+	window.clearTestMCQSelection = function(questionProgress) {
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('🔴 CLEAR TEST SELECTION - Question Progress: ' + questionProgress);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		
+		// Validate input
+		if (questionProgress === undefined || questionProgress === null) {
+			console.error('❌ ERROR: No question progress provided!');
+			return;
+		}
+		
+		// Check current hidden input value
+		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
+		if (hiddenMcqAnswer && hiddenMcqAnswer.value) {
+			console.log('📋 Currently selected answer in hidden input:', hiddenMcqAnswer.value);
+		} else {
+			console.log('📋 No answer currently selected');
+		}
+		
+		// Find all options for THIS specific question
+		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
+		const allOptionsInQuestion = document.querySelectorAll(selector);
+		console.log('🔍 Selector:', selector);
+		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
+		
+		if (allOptionsInQuestion.length === 0) {
+			console.error('❌ ERROR: No options found for question progress', questionProgress);
+			console.error('   Check that data-question-progress attributes are set correctly in HTML');
+			return;
+		}
+		
+		// STEP 1: Reset all option styles to default
+		console.log('🔄 Resetting all option styles for question progress', questionProgress);
+		let clearedCount = 0;
+		allOptionsInQuestion.forEach(opt => {
+			opt.style.background = '#f0f9ff';
+			opt.style.borderLeft = '3px solid #3b82f6';
+			opt.style.fontWeight = 'normal';
+			opt.style.border = '1px solid #bfdbfe';
+			clearedCount++;
+		});
+		console.log('✅ Cleared', clearedCount, 'option elements');
+		
+		// STEP 2: Clear hidden input
+		if (hiddenMcqAnswer) {
+			const clearedValue = hiddenMcqAnswer.value;
+			hiddenMcqAnswer.value = '';
+			if (clearedValue) {
+				console.log('🗑️  Removed answer "' + clearedValue + '" from hidden input');
+			} else {
+				console.log('ℹ️  Hidden input was already empty');
 			}
-			
-			console.log('Test MCQ selection cleared');
-		};
+		} else {
+			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
+		}
+		
+		// STEP 3: Clear visual status indicator
+		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
+		if (statusEl) {
+			statusEl.textContent = '';
+			console.log('✅ Status indicator cleared for question progress', questionProgress);
+		} else {
+			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
+		}
+		
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('✅ TEST CLEAR COMPLETE - Question Progress ' + questionProgress + ' is now unselected');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+	};
 			
 			// Test interface compiler functionality
 			document.addEventListener('DOMContentLoaded', function() {
@@ -3871,14 +3967,57 @@ print(f'Sum: {x + y}')"></textarea>
 	window.classroomAnswers = {}; // Store MCQ answers
 	window.classroomCode = {};     // Store coding answers
 	
-	// MCQ Selection Handler for Classroom Activities
+	// MCQ Selection Handler for Classroom Activities (Works for ANY question number)
 	window.selectClassroomMCQ = function(element, questionIdx) {
-		console.log('selectClassroomMCQ called', element, questionIdx);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('🔵 SELECT MCQ - Question #' + questionIdx);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 		
-		// Remove selection from all options in this question
-		const allOptions = document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`);
-		console.log('Found options:', allOptions.length);
+		// Validate inputs
+		if (!element) {
+			console.error('❌ ERROR: No element provided!');
+			return;
+		}
+		if (!questionIdx) {
+			console.error('❌ ERROR: No question index provided!');
+			return;
+		}
 		
+		// Get the option value FIRST (before any DOM manipulation)
+		const option = element.getAttribute('data-option');
+		const optionDataIdx = element.getAttribute('data-question-idx');
+		
+		console.log('📋 Element Details:');
+		console.log('   - data-option:', option);
+		console.log('   - data-question-idx:', optionDataIdx);
+		console.log('   - Passed questionIdx:', questionIdx);
+		
+		// Security check: Make sure data-question-idx matches questionIdx
+		if (optionDataIdx != questionIdx) {
+			console.error('❌ MISMATCH! Element has data-question-idx="' + optionDataIdx + '" but function received questionIdx=' + questionIdx);
+			console.error('   This indicates a template bug. All options should have the same data-question-idx.');
+			return;
+		}
+		
+		// Find all options for THIS specific question
+		const selector = `.mcq-option-classroom[data-question-idx="${questionIdx}"]`;
+		const allOptions = document.querySelectorAll(selector);
+		console.log('🔍 Selector:', selector);
+		console.log('🔍 Found', allOptions.length, 'options for question', questionIdx);
+		
+		if (allOptions.length === 0) {
+			console.error('❌ ERROR: No options found for question', questionIdx);
+			console.error('   Check that data-question-idx attributes are set correctly in HTML');
+			return;
+		}
+		
+		// Log all found options for debugging
+		allOptions.forEach((opt, idx) => {
+			console.log(`   Option ${idx + 1}: data-option="${opt.getAttribute('data-option')}", data-question-idx="${opt.getAttribute('data-question-idx')}"`);
+		});
+		
+		// STEP 1: Clear all selections in THIS question
+		console.log('🔄 Clearing all selections for question', questionIdx);
 		allOptions.forEach(opt => {
 			opt.style.background = '#f0f9ff';
 			opt.style.borderLeft = '3px solid #3b82f6';
@@ -3886,53 +4025,126 @@ print(f'Sum: {x + y}')"></textarea>
 			opt.style.border = '1px solid #bfdbfe';
 		});
 		
-		// Highlight selected option
+		// STEP 2: Highlight the selected option
+		console.log('✨ Highlighting selected option:', option);
 		element.style.background = '#dbeafe';
 		element.style.borderLeft = '3px solid #10b981';
 		element.style.fontWeight = '600';
 		element.style.border = '2px solid #10b981';
 		
-		// Store selected answer
-		const option = element.getAttribute('data-option');
+		// STEP 3: Store in global answers object
+		const previousAnswer = window.classroomAnswers[questionIdx];
 		window.classroomAnswers[questionIdx] = option;
 		
-		console.log('Stored answer:', option, 'for question:', questionIdx);
-		console.log('Current answers:', window.classroomAnswers);
+		if (previousAnswer) {
+			console.log('🔄 RESELECTED: Changed from "' + previousAnswer + '" to "' + option + '" for question', questionIdx);
+		} else {
+			console.log('✅ NEW SELECTION: Stored "' + option + '" for question', questionIdx);
+		}
 		
-		// Update status
+		// STEP 4: Display current state
+		console.log('📊 Current Answers State:');
+		const answerKeys = Object.keys(window.classroomAnswers).sort((a, b) => parseInt(a) - parseInt(b));
+		if (answerKeys.length === 0) {
+			console.log('   (empty)');
+		} else {
+			answerKeys.forEach(key => {
+				console.log(`   Question ${key}: "${window.classroomAnswers[key]}"`);
+			});
+		}
+		
+		// STEP 5: Update visual status indicator
 		const statusEl = document.getElementById(`mcq-status-${questionIdx}`);
 		if (statusEl) {
-			statusEl.textContent = `✓ Answer selected: ${option}`;
+			statusEl.textContent = `✓ Selected: ${option}`;
 			statusEl.style.color = '#10b981';
 			statusEl.style.fontWeight = '600';
+			console.log('✅ Status updated for question', questionIdx);
+		} else {
+			console.warn('⚠️  Status element #mcq-status-' + questionIdx + ' not found');
 		}
+		
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('✅ SELECTION COMPLETE - Question #' + questionIdx + ' → Answer: "' + option + '"');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 	};
 	
-	// Clear MCQ selection
+	// Clear MCQ selection (Works for ANY question number)
 	window.clearClassroomMCQ = function(questionIdx) {
-		console.log('clearClassroomMCQ called for question:', questionIdx);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('🔴 CLEAR SELECTION - Question #' + questionIdx);
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 		
-		// Remove selection from all options
-		const allOptions = document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`);
-		console.log('Clearing options, found:', allOptions.length);
+		// Validate input
+		if (!questionIdx) {
+			console.error('❌ ERROR: No question index provided!');
+			return;
+		}
 		
+		// Check if there's currently a selection for this question
+		const currentAnswer = window.classroomAnswers[questionIdx];
+		if (currentAnswer) {
+			console.log('📋 Currently selected answer:', currentAnswer);
+		} else {
+			console.log('📋 No answer currently selected for question', questionIdx);
+		}
+		
+		// Find all options for THIS specific question
+		const selector = `.mcq-option-classroom[data-question-idx="${questionIdx}"]`;
+		const allOptions = document.querySelectorAll(selector);
+		console.log('🔍 Selector:', selector);
+		console.log('🔍 Found', allOptions.length, 'options for question', questionIdx);
+		
+		if (allOptions.length === 0) {
+			console.error('❌ ERROR: No options found for question', questionIdx);
+			console.error('   Check that data-question-idx attributes are set correctly in HTML');
+			return;
+		}
+		
+		// STEP 1: Reset all option styles to default
+		console.log('🔄 Resetting all option styles for question', questionIdx);
+		let clearedCount = 0;
 		allOptions.forEach(opt => {
 			opt.style.background = '#f0f9ff';
 			opt.style.borderLeft = '3px solid #3b82f6';
 			opt.style.fontWeight = 'normal';
 			opt.style.border = '1px solid #bfdbfe';
+			clearedCount++;
 		});
+		console.log('✅ Cleared', clearedCount, 'option elements');
 		
-		// Clear stored answer
-		delete window.classroomAnswers[questionIdx];
-		console.log('Cleared answer for question:', questionIdx);
-		console.log('Current answers:', window.classroomAnswers);
+		// STEP 2: Remove from stored answers
+		if (window.classroomAnswers[questionIdx]) {
+			const removedAnswer = window.classroomAnswers[questionIdx];
+			delete window.classroomAnswers[questionIdx];
+			console.log('🗑️  Removed answer "' + removedAnswer + '" from storage');
+		} else {
+			console.log('ℹ️  No stored answer to remove');
+		}
 		
-		// Update status
+		// STEP 3: Display current state
+		console.log('📊 Current Answers State After Clearing:');
+		const answerKeys = Object.keys(window.classroomAnswers).sort((a, b) => parseInt(a) - parseInt(b));
+		if (answerKeys.length === 0) {
+			console.log('   (empty - no questions answered)');
+		} else {
+			answerKeys.forEach(key => {
+				console.log(`   Question ${key}: "${window.classroomAnswers[key]}"`);
+			});
+		}
+		
+		// STEP 4: Clear visual status indicator
 		const statusEl = document.getElementById(`mcq-status-${questionIdx}`);
 		if (statusEl) {
 			statusEl.textContent = '';
+			console.log('✅ Status indicator cleared for question', questionIdx);
+		} else {
+			console.warn('⚠️  Status element #mcq-status-' + questionIdx + ' not found');
 		}
+		
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('✅ CLEAR COMPLETE - Question #' + questionIdx + ' is now unselected');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 	};
 	
 	// Submit ALL answers at once
