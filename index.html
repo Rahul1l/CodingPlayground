@@ -2800,6 +2800,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<section class="card question-card">
 					<div class="question-header">
 						<h3>Question {{ question_num }}: {{ question.title }}</h3>
+						<!-- DEBUG: question_num = {{ question_num }}, loop.index = {{ loop.index }} -->
 						<div style="display: flex; gap: 0.5rem; align-items: center;">
 							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
 								{% if question.difficulty == 'medium_plus' %}
@@ -2824,8 +2825,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						{% if question.question_type == 'mcq' and question.options %}
 						<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
 							<p><strong>Select the correct answer:</strong></p>
+							<!-- DEBUG: Rendering MCQ for question_num={{ question_num }}, Total options={{ question.options|length }} -->
 							<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
 								{% for option in question.options %}
+								<!-- DEBUG: Option loop.index={{ loop.index }}, parent question_num={{ question_num }}, option[0]={{ option[0] }} -->
 								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 									{{ option }}
 								</div>
@@ -3966,6 +3969,41 @@ print(f'Sum: {x + y}')"></textarea>
 	// Track selected answers for each question
 	window.classroomAnswers = {}; // Store MCQ answers
 	window.classroomCode = {};     // Store coding answers
+	
+	// DEBUG: Check what's actually rendered
+	window.addEventListener('DOMContentLoaded', function() {
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('🔍 DEBUGGING: Checking rendered HTML structure');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		
+		const allMcqOptions = document.querySelectorAll('.mcq-option-classroom');
+		console.log('Total MCQ options found:', allMcqOptions.length);
+		
+		// Group by question
+		const byQuestion = {};
+		allMcqOptions.forEach((opt, idx) => {
+			const questionIdx = opt.getAttribute('data-question-idx');
+			const optionValue = opt.getAttribute('data-option');
+			
+			if (!byQuestion[questionIdx]) {
+				byQuestion[questionIdx] = [];
+			}
+			byQuestion[questionIdx].push({
+				option: optionValue,
+				element: opt
+			});
+		});
+		
+		console.log('Options grouped by question:');
+		Object.keys(byQuestion).sort().forEach(qIdx => {
+			console.log(`  Question ${qIdx}: ${byQuestion[qIdx].length} options`);
+			byQuestion[qIdx].forEach((item, i) => {
+				console.log(`    - Option ${i + 1}: data-option="${item.option}", data-question-idx="${item.element.getAttribute('data-question-idx')}"`);
+			});
+		});
+		
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+	});
 	
 	// MCQ Selection Handler for Classroom Activities (Works for ANY question number)
 	window.selectClassroomMCQ = function(element, questionIdx) {
