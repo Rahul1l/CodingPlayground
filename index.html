@@ -4754,25 +4754,30 @@ print(f'Sum: {x + y}')"></textarea>
 	// No test restrictions - users can freely copy, paste, and use developer tools
 
 		// Auto-save form data
-		function autoSaveForm(formId) {
-			const form = document.getElementById(formId);
-			if (!form) return;
+	function autoSaveForm(formId) {
+		const form = document.getElementById(formId);
+		if (!form) return;
+		
+		const inputs = form.querySelectorAll('input, textarea, select');
+		
+		inputs.forEach(input => {
+			// Skip file inputs - browsers don't allow programmatic value setting for security
+			if (input.type === 'file') {
+				return;
+			}
 			
-			const inputs = form.querySelectorAll('input, textarea, select');
+			// Load saved data
+			const saved = localStorage.getItem(`form_${formId}_${input.name}`);
+			if (saved) {
+				input.value = saved;
+			}
 			
-			inputs.forEach(input => {
-				// Load saved data
-				const saved = localStorage.getItem(`form_${formId}_${input.name}`);
-				if (saved) {
-					input.value = saved;
-				}
-				
-				// Save on change
-				input.addEventListener('input', () => {
-					localStorage.setItem(`form_${formId}_${input.name}`, input.value);
-				});
+			// Save on change
+			input.addEventListener('input', () => {
+				localStorage.setItem(`form_${formId}_${input.name}`, input.value);
 			});
-		}
+		});
+	}
 
 		// Clear auto-saved data
 		function clearAutoSave(formId) {
