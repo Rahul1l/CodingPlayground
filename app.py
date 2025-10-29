@@ -853,6 +853,38 @@ def admin_submission_detail(submission_id):
 			error=f"Error retrieving submission: {str(e)}")
 
 
+@app.route("/admin/submissions/delete/<submission_id>", methods=["POST"])
+def admin_delete_submission(submission_id):
+	redir = require_admin()
+	if redir:
+		return redir
+	
+	from bson.objectid import ObjectId
+	try:
+		# Try to convert to ObjectId
+		try:
+			obj_id = ObjectId(submission_id)
+		except Exception as e:
+			logger.error(f"Invalid submission_id format for deletion: {submission_id}, error: {e}")
+			return jsonify({"ok": False, "message": f"Invalid submission ID format"}), 400
+		
+		# Delete the submission
+		result = submissions_col.delete_one({"_id": obj_id})
+		
+		if result.deleted_count > 0:
+			logger.info(f"Deleted submission: {submission_id}")
+			return jsonify({"ok": True, "message": "Submission deleted successfully"})
+		else:
+			logger.error(f"Submission not found for deletion: {submission_id}")
+			return jsonify({"ok": False, "message": "Submission not found"}), 404
+			
+	except Exception as e:
+		logger.error(f"Error deleting submission {submission_id}: {e}")
+		import traceback
+		traceback.print_exc()
+		return jsonify({"ok": False, "message": f"Error deleting submission: {str(e)}"}), 500
+
+
 def execute_python_code(code: str, timeout: int = 5) -> dict:
 	"""Safely execute Python code and return output"""
 	try:

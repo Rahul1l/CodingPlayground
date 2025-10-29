@@ -146,6 +146,12 @@ body {
     transform: translateY(-2px);
 }
 
+.btn.small {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
 /* Forms */
 label {
     display: block;
@@ -2188,7 +2194,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<th>Context</th>
 								<th>Test ID</th>
 								<th>Details</th>
-								<th>Actions</th>
+								<th style="min-width: 200px;">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -2207,7 +2213,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 										<span class="role-badge role-classroom">🎓 Classroom</span>
 									{% else %}
 										<span class="role-badge">{{ sub.context }}</span>
-		{% endif %}
+									{% endif %}
 								</td>
 								<td>{{ sub.test_id if sub.test_id else '-' }}</td>
 								<td>
@@ -2236,7 +2242,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 									{% endif %}
 								</td>
 								<td>
-									<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small" target="_blank">View Details</a>
+									<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+										<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small" target="_blank">View Details</a>
+										<button class="btn danger small" onclick="deleteSubmission('{{ sub._id }}', '{{ sub.username }}', '{{ sub.context }}')">🗑️ Delete</button>
+									</div>
 								</td>
 							</tr>
 							{% endfor %}
@@ -2262,6 +2271,55 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% endif %}
 			</section>
 			</div>
+			
+			<script>
+			// Delete submission function with confirmation
+			async function deleteSubmission(submissionId, username, context) {
+				// Create a friendly context name
+				const contextNames = {
+					'test_violation': 'Violation',
+					'test_complete': 'Test Completion',
+					'test': 'Test Submission',
+					'classroom': 'Classroom Submission'
+				};
+				const contextName = contextNames[context] || context;
+				
+				// Confirm deletion
+				const confirmed = confirm(
+					`⚠️ DELETE SUBMISSION?\n\n` +
+					`User: ${username}\n` +
+					`Type: ${contextName}\n` +
+					`ID: ${submissionId}\n\n` +
+					`This action cannot be undone. Continue?`
+				);
+				
+				if (!confirmed) {
+					return;
+				}
+				
+				try {
+					const response = await fetch(`/admin/submissions/delete/${submissionId}`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						}
+					});
+					
+					const result = await response.json();
+					
+					if (result.ok) {
+						alert('✅ Submission deleted successfully!');
+						// Reload the page to refresh the list
+						window.location.reload();
+					} else {
+						alert(`❌ Error: ${result.message}`);
+					}
+				} catch (error) {
+					console.error('Delete error:', error);
+					alert(`❌ Failed to delete submission: ${error.message}`);
+				}
+			}
+			</script>
 		{% endif %}
 
 		{# Admin Submission Detail #}
