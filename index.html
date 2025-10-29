@@ -1474,12 +1474,28 @@ button.secondary, .btn.secondary, a.btn.secondary {
 </style>
 </head>
 <body>
-	<script>
-		// App configuration
-		const APP_BASE_URL = 'http://3.80.74.243:5000';
-		const ADMIN_USERNAME = 'Ayushman';
-		const ADMIN_PASSWORD = 'ayushman9277';
-	</script>
+<script>
+	// App configuration
+	const APP_BASE_URL = 'http://3.80.74.243:5000';
+	const ADMIN_USERNAME = 'Ayushman';
+	const ADMIN_PASSWORD = 'ayushman9277';
+	
+	// Define toggleUserPassword globally BEFORE it's used (called at line 1937)
+	window.toggleUserPassword = function(username) {
+		console.log('toggleUserPassword called for:', username);
+		const passwordSpan = document.querySelector(`span[data-password="${username}"]`);
+		if (!passwordSpan) {
+			console.error('Password span not found for username:', username);
+			return;
+		}
+		const plainPassword = passwordSpan.getAttribute('data-plain');
+		if (passwordSpan.textContent.trim() === '••••••••') {
+			passwordSpan.textContent = plainPassword || 'N/A';
+		} else {
+			passwordSpan.textContent = '••••••••';
+		}
+	};
+</script>
 	{% if view != 'login' %}
 	<header class="container flex-between">
 		<h1>Coding Playground</h1>
