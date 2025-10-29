@@ -1451,24 +1451,27 @@ def activity(activity_id: str):
 	if not act or act.get("classroom_id") != user.get("classroom_id"):
 		abort(404)
 	
-	# Parse the generated JSON to extract questions and filter by type
+	# Parse the generated JSON to extract questions and filter by type (SAME LOGIC AS TESTS)
 	questions = []
 	try:
 		import json
 		generated_data = json.loads(act.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
 		
-		# Filter questions by type according to num_mcq and num_coding
+		# Read configuration from database
 		num_mcq = act.get("num_mcq", 0)
 		num_coding = act.get("num_coding", 0)
 		
+		# Filter by question type
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
 		
-		# Take exactly the requested number of each type
-		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		# Select EXACTLY the requested number (SAME LOGIC AS TESTS)
+		selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
+		selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
+		questions = selected_mcq + selected_coding
 		
-		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
+		print(f"Activity {activity_id}: Requested {num_mcq} MCQ + {num_coding} Coding → Displaying {len(selected_mcq)} MCQ + {len(selected_coding)} Coding = {len(questions)} total")
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -2098,59 +2101,127 @@ def test_start():
 			test=test_doc, already_completed=True,
 			completion_time=already_completed.get("created_at"))
 	
-	# Check if test is open
+	# SCHEDULING CHECK - Mandatory for users, bypassed for admin testing
 	now = datetime.now(timezone.utc)
 	start_time = test_doc.get("start_time")
 	end_time = test_doc.get("end_time")
 	scheduled_at = test_doc.get("scheduled_at")  # For backward compatibility
 	
-	# Ensure times are timezone-aware for comparison
-	if start_time and start_time.tzinfo is None:
-		start_time = start_time.replace(tzinfo=timezone.utc)
-	if end_time and end_time.tzinfo is None:
-		end_time = end_time.replace(tzinfo=timezone.utc)
-	if scheduled_at and scheduled_at.tzinfo is None:
-		scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+	# Check if this is an admin testing (has admin session)
+	is_admin_testing = session.get("admin_username") is not None
 	
-	# Check test availability
-	if start_time and end_time:
-		# New format with start and end times
-		if now < start_time:
-			return render_template("index.html", view="test", error="Test not yet open. Please return at the scheduled start time." )
-		elif now > end_time:
-			return render_template("index.html", view="test", error="Test has expired. The test window has closed." )
-	elif scheduled_at:
-		# Old format with only scheduled_at
-		if now < scheduled_at:
-			return render_template("index.html", view="test", error="Test not yet open. Please return at the scheduled time." )
+	if is_admin_testing:
+		print(f"⚠️ ADMIN TESTING MODE: Scheduling bypassed for test {test_doc.get('test_id')}")
 	else:
-		return render_template("index.html", view="test", error="No test scheduled" )
+		# Ensure times are timezone-aware for comparison
+		if start_time and start_time.tzinfo is None:
+			start_time = start_time.replace(tzinfo=timezone.utc)
+		if end_time and end_time.tzinfo is None:
+			end_time = end_time.replace(tzinfo=timezone.utc)
+		if scheduled_at and scheduled_at.tzinfo is None:
+			scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+		
+		# Enforce scheduling for regular users
+		if start_time and end_time:
+			# New format with start and end times
+			if now < start_time:
+				print(f"❌ User blocked: Test not yet open (now={now}, start={start_time})")
+				return render_template("index.html", view="test", error="Test not yet open. Please return at the scheduled start time." )
+			elif now > end_time:
+				print(f"❌ User blocked: Test expired (now={now}, end={end_time})")
+				return render_template("index.html", view="test", error="Test has expired. The test window has closed." )
+		elif scheduled_at:
+			# Old format with only scheduled_at
+			if now < scheduled_at:
+				print(f"❌ User blocked: Test not yet open (now={now}, scheduled={scheduled_at})")
+				return render_template("index.html", view="test", error="Test not yet open. Please return at the scheduled time." )
+		else:
+			# No scheduling info - this should not happen for properly created tests
+			print(f"⚠️ WARNING: Test {test_doc.get('test_id')} has no scheduling information")
+			return render_template("index.html", view="test", error="Test scheduling error. Please contact administrator." )
 	
 	# Initialize progress
 	if session.get("test_progress") is None:
 		session["test_progress"] = 0
 	
-	# Parse the generated JSON to extract questions and filter by type (EXACT SAME LOGIC AS CLASSROOM ACTIVITY)
+	# LOAD QUESTIONS - This runs ONLY if scheduling check passed (test is open)
+	print(f"\n{'='*60}")
+	print(f"✅ LOADING QUESTIONS for Test {test_doc.get('test_id')}")
+	print(f"{'='*60}")
+	
 	questions = []
 	try:
 		import json
-		generated_data = json.loads(test_doc.get("generated", "{}"))
-		all_questions = generated_data.get("questions", [])
 		
-		# Filter questions by type according to num_mcq and num_coding
-		num_mcq = test_doc.get("num_mcq", 0)
-		num_coding = test_doc.get("num_coding", 0)
+		# Step 1: Get the generated content from database
+		generated_content = test_doc.get("generated", "")
+		print(f"Step 1: Retrieved 'generated' field from database")
+		print(f"        Content length: {len(generated_content)} chars")
 		
-		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
-		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		if not generated_content:
+			print(f"❌ FATAL: 'generated' field is empty!")
+			print(f"   This test has no questions in the database.")
+			print(f"   Admin needs to regenerate this test.")
+			questions = []
+		else:
+			# Step 2: Parse JSON
+			generated_data = json.loads(generated_content)
+			all_questions = generated_data.get("questions", [])
+			print(f"Step 2: Parsed JSON successfully")
+			print(f"        Found {len(all_questions)} total questions")
+			
+			if len(all_questions) == 0:
+				print(f"❌ FATAL: JSON parsed but 'questions' array is empty!")
+				questions = []
+			else:
+				# Step 3: Get test configuration
+				num_mcq = test_doc.get("num_mcq", 0)
+				num_coding = test_doc.get("num_coding", 0)
+				print(f"Step 3: Test configuration from database")
+				print(f"        Requested: {num_mcq} MCQ + {num_coding} Coding")
+				
+				# Step 4: Filter by question type
+				mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
+				coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+				print(f"Step 4: Filtered questions by type")
+				print(f"        Available: {len(mcq_questions)} MCQ, {len(coding_questions)} Coding")
+				
+				# Step 5: Select EXACTLY the requested number (SIMPLE LOGIC)
+				# If admin wants 2 MCQ + 0 Coding → take first 2 MCQ + 0 Coding
+				# If admin wants 5 MCQ + 3 Coding → take first 5 MCQ + first 3 Coding
+				selected_mcq = mcq_questions[:num_mcq] if num_mcq > 0 else []
+				selected_coding = coding_questions[:num_coding] if num_coding > 0 else []
+				questions = selected_mcq + selected_coding
+				
+				print(f"Step 5: Selected questions")
+				print(f"        Taking: {len(selected_mcq)} MCQ + {len(selected_coding)} Coding")
+				print(f"        Total: {len(questions)} questions")
+				
+				# Step 6: Show what will be displayed
+				if questions:
+					print(f"\n📋 QUESTIONS TO DISPLAY:")
+					for i, q in enumerate(questions):
+						print(f"  {i+1}. [{q.get('question_type', 'unknown').upper()}] {q.get('title', 'NO TITLE')[:60]}")
+				else:
+					print(f"\n⚠️ WARNING: 0 questions selected!")
+					print(f"   Check: Admin requested {num_mcq} MCQ + {num_coding} Coding")
+					print(f"   Check: Database has {len(mcq_questions)} MCQ + {len(coding_questions)} Coding")
+					if num_mcq == 0 and num_coding == 0:
+						print(f"   ISSUE: Admin requested 0 MCQ + 0 Coding = no questions!")
 		
-		# Take exactly the requested number of each type
-		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
-		
-		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
-	except Exception as e:
-		print(f"Error parsing test JSON: {e}")
+	except json.JSONDecodeError as e:
+		print(f"\n❌ JSON PARSE ERROR: {e}")
+		print(f"   The 'generated' field contains invalid JSON")
 		questions = []
+	except Exception as e:
+		print(f"\n❌ UNEXPECTED ERROR: {e}")
+		import traceback
+		traceback.print_exc()
+		questions = []
+	
+	print(f"\n{'='*60}")
+	print(f"FINAL RESULT: Rendering test_interface with {len(questions)} questions")
+	print(f"{'='*60}\n")
 	
 	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
 
