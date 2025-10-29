@@ -2221,6 +2221,13 @@ def test_start():
 	
 	print(f"\n{'='*60}")
 	print(f"FINAL RESULT: Rendering test_interface with {len(questions)} questions")
+	print(f"Template will receive:")
+	print(f"  - view = 'test_interface'")
+	print(f"  - test = {test_doc.get('test_id')}")
+	print(f"  - questions = {len(questions)} items")
+	if len(questions) == 0:
+		print(f"\n⚠️⚠️⚠️ CRITICAL: ZERO QUESTIONS! ⚠️⚠️⚠️")
+		print(f"User will see: 'No Questions Available' message")
 	print(f"{'='*60}\n")
 	
 	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
