@@ -2079,7 +2079,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div class="flex-between">
 					<h2>📊 Submissions & Violation Logs</h2>
 					<div>
-						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">📥 Export CSV</a>
+						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">📥 Export CSV</a>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 					</div>
 				</div>
@@ -2107,7 +2107,53 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<p style="font-size: 2rem; font-weight: 700; color: #f59e0b;">{{ stats.unique_users }}</p>
 					<p class="muted">Users with submissions</p>
 				</div>
+				<div class="card">
+					<h3>🏛️ Universities</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">{{ stats.unique_universities }}</p>
+					<p class="muted">Universities active</p>
+				</div>
+				<div class="card">
+					<h3>🎓 Classroom MCQ</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #06b6d4;">{{ stats.total_classroom_mcq }}</p>
+					<p class="muted">MCQ submissions</p>
+				</div>
+				<div class="card">
+					<h3>💻 Classroom Coding</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #14b8a6;">{{ stats.total_classroom_coding }}</p>
+					<p class="muted">Coding submissions</p>
+				</div>
 			</section>
+
+			{# University Statistics #}
+			{% if university_stats %}
+			<section class="card">
+				<h3>🏛️ Submissions by University</h3>
+				<div class="table-container">
+					<table>
+						<thead>
+							<tr>
+								<th>University</th>
+								<th>Submissions</th>
+								<th>Percentage</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for stat in university_stats %}
+							<tr>
+								<td><strong>{{ stat._id }}</strong></td>
+								<td>{{ stat.count }}</td>
+								<td>{{ "%.1f"|format((stat.count / stats.total_submissions * 100) if stats.total_submissions > 0 else 0) }}%</td>
+								<td>
+									<a href="/admin/submissions?university={{ stat._id }}" class="btn secondary small">Filter by University</a>
+								</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</section>
+			{% endif %}
 
 			{# Violation Statistics #}
 			{% if violation_stats %}
@@ -2176,7 +2222,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Final Scores</option>
 							<option value="test_violation" {% if filter_context == 'test_violation' %}selected{% endif %}>⚠️ Violations</option>
 							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Submissions</option>
-							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom</option>
+							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Legacy)</option>
+							<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ</option>
+							<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding</option>
 						</select>
 					</div>
 					<div>
@@ -2196,6 +2244,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<option value="all" {% if filter_user == 'all' %}selected{% endif %}>All Users</option>
 							{% for user in all_users %}
 							<option value="{{ user }}" {% if filter_user == user %}selected{% endif %}>{{ user }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					<div>
+						<label>University</label>
+						<select name="university">
+							<option value="all" {% if filter_university == 'all' %}selected{% endif %}>All Universities</option>
+							{% for uni in all_universities %}
+								{% if uni and uni != 'Unknown' %}
+								<option value="{{ uni }}" {% if filter_university == uni %}selected{% endif %}>{{ uni }}</option>
+								{% endif %}
 							{% endfor %}
 						</select>
 					</div>
@@ -2220,6 +2279,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<tr>
 								<th>Date/Time</th>
 								<th>Username</th>
+								<th>University</th>
 								<th>Context</th>
 								<th>Test ID</th>
 								<th>Details</th>
@@ -2231,6 +2291,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<tr>
 								<td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M:%S') if sub.created_at else 'N/A' }}</td>
 								<td><strong>{{ sub.username }}</strong></td>
+								<td><span class="muted">{{ sub.university if sub.university else '-' }}</span></td>
 								<td>
 									{% if sub.context == 'test_violation' %}
 										<span class="role-badge" style="background: #dc2626; color: white;">⚠️ Violation</span>
@@ -2240,6 +2301,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 										<span class="role-badge role-test">📝 Test</span>
 									{% elif sub.context == 'classroom' %}
 										<span class="role-badge role-classroom">🎓 Classroom</span>
+									{% elif sub.context == 'classroom_mcq' %}
+										<span class="role-badge" style="background: #8b5cf6; color: white;">🎓 MCQ</span>
+									{% elif sub.context == 'classroom_coding' %}
+										<span class="role-badge" style="background: #06b6d4; color: white;">🎓 Coding</span>
 									{% else %}
 										<span class="role-badge">{{ sub.context }}</span>
 									{% endif %}
@@ -2266,6 +2331,18 @@ student2,unique003,Stanford,both,act002,test002</pre>
 										{% if sub.question_type %}
 										<br><small class="muted">Type: {{ sub.question_type }}</small>
 										{% endif %}
+									{% elif sub.context == 'classroom_mcq' %}
+										<strong>{{ sub.question_title if sub.question_title else 'MCQ Question' }}</strong>
+										<br><small class="muted">
+										{% if sub.is_correct %}
+											<span style="color: #10b981;">✓ Correct</span>
+										{% else %}
+											<span style="color: #dc2626;">✗ Incorrect</span>
+										{% endif %}
+										</small>
+									{% elif sub.context == 'classroom_coding' %}
+										<strong>{{ sub.question_title if sub.question_title else 'Coding Question' }}</strong>
+										<br><small class="muted">Code submitted</small>
 									{% else %}
 										-
 									{% endif %}
@@ -2286,11 +2363,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% if total_pages > 1 %}
 				<div class="pagination" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center; justify-content: center;">
 					{% if page > 1 %}
-						<a href="?page={{ page - 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">← Previous</a>
+						<a href="?page={{ page - 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">← Previous</a>
 					{% endif %}
 					<span class="muted">Page {{ page }} of {{ total_pages }}</span>
 					{% if page < total_pages %}
-						<a href="?page={{ page + 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}" class="btn secondary">Next →</a>
+						<a href="?page={{ page + 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">Next →</a>
 					{% endif %}
 				</div>
 				{% endif %}
@@ -2458,6 +2535,86 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</section>
 			{% endif %}
 
+			{% if submission.context == 'classroom_mcq' %}
+			<section class="card">
+				<h3>🎓 Classroom MCQ Submission</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+					<div>
+						<p class="muted">Activity ID</p>
+						<p><strong>{{ submission.activity_id }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Question Index</p>
+						<p><strong>{{ submission.question_index }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Question Title</p>
+						<p><strong>{{ submission.question_title or 'N/A' }}</strong></p>
+					</div>
+				</div>
+				
+				<div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+					<div>
+						<p class="muted">Student's Answer</p>
+						<p><strong>{{ submission.selected_answer }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Correct Answer</p>
+						<p><strong style="color: #10b981;">{{ submission.correct_answer }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Result</p>
+						<p><strong {% if submission.is_correct %}style="color: #10b981;"{% else %}style="color: #dc2626;"{% endif %}>
+							{% if submission.is_correct %}✓ Correct{% else %}✗ Incorrect{% endif %}
+						</strong></p>
+					</div>
+				</div>
+				
+				{% if submission.explanation %}
+				<div style="margin-top: 1.5rem;">
+					<p class="muted">Explanation</p>
+					<div style="padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+						<p style="color: #000000;">{{ submission.explanation }}</p>
+					</div>
+				</div>
+				{% endif %}
+			</section>
+			{% endif %}
+
+			{% if submission.context == 'classroom_coding' %}
+			<section class="card">
+				<h3>🎓 Classroom Coding Submission</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+					<div>
+						<p class="muted">Activity ID</p>
+						<p><strong>{{ submission.activity_id }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Question Index</p>
+						<p><strong>{{ submission.question_index }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Question Title</p>
+						<p><strong>{{ submission.question_title or 'N/A' }}</strong></p>
+					</div>
+				</div>
+				
+				{% if submission.user_code %}
+				<div style="margin-top: 1.5rem;">
+					<p class="muted">Student's Code</p>
+					<pre class="scroll" style="max-height: 400px;">{{ submission.user_code }}</pre>
+				</div>
+				{% endif %}
+				
+				{% if submission.ai_feedback %}
+				<div style="margin-top: 1.5rem;">
+					<p class="muted">AI Feedback</p>
+					<pre class="scroll" style="max-height: 400px; white-space: pre-wrap;">{{ submission.ai_feedback }}</pre>
+				</div>
+				{% endif %}
+			</section>
+			{% endif %}
+
 			{% if submission.context == 'test_complete' %}
 			<section class="card" style="border-left: 4px solid #10b981;">
 				<h3>📊 Final Test Score</h3>
@@ -2586,15 +2743,28 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						
 						{# MCQ Questions #}
 						{% if question.question_type == 'mcq' and question.options %}
-						<div style="margin-top: 1.5rem;">
+						<div style="margin-top: 1.5rem;" id="mcq-question-{{ loop.index }}">
 							<p><strong>Select the correct answer:</strong></p>
-							<div style="margin: 1rem 0;">
+							<div style="margin: 1rem 0;" id="mcq-options-{{ loop.index }}">
 								{% for option in question.options %}
-								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question="{{ loop.index }}" onclick="selectClassroomMCQ(this)" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ loop.index }}" onclick="selectClassroomMCQ(this, {{ loop.index }})" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 									{{ option }}
 								</div>
 								{% endfor %}
 							</div>
+							
+							<div style="margin-top: 1rem;">
+								<button class="btn" onclick="submitClassroomMCQ({{ loop.index }}, '{{ activity.activity_id }}', {{ question | tojson | forceescape }})">
+									Submit Answer
+								</button>
+								<button class="btn secondary" onclick="clearClassroomMCQ({{ loop.index }})" style="margin-left: 0.5rem;">
+									Clear Selection
+								</button>
+							</div>
+							
+							<!-- Feedback area -->
+							<div id="mcq-feedback-{{ loop.index }}" style="margin-top: 1rem; display: none;"></div>
+							
 							{% if question.hints %}
 							<details style="margin-top: 1rem;">
 								<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
@@ -2634,35 +2804,44 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<p><strong>Constraints:</strong></p>
 						<p style="color: #f59e0b;">{{ question.constraints }}</p>
 						{% endif %}
-					{% endif %}
-				</div>
-				
-				{# Only show code editor for coding questions #}
-				{% if question.question_type == 'coding' or not question.question_type %}
-				<div class="compiler-section">
-					<h4>🐍 Code Editor</h4>
-					<div class="compiler-container">
-						<div class="code-section">
-							<textarea id="code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
+						{% endif %}
+					</div>
+					
+					{# Only show code editor for coding questions #}
+					{% if question.question_type == 'coding' or not question.question_type %}
+					<div class="compiler-section" id="coding-question-{{ loop.index }}">
+						<h4>🐍 Code Editor</h4>
+						<div class="compiler-container">
+							<div class="code-section">
+								<textarea id="code-{{ loop.index }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-							<div class="compiler-controls">
-								<button class="btn run-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-								<button class="btn secondary clear-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
+								<div class="compiler-controls">
+									<button class="btn run-question-code" data-question="{{ loop.index }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									<button class="btn secondary clear-question-code" data-question="{{ loop.index }}">🗑️ Clear</button>
+								</div>
+							</div>
+							
+							<div class="output-section">
+								<label>Output:</label>
+								<div id="output-{{ loop.index }}" class="output-box">
+									<p class="muted">Click "Run Code" to see the output here...</p>
+								</div>
 							</div>
 						</div>
 						
-						<div class="output-section">
-							<label>Output:</label>
-							<div id="output-{{ loop.index }}" class="output-box">
-								<p class="muted">Click "Run Code" to see the output here...</p>
-							</div>
+						<div style="margin-top: 1rem;">
+							<button class="btn" onclick="submitClassroomCoding({{ loop.index }}, '{{ activity.activity_id }}', {{ question | tojson | forceescape }})">
+								Submit Code
+							</button>
 						</div>
+						
+						<!-- Feedback area for coding -->
+						<div id="coding-feedback-{{ loop.index }}" style="margin-top: 1rem; display: none;"></div>
 					</div>
-				</div>
-				{% endif %}
-			</section>
+					{% endif %}
+				</section>
 				{% endfor %}
 			{% else %}
 				<section class="card">
@@ -2787,7 +2966,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<div class="flex-between">
 				<h2>{{ test.subject }} - Test</h2>
 				<div class="test-progress">
-					<span class="progress-badge">Question {{ progress + 1 }} of {{ test.num_questions }}</span>
+					<span class="progress-badge">Question {{ progress + 1 }} of {{ questions|length }}</span>
 					{% if warning_count > 0 %}
 					<span class="warning-indicator" id="warning-indicator">⚠️ Warnings: <span id="warning-count-display">{{ warning_count }}</span>/3</span>
 					{% endif %}
@@ -2807,14 +2986,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					</div>
 				</div>
 			</div>
-			
-			{% if parse_error %}
-			<div class="alert">
-				<strong>⚠️ Error loading test questions:</strong><br>
-				{{ parse_error }}<br>
-				<small>The test content may not be in the expected format. Please check the test generation.</small>
-			</div>
-			{% endif %}
 			
 			{% if current_question %}
 			<section class="card question-card">
@@ -3555,12 +3726,20 @@ print(f'Sum: {x + y}')"></textarea>
 	<script src="/static/app.js"></script>
 	{% if view == 'activity' %}
 	<script>
+	// Track selected answers for each question
+	window.classroomAnswers = {};
+	window.submittedQuestions = new Set();
+	
 	// MCQ Selection Handler for Classroom Activities
-	window.selectClassroomMCQ = function(element) {
-		const questionNum = element.getAttribute('data-question');
+	window.selectClassroomMCQ = function(element, questionIdx) {
+		// Check if already submitted
+		if (window.submittedQuestions.has(questionIdx)) {
+			alert('You have already submitted this question. You cannot change your answer.');
+			return;
+		}
 		
 		// Remove selection from all options in this question
-		document.querySelectorAll(`.mcq-option-classroom[data-question="${questionNum}"]`).forEach(opt => {
+		document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
 			opt.style.background = '#f0f9ff';
 			opt.style.borderLeft = '3px solid #3b82f6';
 			opt.style.fontWeight = 'normal';
@@ -3571,10 +3750,202 @@ print(f'Sum: {x + y}')"></textarea>
 		element.style.borderLeft = '3px solid #10b981';
 		element.style.fontWeight = '600';
 		
-		// Show selected answer
+		// Store selected answer
 		const option = element.getAttribute('data-option');
-		console.log(`Selected option ${option} for question ${questionNum}`);
+		window.classroomAnswers[questionIdx] = option;
+		console.log(`Selected option ${option} for question ${questionIdx}`);
 	};
+	
+	// Clear MCQ selection
+	window.clearClassroomMCQ = function(questionIdx) {
+		// Check if already submitted
+		if (window.submittedQuestions.has(questionIdx)) {
+			alert('You have already submitted this question. You cannot change your answer.');
+			return;
+		}
+		
+		// Remove selection from all options
+		document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
+			opt.style.background = '#f0f9ff';
+			opt.style.borderLeft = '3px solid #3b82f6';
+			opt.style.fontWeight = 'normal';
+		});
+		
+		// Clear stored answer
+		delete window.classroomAnswers[questionIdx];
+		console.log(`Cleared selection for question ${questionIdx}`);
+	};
+	
+	// Submit MCQ answer
+	window.submitClassroomMCQ = async function(questionIdx, activityId, question) {
+		// Check if already submitted
+		if (window.submittedQuestions.has(questionIdx)) {
+			alert('You have already submitted this question.');
+			return;
+		}
+		
+		// Check if answer is selected
+		const selectedAnswer = window.classroomAnswers[questionIdx];
+		if (!selectedAnswer) {
+			alert('⚠️ Please select an answer before submitting.');
+			return;
+		}
+		
+		// Confirm submission
+		if (!confirm(`Submit your answer: ${selectedAnswer}\n\nYou cannot change your answer after submitting.`)) {
+			return;
+		}
+		
+		try {
+			// Show loading state
+			const feedbackDiv = document.getElementById(`mcq-feedback-${questionIdx}`);
+			feedbackDiv.style.display = 'block';
+			feedbackDiv.innerHTML = '<p style="color: #3b82f6;">⏳ Validating your answer...</p>';
+			
+			// Send to backend
+			const response = await fetch('/classroom/submit_mcq', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					activity_id: activityId,
+					question_index: questionIdx,
+					question_data: question,
+					selected_answer: selectedAnswer
+				})
+			});
+			
+			const result = await response.json();
+			
+			if (result.ok) {
+				// Mark as submitted
+				window.submittedQuestions.add(questionIdx);
+				
+				// Disable options
+				document.querySelectorAll(`.mcq-option-classroom[data-question-idx="${questionIdx}"]`).forEach(opt => {
+					opt.style.cursor = 'not-allowed';
+					opt.style.opacity = '0.6';
+					opt.onclick = null;
+				});
+				
+				// Display feedback
+				displayMCQFeedback(questionIdx, result);
+			} else {
+				feedbackDiv.innerHTML = `<p style="color: #dc2626;">❌ Error: ${result.error}</p>`;
+			}
+		} catch (error) {
+			console.error('Submission error:', error);
+			alert('Failed to submit answer. Please try again.');
+		}
+	};
+	
+	// Display feedback
+	function displayMCQFeedback(questionIdx, result) {
+		const feedbackDiv = document.getElementById(`mcq-feedback-${questionIdx}`);
+		
+		let feedbackHTML = '<div style="padding: 1.5rem; border-radius: 12px; ';
+		
+		if (result.is_correct) {
+			feedbackHTML += 'background: #d1fae5; border: 2px solid #10b981;">';
+			feedbackHTML += '<h4 style="color: #065f46; margin: 0 0 0.5rem 0;">✅ Correct!</h4>';
+			feedbackHTML += `<p style="color: #065f46; margin: 0;"><strong>Your answer:</strong> ${result.selected_answer}</p>`;
+		} else {
+			feedbackHTML += 'background: #fee2e2; border: 2px solid #dc2626;">';
+			feedbackHTML += '<h4 style="color: #991b1b; margin: 0 0 0.5rem 0;">❌ Incorrect</h4>';
+			feedbackHTML += `<p style="color: #991b1b; margin: 0 0 0.5rem 0;"><strong>Your answer:</strong> ${result.selected_answer}</p>`;
+			feedbackHTML += `<p style="color: #065f46; margin: 0;"><strong>Correct answer:</strong> ${result.correct_answer}</p>`;
+		}
+		
+		if (result.explanation) {
+			feedbackHTML += `<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1);">`;
+			feedbackHTML += `<p style="color: #000000; margin: 0;"><strong>Explanation:</strong></p>`;
+			feedbackHTML += `<p style="color: #000000; margin: 0.5rem 0 0 0;">${result.explanation}</p>`;
+			feedbackHTML += `</div>`;
+		}
+		
+		feedbackHTML += '</div>';
+		feedbackDiv.innerHTML = feedbackHTML;
+	}
+	
+	// Submit Coding answer
+	window.submitClassroomCoding = async function(questionIdx, activityId, question) {
+		// Check if already submitted
+		if (window.submittedQuestions.has(questionIdx)) {
+			alert('You have already submitted this question.');
+			return;
+		}
+		
+		// Get code
+		const codeTextarea = document.getElementById(`code-${questionIdx}`);
+		const code = codeTextarea.value.trim();
+		
+		if (!code) {
+			alert('⚠️ Please write some code before submitting.');
+			return;
+		}
+		
+		// Confirm submission
+		if (!confirm('Submit your code?\n\nYou cannot change your answer after submitting.')) {
+			return;
+		}
+		
+		try {
+			// Show loading state
+			const feedbackDiv = document.getElementById(`coding-feedback-${questionIdx}`);
+			feedbackDiv.style.display = 'block';
+			feedbackDiv.innerHTML = '<p style="color: #3b82f6;">⏳ Evaluating your code... This may take a moment.</p>';
+			
+			// Disable textarea and button
+			codeTextarea.disabled = true;
+			
+			// Send to backend
+			const response = await fetch('/classroom/submit_coding', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					activity_id: activityId,
+					question_index: questionIdx,
+					question_data: question,
+					user_code: code
+				})
+			});
+			
+			const result = await response.json();
+			
+			if (result.ok) {
+				// Mark as submitted
+				window.submittedQuestions.add(questionIdx);
+				
+				// Display feedback
+				displayCodingFeedback(questionIdx, result);
+			} else {
+				feedbackDiv.innerHTML = `<p style="color: #dc2626;">❌ Error: ${result.error}</p>`;
+				codeTextarea.disabled = false;
+			}
+		} catch (error) {
+			console.error('Submission error:', error);
+			alert('Failed to submit code. Please try again.');
+			codeTextarea.disabled = false;
+		}
+	};
+	
+	// Display coding feedback
+	function displayCodingFeedback(questionIdx, result) {
+		const feedbackDiv = document.getElementById(`coding-feedback-${questionIdx}`);
+		
+		let feedbackHTML = '<div style="padding: 1.5rem; border-radius: 12px; background: #eff6ff; border: 2px solid #3b82f6;">';
+		feedbackHTML += '<h4 style="color: #1e40af; margin: 0 0 1rem 0;">📊 Evaluation Results</h4>';
+		
+		if (result.ai_feedback) {
+			feedbackHTML += `<div style="white-space: pre-wrap; color: #000000; line-height: 1.6;">${result.ai_feedback}</div>`;
+		}
+		
+		feedbackHTML += '</div>';
+		feedbackDiv.innerHTML = feedbackHTML;
+	}
 	
 	document.addEventListener('DOMContentLoaded', function() {
 		// Handle question-specific code execution

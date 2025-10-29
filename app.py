@@ -686,9 +686,10 @@ def admin_submissions():
 		return redir
 	
 	# Get filter parameters
-	filter_context = request.args.get('context', 'all')  # all, test, test_violation, classroom
+	filter_context = request.args.get('context', 'all')  # all, test, test_violation, classroom, classroom_mcq, classroom_coding
 	filter_test = request.args.get('test_id', 'all')
 	filter_user = request.args.get('username', 'all')
+	filter_university = request.args.get('university', 'all')
 	page = int(request.args.get('page', 1))
 	per_page = 50
 	skip = (page - 1) * per_page
@@ -701,6 +702,8 @@ def admin_submissions():
 		query['test_id'] = filter_test
 	if filter_user != 'all':
 		query['username'] = filter_user
+	if filter_university != 'all':
+		query['university'] = filter_university
 	
 	# Get submissions
 	submissions = list(submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page))
@@ -710,6 +713,7 @@ def admin_submissions():
 	# Get unique values for filters
 	all_tests = submissions_col.distinct("test_id")
 	all_users = submissions_col.distinct("username")
+	all_universities = submissions_col.distinct("university")
 	
 	# Get statistics
 	stats = {
@@ -718,9 +722,20 @@ def admin_submissions():
 		'total_test_submissions': submissions_col.count_documents({'context': 'test'}),
 		'total_test_completions': submissions_col.count_documents({'context': 'test_complete'}),
 		'total_classroom_submissions': submissions_col.count_documents({'context': 'classroom'}),
+		'total_classroom_mcq': submissions_col.count_documents({'context': 'classroom_mcq'}),
+		'total_classroom_coding': submissions_col.count_documents({'context': 'classroom_coding'}),
 		'unique_users': len(all_users),
-		'unique_tests': len([t for t in all_tests if t])
+		'unique_tests': len([t for t in all_tests if t]),
+		'unique_universities': len([u for u in all_universities if u and u != 'Unknown'])
 	}
+	
+	# Get university breakdown
+	university_pipeline = [
+		{"$match": {"university": {"$exists": True, "$ne": None, "$ne": "Unknown"}}},
+		{"$group": {"_id": "$university", "count": {"$sum": 1}}},
+		{"$sort": {"count": -1}}
+	]
+	university_stats = list(submissions_col.aggregate(university_pipeline))
 	
 	# Get violation breakdown
 	violation_pipeline = [
@@ -741,9 +756,9 @@ def admin_submissions():
 	
 	return render_template("index.html", view="admin_submissions", 
 		submissions=submissions, page=page, total_pages=total_pages, total_submissions=total_submissions,
-		filter_context=filter_context, filter_test=filter_test, filter_user=filter_user,
-		all_tests=all_tests, all_users=all_users, stats=stats, 
-		violation_stats=violation_stats, user_violations=user_violations)
+		filter_context=filter_context, filter_test=filter_test, filter_user=filter_user, filter_university=filter_university,
+		all_tests=all_tests, all_users=all_users, all_universities=all_universities, stats=stats, 
+		university_stats=university_stats, violation_stats=violation_stats, user_violations=user_violations)
 
 
 @app.route("/admin/submissions/export")
@@ -756,6 +771,7 @@ def admin_export_submissions():
 	filter_context = request.args.get('context', 'all')
 	filter_test = request.args.get('test_id', 'all')
 	filter_user = request.args.get('username', 'all')
+	filter_university = request.args.get('university', 'all')
 	
 	# Build query
 	query = {}
@@ -765,6 +781,8 @@ def admin_export_submissions():
 		query['test_id'] = filter_test
 	if filter_user != 'all':
 		query['username'] = filter_user
+	if filter_university != 'all':
+		query['university'] = filter_university
 	
 	try:
 		# Get all submissions matching filters
@@ -775,7 +793,7 @@ def admin_export_submissions():
 		writer = csv.writer(output)
 		
 		# Write header
-		writer.writerow(['Username', 'Context', 'Test ID', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
+		writer.writerow(['Username', 'University', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
 		
 		# Write data
 		for sub in submissions:
@@ -784,13 +802,20 @@ def admin_export_submissions():
 			
 			if sub.get('context') == 'test_violation':
 				details = f"Violation: {sub.get('violation_type', 'N/A')}"
-			elif sub.get('context') == 'test':
-				details = f"Question: {sub.get('question_index', 'N/A')}"
+			elif sub.get('context') in ['test', 'classroom_mcq', 'classroom_coding']:
+				details = f"Question: {sub.get('question_title', 'N/A')}"
+			elif sub.get('context') == 'test_complete':
+				details = f"Score: {sub.get('final_score', 'N/A')}%"
 			
 			writer.writerow([
 				sub.get('username', ''),
+				sub.get('university', 'Unknown'),
 				sub.get('context', ''),
 				sub.get('test_id', ''),
+				sub.get('activity_id', ''),
+				sub.get('question_type', ''),
+				sub.get('question_index', ''),
+				sub.get('is_correct', ''),
 				sub.get('violation_type', ''),
 				sub.get('warning_number', ''),
 				created_at,
@@ -799,6 +824,8 @@ def admin_export_submissions():
 		
 		output.seek(0)
 		filename = f'submissions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+		if filter_university != 'all':
+			filename += f'_{filter_university}'
 		if filter_test != 'all':
 			filename += f'_{filter_test}'
 		if filter_context != 'all':
@@ -1555,6 +1582,137 @@ Format your response as clear, friendly text (not JSON). Use emojis sparingly to
 	return jsonify({"ok": True, "feedback": suggestions})
 
 
+@app.route("/classroom/submit_mcq", methods=["POST"])
+def classroom_submit_mcq():
+	"""Submit MCQ answer for classroom activity"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("classroom", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	activity_id = data.get("activity_id")
+	question_index = data.get("question_index")
+	question_data = data.get("question_data")
+	selected_answer = data.get("selected_answer")
+	
+	if not all([activity_id, question_index, question_data, selected_answer]):
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Extract correct answer and explanation
+	correct_answer = question_data.get("correct_answer", "")
+	explanation = question_data.get("explanation", "")
+	
+	# Check if answer is correct
+	is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0] if correct_answer else False
+	
+	# Store submission in database with university tracking
+	submissions_col.insert_one({
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"classroom_id": user.get("classroom_id"),
+		"context": "classroom_mcq",
+		"activity_id": activity_id,
+		"question_index": question_index,
+		"question_title": question_data.get("title", ""),
+		"question_type": "mcq",
+		"selected_answer": selected_answer,
+		"correct_answer": correct_answer,
+		"is_correct": is_correct,
+		"explanation": explanation,
+		"created_at": datetime.now(timezone.utc)
+	})
+	
+	return jsonify({
+		"ok": True,
+		"is_correct": is_correct,
+		"selected_answer": selected_answer,
+		"correct_answer": correct_answer,
+		"explanation": explanation
+	})
+
+
+@app.route("/classroom/submit_coding", methods=["POST"])
+def classroom_submit_coding():
+	"""Submit coding answer for classroom activity"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("classroom", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	activity_id = data.get("activity_id")
+	question_index = data.get("question_index")
+	question_data = data.get("question_data")
+	user_code = data.get("user_code")
+	
+	if not all([activity_id, question_index, question_data, user_code]):
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Get AI validation if OpenAI is available
+	ai_feedback = ""
+	if openai.api_key:
+		try:
+			trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
+
+Your approach:
+- **Student-Centered**: Provide constructive feedback
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply"""
+			
+			prompt = f"""Evaluate this student's code for a classroom activity. Provide encouraging, educational feedback.
+
+**Problem:** {question_data.get('description', 'N/A')}
+
+**Student's Code:**
+```python
+{user_code}
+```
+
+**Provide Feedback:**
+
+✅ **Correctness Assessment**
+⭐ **Strengths** - What they did well
+💡 **Suggestions** - How to improve
+📚 **Learning Points** - Key takeaways
+
+Keep it encouraging and educational!"""
+			
+			ai_feedback = _ai_generate(prompt, trainer_role)
+		except Exception as e:
+			print(f"AI feedback error: {e}")
+			ai_feedback = "Your code has been submitted successfully. Your instructor will review it."
+	else:
+		ai_feedback = "Your code has been submitted successfully. Your instructor will review it."
+	
+	# Store submission in database with university tracking
+	submissions_col.insert_one({
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"classroom_id": user.get("classroom_id"),
+		"context": "classroom_coding",
+		"activity_id": activity_id,
+		"question_index": question_index,
+		"question_title": question_data.get("title", ""),
+		"question_type": "coding",
+		"user_code": user_code,
+		"ai_feedback": ai_feedback,
+		"created_at": datetime.now(timezone.utc)
+	})
+	
+	return jsonify({
+		"ok": True,
+		"ai_feedback": ai_feedback
+	})
+
+
 @app.route("/classroom/complete", methods=["POST"])  # Simple completion hook
 def classroom_complete():
 	redir = require_user()
@@ -1822,36 +1980,12 @@ def test_start():
 	if session.get("test_violations") is None:
 		session["test_violations"] = []
 	
-	# Parse the generated JSON to extract questions and filter by type
+	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
 	questions = []
 	current_question = None
-	parse_error = None
 	try:
 		import json
-		import re
-		generated_content = test_doc.get("generated", "")
-		print(f"Generated content type: {type(generated_content)}")
-		print(f"Generated content preview: {generated_content[:200] if generated_content else 'Empty'}")
-		
-		# Try to extract JSON from markdown code blocks or text
-		json_content = generated_content
-		
-		# Check if content is wrapped in markdown code blocks
-		if "```json" in generated_content or "```" in generated_content:
-			# Extract JSON from code blocks
-			match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', generated_content, re.DOTALL)
-			if match:
-				json_content = match.group(1)
-				print("Extracted JSON from markdown code block")
-		
-		# Try to find JSON object if there's extra text
-		if not json_content.strip().startswith('{'):
-			match = re.search(r'\{.*\}', generated_content, re.DOTALL)
-			if match:
-				json_content = match.group(0)
-				print("Extracted JSON object from text")
-		
-		generated_data = json.loads(json_content)
+		generated_data = json.loads(test_doc.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
 		
 		# Filter questions by type according to num_mcq and num_coding
@@ -1865,7 +1999,6 @@ def test_start():
 		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
 		
 		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
-		print(f"Number of questions after filtering: {len(questions)}")
 		
 		# Get current question based on progress
 		progress = session["test_progress"]
@@ -1874,19 +2007,15 @@ def test_start():
 			print(f"Current question (progress {progress}): {current_question.get('title', 'No title') if current_question else 'None'}")
 		else:
 			print(f"Progress {progress} is beyond question count {len(questions)}")
-	except json.JSONDecodeError as e:
-		parse_error = f"JSON parsing error: {str(e)}"
-		print(f"Error parsing test JSON: {e}")
-		print(f"Generated content that failed to parse: {test_doc.get('generated', '')[:500]}")
 	except Exception as e:
-		parse_error = f"Error: {str(e)}"
-		print(f"Unexpected error parsing test: {e}")
+		print(f"Error parsing test JSON: {e}")
 		import traceback
 		traceback.print_exc()
+		questions = []
 	
 	# Show the actual test interface
 	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question, parse_error=parse_error, 
+		questions=questions, current_question=current_question, 
 		warning_count=session.get("test_warnings", 0))
 
 
@@ -2044,10 +2173,13 @@ def test_submit():
 		
 		submissions_col.insert_one({
 			"username": user["username"],
-			"context": "test",
+			"university": user.get("university", "Unknown"),
 			"test_id": test_doc.get("test_id"),
+			"context": "test",
 			"question_index": idx,
 			"question_type": "mcq",
+			"question_title": current_question.get("title", ""),
+			"question_description": current_question.get("description", ""),
 			"mcq_answer": mcq_answer,
 			"correct_answer": correct_answer,
 			"is_correct": is_correct,
@@ -2142,10 +2274,13 @@ Your evaluation approach:
 		
 		submissions_col.insert_one({
 			"username": user["username"],
-			"context": "test",
+			"university": user.get("university", "Unknown"),
 			"test_id": test_doc.get("test_id"),
+			"context": "test",
 			"question_index": idx,
 			"question_type": "coding",
+			"question_title": current_question.get("title", "") if current_question else "",
+			"question_description": current_question.get("description", "") if current_question else "",
 			"user_code": answer_code,
 			"ai_grading": grading,
 			"created_at": datetime.now(timezone.utc)
@@ -2213,13 +2348,16 @@ def test_complete():
 			continue
 	final_score = 0.0 if total == 0 else round((score_sum / total) * 100.0, 2)
 	
-	# Store final score in database for admin viewing
+	# Store final score in database for admin viewing with university tracking
 	submissions_col.insert_one({
 		"username": user["username"],
+		"university": user.get("university", "Unknown"),
 		"context": "test_complete",
 		"test_id": test_id,
 		"final_score": final_score,
 		"total_questions": total,
+		"violations": session.get("test_violations", []),
+		"warning_count": session.get("test_warnings", 0),
 		"created_at": datetime.now(timezone.utc)
 	})
 	
