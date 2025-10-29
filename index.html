@@ -1619,10 +1619,9 @@ button.secondary, .btn.secondary, a.btn.secondary {
 						<a href="/admin/users" class="btn">Manage Users</a>
 						<a href="/admin/users/export" class="btn secondary">Export Users</a>
 					</div>
-					<div class="mt">
-						<a href="/admin/activities" class="btn">Manage Activities</a>
-						<a href="/admin/tests" class="btn">Manage Tests</a>
-					</div>
+				<div class="mt">
+					<a href="/admin/activities" class="btn">Manage Activities</a>
+				</div>
 					<div class="mt">
 						<a href="/admin/submissions" class="btn">📊 View Submissions & Logs</a>
 						<a href="/admin/classroom-activities" class="btn secondary">🎯 Try Activities</a>
@@ -1634,10 +1633,10 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					
 					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
 						<p style="margin: 0 0 0.5rem 0; font-weight: 600;">📋 CSV Format Requirements:</p>
-						<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
-							<strong>Required:</strong> username, password, university<br>
-							<strong>Optional:</strong> role, classroom_id, test_id
-						</p>
+					<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
+						<strong>Required:</strong> username, password, university<br>
+						<strong>Optional:</strong> role, classroom_id
+					</p>
 						<p style="color: #dc2626; margin: 0.75rem 0 0 0; font-size: 0.9rem; font-weight: 600;">
 							⚠️ <strong>Important:</strong> Usernames can duplicate, but passwords must be unique!
 						</p>
@@ -1646,10 +1645,10 @@ button.secondary, .btn.secondary, a.btn.secondary {
 					<details style="margin-bottom: 1rem;">
 						<summary style="cursor: pointer; font-weight: 600; color: #667eea; padding: 0.5rem 0;">📝 Show CSV Example</summary>
 						<div style="background: #fef3c7; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; border: 1px solid #fbbf24;">
-							<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 0.85rem; border: 1px solid #e2e8f0;">username,password,university,role,classroom_id,test_id
-student1,unique001,MIT,,act001,
-student1,unique002,MIT,,,test001
-student2,unique003,Stanford,both,act002,test002</pre>
+							<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 0.85rem; border: 1px solid #e2e8f0;">username,password,university,role,classroom_id
+student1,unique001,MIT,,act001
+student2,unique002,MIT,,act001
+student3,unique003,Stanford,classroom,act002</pre>
 							<p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.85rem;">
 								💡 Role auto-detected from IDs if not specified
 							</p>
@@ -1689,19 +1688,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<button class="btn" type="submit">Generate Activity</button>
 				</form>
 				</div>
-				<div class="card">
-					<h2>Create Test</h2>
-					<form method="post" action="/admin/create_test">
-						<label>Subject<input type="text" name="subject" required></label>
-						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq"></label>
-						<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding"></label>
-						<label>Test ID<input type="text" name="test_id" required></label>
-						<label>Test Start Time<input type="datetime-local" name="start_datetime" required></label>
-						<label>Test End Time<input type="datetime-local" name="end_datetime" required></label>
-						<button class="btn" type="submit">Create Test</button>
-					</form>
-				</div>
 			</section>
 
 			{% if recent_users %}
@@ -1709,26 +1695,24 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<h2>Recent Users</h2>
 				<div class="table-container">
 					<table>
-						<thead>
-							<tr>
-								<th>Username</th>
-								<th>Role</th>
-								<th>Classroom ID</th>
-								<th>Test ID</th>
-								<th>Created</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for user in recent_users %}
-							<tr>
-								<td>{{ user.username }}</td>
-								<td>{{ user.role }}</td>
-								<td>{{ user.classroom_id or '-' }}</td>
-								<td>{{ user.test_id or '-' }}</td>
-								<td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
-							</tr>
-							{% endfor %}
-						</tbody>
+					<thead>
+						<tr>
+							<th>Username</th>
+							<th>Role</th>
+							<th>Classroom ID</th>
+							<th>Created</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for user in recent_users %}
+						<tr>
+							<td>{{ user.username }}</td>
+							<td>{{ user.role }}</td>
+							<td>{{ user.classroom_id or '-' }}</td>
+							<td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+						</tr>
+						{% endfor %}
+					</tbody>
 					</table>
 				</div>
 			</section>
@@ -1933,35 +1917,33 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				
 				<div class="table-container">
 					<table>
-						<thead>
-							<tr>
-								<th>Username</th>
-								<th>Password</th>
-								<th>Role</th>
-								<th>Classroom ID</th>
-								<th>Test ID</th>
-								<th>Created</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for user in users %}
-							<tr>
-								<td><strong>{{ user.username }}</strong></td>
-								<td>
-									<span class="password-display" data-password="{{ user.username }}" data-plain="{{ user.password_plain or 'N/A' }}">••••••••</span>
-									<button class="btn secondary tiny" onclick="toggleUserPassword('{{ user.username }}')">👁️</button>
-								</td>
-								<td><span class="role-badge role-{{ user.role }}">{{ user.role|title }}</span></td>
-								<td>{{ user.classroom_id or '-' }}</td>
-								<td>{{ user.test_id or '-' }}</td>
-								<td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
-								<td>
-									<button class="btn secondary small" onclick="deleteUser('{{ user.username }}')">🗑️ Delete</button>
-								</td>
-							</tr>
-							{% endfor %}
-						</tbody>
+					<thead>
+						<tr>
+							<th>Username</th>
+							<th>Password</th>
+							<th>Role</th>
+							<th>Classroom ID</th>
+							<th>Created</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for user in users %}
+						<tr>
+							<td><strong>{{ user.username }}</strong></td>
+							<td>
+								<span class="password-display" data-password="{{ user.username }}" data-plain="{{ user.password_plain or 'N/A' }}">••••••••</span>
+								<button class="btn secondary tiny" onclick="toggleUserPassword('{{ user.username }}')">👁️</button>
+							</td>
+							<td><span class="role-badge role-{{ user.role }}">{{ user.role|title }}</span></td>
+							<td>{{ user.classroom_id or '-' }}</td>
+							<td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+							<td>
+								<button class="btn secondary small" onclick="deleteUser('{{ user.username }}')">🗑️ Delete</button>
+							</td>
+						</tr>
+						{% endfor %}
+					</tbody>
 					</table>
 				</div>
 			</section>
@@ -2023,72 +2005,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</div>
 		{% endif %}
 
-		{# Admin Tests Management #}
-		{% if view == 'admin_tests' %}
-			<div class="manage-page">
-			<section class="card">
-				<div class="flex-between">
-					<h2>Tests Management</h2>
-					<div>
-						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
-					</div>
-				</div>
-				<p class="muted">Total Tests: {{ total_tests }}</p>
-			</section>
-
-			<section class="card">
-				<div class="table-container">
-					<table>
-						<thead>
-							<tr>
-								<th>Subject</th>
-								<th>Test ID</th>
-								<th>Questions</th>
-								<th>Scheduled</th>
-								<th>Created</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for test in tests %}
-							<tr>
-								<td>{{ test.subject }}</td>
-								<td>{{ test.test_id }}</td>
-								<td>{{ test.num_questions }}</td>
-								<td>
-									{% if test.start_time and test.end_time %}
-										{{ test.start_time.strftime('%Y-%m-%d %H:%M') }} - {{ test.end_time.strftime('%Y-%m-%d %H:%M') }}
-									{% elif test.scheduled_at %}
-										{{ test.scheduled_at.strftime('%Y-%m-%d %H:%M') }}
-									{% else %}
-										-
-									{% endif %}
-								</td>
-								<td>{{ test.created_at.strftime('%Y-%m-%d %H:%M') if test.created_at else '-' }}</td>
-								<td>
-									<a href="/debug/test/{{ test.test_id }}" class="btn secondary small" target="_blank">🔍 Debug</a>
-									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">🗑️ Delete</button>
-								</td>
-							</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-
-				{% if total_pages > 1 %}
-				<div class="pagination">
-					{% if page > 1 %}
-						<a href="?page={{ page - 1 }}" class="btn secondary">Previous</a>
-					{% endif %}
-					<span class="muted">Page {{ page }} of {{ total_pages }}</span>
-					{% if page < total_pages %}
-						<a href="?page={{ page + 1 }}" class="btn secondary">Next</a>
-					{% endif %}
-				</div>
-				{% endif %}
-			</section>
-			</div>
-		{% endif %}
 
 		{# Admin Submissions & Logs Viewer #}
 		{% if view == 'admin_submissions' %}
@@ -2097,7 +2013,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div class="flex-between">
 					<h2>📊 Submissions & Violation Logs</h2>
 					<div>
-						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">📥 Export CSV</a>
+						<a href="/admin/submissions/export?context={{ filter_context }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">📥 Export CSV</a>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 					</div>
 				</div>
@@ -2219,7 +2135,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<td><strong>{{ user_stat._id }}</strong></td>
 								<td><span class="role-badge role-test">{{ user_stat.count }} violations</span></td>
 								<td>
-									<a href="/admin/submissions?username={{ user_stat._id }}&context=test_violation" class="btn secondary small">View Details</a>
+									<a href="/admin/submissions?username={{ user_stat._id }}" class="btn secondary small">View Details</a>
 								</td>
 							</tr>
 							{% endfor %}
@@ -2234,28 +2150,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<h3>🔎 Filter Submissions</h3>
 				<form method="get" action="/admin/submissions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
 					<div>
-						<label>Context Type</label>
-						<select name="context">
-							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Types</option>
-							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Test Complete</option>
-							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>✅ Classroom Complete</option>
-							<option value="test_violation" {% if filter_context == 'test_violation' %}selected{% endif %}>⚠️ Violations</option>
-							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Questions</option>
-							<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ (Legacy)</option>
-							<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding (Legacy)</option>
-							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Old)</option>
-						</select>
-					</div>
-					<div>
-						<label>Test ID</label>
-						<select name="test_id">
-							<option value="all" {% if filter_test == 'all' %}selected{% endif %}>All Tests</option>
-							{% for test in all_tests %}
-								{% if test %}
-								<option value="{{ test }}" {% if filter_test == test %}selected{% endif %}>{{ test }}</option>
-								{% endif %}
-							{% endfor %}
-						</select>
+					<label>Context Type</label>
+					<select name="context">
+						<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Types</option>
+						<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>✅ Classroom Complete</option>
+						<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ (Legacy)</option>
+						<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding (Legacy)</option>
+						<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Old)</option>
+					</select>
 					</div>
 					<div>
 						<label>Username</label>
@@ -2295,15 +2197,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div class="table-container">
 					<table>
 						<thead>
-							<tr>
-								<th>Date/Time</th>
-								<th>Username</th>
-								<th>University</th>
-								<th>Context</th>
-								<th>Test ID</th>
-								<th>Details</th>
-								<th style="min-width: 200px;">Actions</th>
-							</tr>
+						<tr>
+							<th>Date/Time</th>
+							<th>Username</th>
+							<th>University</th>
+							<th>Context</th>
+							<th>Details</th>
+							<th style="min-width: 200px;">Actions</th>
+						</tr>
 						</thead>
 						<tbody>
 							{% for sub in submissions %}
@@ -2311,33 +2212,21 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M:%S') if sub.created_at else 'N/A' }}</td>
 								<td><strong>{{ sub.username }}</strong></td>
 								<td><span class="muted">{{ sub.university if sub.university else '-' }}</span></td>
-								<td>
-									{% if sub.context == 'test_violation' %}
-										<span class="role-badge" style="background: #dc2626; color: white;">⚠️ Violation</span>
-									{% elif sub.context == 'test_complete' %}
-										<span class="role-badge" style="background: #10b981; color: white;">✅ Test Complete</span>
-									{% elif sub.context == 'classroom_activity_complete' %}
-										<span class="role-badge" style="background: #8b5cf6; color: white;">✅ Classroom Complete</span>
-									{% elif sub.context == 'test' %}
-										<span class="role-badge role-test">📝 Test Q</span>
-									{% elif sub.context == 'classroom' %}
-										<span class="role-badge role-classroom">🎓 Old</span>
-									{% elif sub.context == 'classroom_mcq' %}
-										<span class="role-badge" style="background: #8b5cf6; color: white;">🎓 MCQ</span>
-									{% elif sub.context == 'classroom_coding' %}
-										<span class="role-badge" style="background: #06b6d4; color: white;">🎓 Coding</span>
-									{% else %}
-										<span class="role-badge">{{ sub.context }}</span>
-									{% endif %}
-								</td>
-								<td>{{ sub.test_id if sub.test_id else '-' }}</td>
-								<td>
-									{% if sub.context == 'test_violation' %}
-										<strong style="color: #dc2626;">{{ sub.violation_type }}</strong>
-										{% if sub.warning_number %}
-										<br><small class="muted">Warning {{ sub.warning_number }}/3</small>
-										{% endif %}
-									{% elif sub.context == 'test_complete' %}
+							<td>
+								{% if sub.context == 'classroom_activity_complete' %}
+									<span class="role-badge" style="background: #8b5cf6; color: white;">✅ Classroom Complete</span>
+								{% elif sub.context == 'classroom' %}
+									<span class="role-badge role-classroom">🎓 Old</span>
+								{% elif sub.context == 'classroom_mcq' %}
+									<span class="role-badge" style="background: #8b5cf6; color: white;">🎓 MCQ</span>
+								{% elif sub.context == 'classroom_coding' %}
+									<span class="role-badge" style="background: #06b6d4; color: white;">🎓 Coding</span>
+								{% else %}
+									<span class="role-badge">{{ sub.context }}</span>
+								{% endif %}
+							</td>
+							<td>
+								{% if sub.context == 'classroom_activity_complete' %}
 										<strong style="color: #10b981;">Final Score: {{ sub.final_score }}%</strong>
 										<br><small class="muted">Grade: 
 										{% if sub.final_score >= 90 %}A
@@ -2387,11 +2276,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% if total_pages > 1 %}
 				<div class="pagination" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center; justify-content: center;">
 					{% if page > 1 %}
-						<a href="?page={{ page - 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">← Previous</a>
+						<a href="?page={{ page - 1 }}&context={{ filter_context }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">← Previous</a>
 					{% endif %}
 					<span class="muted">Page {{ page }} of {{ total_pages }}</span>
 					{% if page < total_pages %}
-						<a href="?page={{ page + 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">Next →</a>
+						<a href="?page={{ page + 1 }}&context={{ filter_context }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">Next →</a>
 					{% endif %}
 				</div>
 				{% endif %}
@@ -2405,10 +2294,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<script>
 			// Delete submission function with confirmation
 			async function deleteSubmission(submissionId, username, context) {
-				// Create a friendly context name
-				const contextNames = {
-					'test_violation': 'Violation',
-					'test_complete': 'Test Completion',
+			// Create a friendly context name
+			const contextNames = {
 					'test': 'Test Submission',
 					'classroom': 'Classroom Submission'
 				};
@@ -2480,10 +2367,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<div>
 						<p class="muted">Context</p>
 						<p><strong>{{ submission.context }}</strong></p>
-					</div>
-					<div>
-						<p class="muted">Test ID</p>
-						<p><strong>{{ submission.test_id if submission.test_id else 'N/A' }}</strong></p>
 					</div>
 					<div>
 						<p class="muted">Created At</p>
@@ -2964,620 +2847,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% endif %}
 		{% endif %}
 
-		{# Test View #}
-		{% if view == 'test' %}
-			{% if error %}
-				<section class="container narrow">
-					<div class="card" style="border-left: 4px solid #dc2626;">
-						<h2>⚠️ Test Error</h2>
-						<p style="font-size: 1.1rem; margin: 1.5rem 0;">{{ error }}</p>
-						
-						{% if already_completed %}
-						<div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border: 2px solid #fbbf24;">
-							<h3 style="color: #92400e; margin: 0 0 0.5rem 0;">📋 Test Details</h3>
-							{% if test %}
-							<p style="color: #000000; margin: 0.5rem 0;"><strong>Test:</strong> {{ test.subject }}</p>
-							{% endif %}
-							{% if completion_time %}
-							<p style="color: #000000; margin: 0.5rem 0;"><strong>Completed At:</strong> {{ completion_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-							{% endif %}
-							<p style="color: #fbbf24; margin-top: 1rem;">
-								⚠️ <strong>Once submitted, tests cannot be retaken.</strong>
-							</p>
-						</div>
-						
-						<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
-							<p style="color: #000000; margin: 0;">
-								Your responses have been recorded and are being evaluated by your instructor. Results will be shared at a later time.
-							</p>
-						</div>
-						{% endif %}
-						
-						<div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
-							<a class="btn" href="/home">Return Home</a>
-							<a class="btn secondary" href="/user/logout">Logout</a>
-						</div>
-					</div>
-				</section>
-			{% elif test %}
-				<div class="flex-between">
-					<h2>{{ test.subject }}</h2>
-					<a class="btn secondary" href="/compiler">🐍 Python Compiler</a>
-				</div>
-				<div class="card">
-					<p class="muted">Test ID: {{ test.test_id }}</p>
-					<p class="muted">Questions: {{ test.num_questions }}</p>
-					
-					{# Display time information based on test format #}
-					{% if start_time and end_time %}
-						<p class="muted">Test Window: {{ start_time.strftime('%Y-%m-%d %H:%M') }} - {{ end_time.strftime('%Y-%m-%d %H:%M') }} (Local Time)</p>
-					{% elif scheduled_at %}
-						<p class="muted">Scheduled for: {{ scheduled_at.strftime('%Y-%m-%d %H:%M') }} (Local Time)</p>
-					{% else %}
-						<p class="muted">Not scheduled</p>
-					{% endif %}
-					
-					<p class="muted">Current time: {{ current_time.strftime('%Y-%m-%d %H:%M') if current_time else 'Unknown' }} (Local Time)</p>
-					
-					{# Test status display #}
-					{% if test_status == 'open' %}
-						<div class="alert success">
-							<strong>✅ Test is now open!</strong><br>
-							You can now begin the test.
-							{% if start_time and end_time %}
-							<div id="test-timer" class="mt">
-								<p>Time remaining: <span id="time-remaining">Calculating...</span></p>
-							</div>
-							{% endif %}
-						</div>
-						<a href="/test/start" class="btn">Attempt Test</a>
-					{% elif test_status == 'not_started' %}
-						<div class="alert">
-							<strong>⏰ Test not yet open</strong><br>
-							Please wait until the scheduled start time to begin the test.
-							{% if start_time %}
-							<div id="countdown" class="mt">
-								<p>Time until test opens: <span id="time-remaining">Calculating...</span></p>
-							</div>
-							{% elif scheduled_at %}
-							<div id="countdown" class="mt">
-								<p>Time until test opens: <span id="time-remaining">Calculating...</span></p>
-							</div>
-							{% endif %}
-						</div>
-						<button class="btn disabled" id="attempt-btn" disabled onclick="showNotOpenMessage()">
-							Attempt Test
-						</button>
-					{% elif test_status == 'expired' %}
-						<div class="alert" style="background: #7f1d1d; border-color: #dc2626; color: #fca5a5;">
-							<strong>❌ Test has expired</strong><br>
-							The test window has closed. You can no longer attempt this test.
-						</div>
-						<button class="btn disabled" id="attempt-btn" disabled onclick="showExpiredMessage()">
-							Attempt Test
-						</button>
-					{% else %}
-						<div class="alert">
-							<strong>⚠️ No test scheduled</strong><br>
-							No test has been scheduled for you.
-						</div>
-					{% endif %}
-				</div>
-			{% endif %}
-
-	{# Test Interface - Rewritten to match Classroom Activity (No Anti-Cheat) #}
-	{% if view == 'test_interface' %}
-		<div class="flex-between">
-			<h2>{{ test.subject }} - Test</h2>
-			<a class="btn secondary" href="/test">← Back</a>
-		</div>
-		
-		<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #bfdbfe;">
-			<p style="color: #1e40af; margin: 0;">
-				<strong>📋 Instructions:</strong> Answer all questions below, then click "Submit All Answers" at the end. You can change your answers before submitting.
-			</p>
-		</div>
-		
-		{% if questions %}
-			{% for question in questions %}
-			{% set test_question_num = loop.index %}
-			<section class="card question-card">
-				<div class="question-header">
-					<h3>Question {{ test_question_num }}: {{ question.title }}</h3>
-					<div style="display: flex; gap: 0.5rem; align-items: center;">
-						<span class="difficulty-badge difficulty-{{ question.difficulty }}">
-							{% if question.difficulty == 'medium_plus' %}
-								Medium+ (Coding)
-							{% else %}
-								{{ question.difficulty|title }}
-							{% endif %}
-						</span>
-						{% if question.question_type == 'mcq' %}
-						<span class="role-badge role-classroom">📝 MCQ</span>
-						{% elif question.question_type == 'coding' %}
-						<span class="role-badge role-test">💻 Coding</span>
-						{% endif %}
-					</div>
-				</div>
-				
-				<div class="question-content">
-					<p><strong>Description:</strong></p>
-					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
-					
-					{# MCQ Questions #}
-					{% if question.question_type == 'mcq' and question.options %}
-					<div style="margin-top: 1.5rem;" id="test-mcq-question-{{ test_question_num }}">
-						<p><strong>Select the correct answer:</strong></p>
-						<div style="margin: 1rem 0;" id="test-mcq-options-{{ test_question_num }}">
-							{% for option in question.options %}
-							<div class="mcq-option-test" data-option="{{ option[0] }}" data-question-idx="{{ test_question_num }}" onclick="selectTestMCQ(this, {{ test_question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
-								{{ option }}
-							</div>
-							{% endfor %}
-						</div>
-						
-						<div style="margin-top: 1rem;">
-							<button class="btn secondary" onclick="clearTestMCQ({{ test_question_num }});">
-								Clear Selection
-							</button>
-							<span id="test-mcq-status-{{ test_question_num }}" class="muted" style="margin-left: 1rem;"></span>
-						</div>
-						
-						{% if question.hints %}
-						<details style="margin-top: 1rem;">
-							<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
-							<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
-								{% for hint in question.hints %}
-								<p>• {{ hint }}</p>
-								{% endfor %}
-							</div>
-						</details>
-						{% endif %}
-					</div>
-					{% endif %}
-					
-					{# Coding Questions #}
-					{% if question.question_type == 'coding' or not question.question_type %}
-					{% if question.input_format %}
-					<p><strong>Input Format:</strong></p>
-					<pre class="format-box">{{ question.input_format }}</pre>
-					{% endif %}
-					
-					{% if question.output_format %}
-					<p><strong>Output Format:</strong></p>
-					<pre class="format-box">{{ question.output_format }}</pre>
-					{% endif %}
-					
-					{% if question.sample_input %}
-					<p><strong>Sample Input:</strong></p>
-					<pre class="sample-box">{{ question.sample_input }}</pre>
-					{% endif %}
-					
-					{% if question.sample_output %}
-					<p><strong>Sample Output:</strong></p>
-					<pre class="sample-box">{{ question.sample_output }}</pre>
-					{% endif %}
-					
-					{% if question.constraints %}
-					<p><strong>Constraints:</strong></p>
-					<p style="color: #f59e0b;">{{ question.constraints }}</p>
-					{% endif %}
-					{% endif %}
-				</div>
-				
-				{# Only show code editor for coding questions #}
-				{% if question.question_type == 'coding' or not question.question_type %}
-				<div class="compiler-section" id="test-coding-question-{{ test_question_num }}">
-					<h4>🐍 Code Editor</h4>
-					<div class="compiler-container">
-						<div class="code-section">
-							<textarea id="test-code-{{ test_question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
-# Example:
-# def solution():
-#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-							<div class="compiler-controls">
-								<button class="btn run-test-question-code" data-question="{{ test_question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-								<button class="btn secondary clear-test-question-code" data-question="{{ test_question_num }}">🗑️ Clear</button>
-							</div>
-						</div>
-						
-						<div class="output-section">
-							<label>Output:</label>
-							<div id="test-output-{{ test_question_num }}" class="output-box">
-								<p class="muted">Click "Run Code" to see the output here...</p>
-							</div>
-						</div>
-					</div>
-					
-					<div style="margin-top: 1rem;">
-						<span id="test-coding-status-{{ test_question_num }}" class="muted"></span>
-					</div>
-				</div>
-				{% endif %}
-			</section>
-			{% endfor %}
-		{% else %}
-		<section class="card">
-			<h2>⚠️ No Questions Available</h2>
-			<p class="muted">No test questions have been generated yet. Please contact your administrator.</p>
-			<a href="/test" class="btn secondary">← Back to Test Info</a>
-		</section>
-		{% endif %}
-		
-		{% if questions %}
-		<section class="card" style="border-left: 4px solid #10b981;">
-			<h3>📝 Submit Your Test</h3>
-			<p class="muted">Review all your answers above and click Submit when ready. Once submitted, you cannot change your answers.</p>
-			<div style="margin-top: 1.5rem;">
-			<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-				✅ Submit All Answers
-			</button>
-				<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
-					Cancel
-				</button>
-			</div>
-			<!-- No results shown to user for tests - only admin sees in submission logs -->
-		</section>
-		{% endif %}
-		
-		<script>
-		// Test JavaScript Functions (Same as classroom activities, no anti-cheat)
-		window.testAnswers = {}; // Store MCQ answers
-		window.testCode = {};     // Store coding answers
-		
-		console.log('🎯 Test interface loaded (simplified, no anti-cheat)');
-		
-		// MCQ Selection Handler for Tests
-		window.selectTestMCQ = function(element, questionIdx) {
-			console.log('Select MCQ - Question #' + questionIdx);
-			
-			if (!element || !questionIdx) {
-				console.error('Invalid inputs');
-				return;
-			}
-			
-			// Clear all selections in this question
-			const allOptions = document.querySelectorAll(`.mcq-option-test[data-question-idx="${questionIdx}"]`);
-			allOptions.forEach(opt => {
-				opt.style.background = '#f0f9ff';
-				opt.style.borderLeft = '3px solid #3b82f6';
-				opt.style.fontWeight = 'normal';
-				opt.style.border = '1px solid #bfdbfe';
-			});
-			
-			// Highlight selected option
-			element.style.background = '#dbeafe';
-			element.style.borderLeft = '3px solid #10b981';
-			element.style.fontWeight = '600';
-			element.style.border = '2px solid #10b981';
-			
-			// Store answer
-			const option = element.getAttribute('data-option');
-			window.testAnswers[questionIdx] = option;
-			
-			// Update status
-			const statusEl = document.getElementById(`test-mcq-status-${questionIdx}`);
-			if (statusEl) {
-				statusEl.textContent = `✓ Selected: ${option}`;
-				statusEl.style.color = '#10b981';
-				statusEl.style.fontWeight = '600';
-			}
-			
-			console.log('Stored answer:', option, 'for question:', questionIdx);
-		};
-		
-		// Clear Test MCQ Selection
-		window.clearTestMCQ = function(questionIdx) {
-			console.log('Clear MCQ - Question #' + questionIdx);
-			
-			const allOptions = document.querySelectorAll(`.mcq-option-test[data-question-idx="${questionIdx}"]`);
-			allOptions.forEach(opt => {
-				opt.style.background = '#f0f9ff';
-				opt.style.borderLeft = '3px solid #3b82f6';
-				opt.style.fontWeight = 'normal';
-				opt.style.border = '1px solid #bfdbfe';
-			});
-			
-			delete window.testAnswers[questionIdx];
-			
-			const statusEl = document.getElementById(`test-mcq-status-${questionIdx}`);
-			if (statusEl) {
-				statusEl.textContent = '';
-			}
-			
-			console.log('Cleared answer for question:', questionIdx);
-		};
-		
-		// Submit all test answers
-		window.submitAllTestAnswers = async function(testId, questions) {
-			console.log('Submitting test:', testId);
-			console.log('Total questions:', questions.length);
-			
-			// Collect all answers
-			const answers = [];
-			let missingAnswers = [];
-			
-			for (let i = 0; i < questions.length; i++) {
-				const question = questions[i];
-				const questionNum = i + 1;
-				
-				if (question.question_type === 'mcq') {
-					const answer = window.testAnswers[questionNum];
-					if (!answer) {
-						missingAnswers.push(`Question ${questionNum} (MCQ)`);
-					}
-					answers.push({
-						question_index: questionNum,
-						question_type: 'mcq',
-						selected_answer: answer || '',
-						question_data: question
-					});
-				} else if (question.question_type === 'coding') {
-					const codeTextarea = document.getElementById(`test-code-${questionNum}`);
-					const code = codeTextarea ? codeTextarea.value.trim() : '';
-					if (!code) {
-						missingAnswers.push(`Question ${questionNum} (Coding)`);
-					}
-					answers.push({
-						question_index: questionNum,
-						question_type: 'coding',
-						user_code: code,
-						question_data: question
-					});
-				}
-			}
-			
-			// Warn about missing answers
-			if (missingAnswers.length > 0) {
-				const confirmSubmit = confirm(`⚠️ You haven't answered:\n${missingAnswers.join('\n')}\n\nSubmit anyway?`);
-				if (!confirmSubmit) {
-					return;
-				}
-			}
-			
-			// Final confirmation
-			if (!confirm('Are you sure you want to submit your test?\n\nYou will NOT be able to change your answers after submission.')) {
-				return;
-			}
-			
-			// Submit to backend
-			try {
-				const response = await fetch('/test/submit_all', {
-					method: 'POST',
-					headers: {'Content-Type': 'application/json'},
-					body: JSON.stringify({
-						test_id: testId,
-						answers: answers
-					})
-				});
-				
-				const result = await response.json();
-				
-				if (result.ok) {
-					alert('✅ Test submitted successfully!\n\nYour answers have been recorded.');
-					window.location.href = '/test';
-				} else {
-					alert('❌ Error: ' + (result.error || 'Failed to submit test'));
-				}
-			} catch (error) {
-				alert('❌ Error submitting test: ' + error.message);
-			}
-		};
-		
-		// Run Code buttons for test questions
-		document.querySelectorAll('.run-test-question-code').forEach(btn => {
-			btn.addEventListener('click', async function() {
-				const questionNum = this.getAttribute('data-question');
-				const codeTextarea = document.getElementById(`test-code-${questionNum}`);
-				const outputDiv = document.getElementById(`test-output-${questionNum}`);
-				const code = codeTextarea.value;
-				
-				if (!code.trim()) {
-					outputDiv.className = 'output-box output-error';
-					outputDiv.textContent = 'Error: No code to run';
-					return;
-				}
-				
-				this.disabled = true;
-				this.textContent = '⏳ Running...';
-				outputDiv.className = 'output-box';
-				outputDiv.textContent = 'Executing code...';
-				
-				try {
-					const response = await fetch('/question/execute', {
-						method: 'POST',
-						headers: {'Content-Type': 'application/json'},
-						body: JSON.stringify({ code: code })
-					});
-					
-					const result = await response.json();
-					
-					if (result.ok) {
-						outputDiv.className = 'output-box output-success';
-						let output = '';
-						if (result.output) {
-							output += result.output;
-						}
-						if (result.error) {
-							output += '\n--- Errors ---\n' + result.error;
-						}
-						outputDiv.textContent = output || 'Code executed successfully (no output)';
-					} else {
-						outputDiv.className = 'output-box output-error';
-						outputDiv.textContent = `Error: ${result.error}`;
-					}
-				} catch (error) {
-					outputDiv.className = 'output-box output-error';
-					outputDiv.textContent = `Network error: ${error.message}`;
-				} finally {
-					this.disabled = false;
-					this.textContent = '▶️ Run Code';
-				}
-			});
-		});
-		
-		// Clear Code buttons for test questions
-		document.querySelectorAll('.clear-test-question-code').forEach(btn => {
-			btn.addEventListener('click', function() {
-				const questionNum = this.getAttribute('data-question');
-				const codeTextarea = document.getElementById(`test-code-${questionNum}`);
-				const outputDiv = document.getElementById(`test-output-${questionNum}`);
-				codeTextarea.value = '';
-				outputDiv.className = 'output-box';
-				outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
-			});
-		});
-		
-		console.log('✅ Test functions ready');
-		</script>
-	{% endif %}
 
 
 
-		{# JavaScript for test preview #}
-		{% if view == 'test' %}
-		<script>
-		// Countdown timer for test opening/closing
-		{% if start_time and end_time %}
-		(function(){
-			// Times are already in local timezone from server
-			const startTime = new Date('{{ start_time.strftime('%Y-%m-%dT%H:%M:%S') }}');
-			const endTime = new Date('{{ end_time.strftime('%Y-%m-%dT%H:%M:%S') }}');
-			const countdownElement = document.getElementById('time-remaining');
-			
-			function updateCountdown() {
-				const now = new Date();
-				
-				if (now < startTime) {
-					// Test not started yet
-					const timeLeft = startTime - now;
-					const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-					const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-					const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-					const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-					
-					let timeString = '';
-					if (days > 0) timeString += days + 'd ';
-					if (hours > 0) timeString += hours + 'h ';
-					if (minutes > 0) timeString += minutes + 'm ';
-					timeString += seconds + 's';
-					
-					countdownElement.textContent = timeString;
-				} else if (now >= startTime && now <= endTime) {
-					// Test is open - show time remaining
-					const timeLeft = endTime - now;
-					const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-					const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-					const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-					const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-					
-					let timeString = '';
-					if (days > 0) timeString += days + 'd ';
-					if (hours > 0) timeString += hours + 'h ';
-					if (minutes > 0) timeString += minutes + 'm ';
-					timeString += seconds + 's';
-					
-					countdownElement.textContent = timeString;
-					
-					if (timeLeft <= 0) {
-						location.reload(); // Reload when test expires
-						return;
-					}
-				} else {
-					// Test has expired
-					countdownElement.textContent = 'Test has expired';
-				}
-			}
-			
-			updateCountdown();
-			setInterval(updateCountdown, 1000);
-		})();
-		{% elif scheduled_at %}
-		(function(){
-			// Time is already in local timezone from server
-			const scheduledTime = new Date('{{ scheduled_at.strftime('%Y-%m-%dT%H:%M:%S') }}');
-			const countdownElement = document.getElementById('time-remaining');
-			
-			function updateCountdown() {
-				const now = new Date();
-				const timeLeft = scheduledTime - now;
-				
-				if (timeLeft <= 0) {
-					countdownElement.textContent = 'Test is now open!';
-					location.reload(); // Reload to show the test
-					return;
-				}
-				
-				const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-				const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-				const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-				const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-				
-				let timeString = '';
-				if (days > 0) timeString += days + 'd ';
-				if (hours > 0) timeString += hours + 'h ';
-				if (minutes > 0) timeString += minutes + 'm ';
-				timeString += seconds + 's';
-				
-				countdownElement.textContent = timeString;
-			}
-			
-			updateCountdown();
-			setInterval(updateCountdown, 1000);
-		})();
-		{% endif %}
-		
-		// Show message when attempt button is clicked before test opens
-		function showNotOpenMessage() {
-			alert('Test is not yet open. Please wait until the scheduled time to begin the test.');
-		}
-		
-		// Show message when attempt button is clicked after test expires
-		function showExpiredMessage() {
-			alert('Test has expired. The test window has closed and you can no longer attempt this test.');
-		}
-		</script>
-		{% endif %}
-		{% endif %}
-
-		{# Test Result #}
-		{% if view == 'test_result' %}
-			<section class="container narrow">
-				<div class="card" style="text-align: center;">
-					<div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
-					<h2>Test Submitted Successfully!</h2>
-					<p class="muted" style="font-size: 1.1rem; margin: 1.5rem 0;">
-						Thank you for completing the test.
-					</p>
-					
-					{% if test %}
-					<div style="background: #f0f9ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
-						<p style="color: #000000;"><strong>Test:</strong> {{ test.subject }}</p>
-						{% if total_questions %}
-						<p style="color: #000000;"><strong>Questions Answered:</strong> {{ total_questions }}</p>
-						{% endif %}
-					</div>
-					{% endif %}
-					
-					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
-						<p style="color: #000000;">
-							<strong>📊 Results</strong><br>
-							Your responses have been recorded and will be evaluated by your instructor.<br>
-							Results will be shared by your instructor at a later time.
-						</p>
-					</div>
-					
-					<p class="muted" style="margin: 1.5rem 0;">
-						You may now safely close this window or logout.
-					</p>
-					
-					<div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
-						<a class="btn" href="/home">Return Home</a>
-						<a class="btn secondary" href="/user/logout">Logout</a>
-					</div>
-				</div>
-			</section>
-		{% endif %}
 
 		{# Python Compiler #}
 		{% if view == 'compiler' %}
