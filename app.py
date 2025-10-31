@@ -1688,7 +1688,6 @@ def api_generate_activity_from_bank():
 		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
 		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
 		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
-		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
@@ -1788,6 +1787,7 @@ def api_generate_test_from_bank():
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
 		num_coding = int(data.get("num_coding", 0))
+		num_hands_on = int(data.get("num_hands_on", 0))
 		test_id = data.get("test_id", "").strip()
 		start_time_str = data.get("start_time", "")
 		end_time_str = data.get("end_time", "")
@@ -1826,6 +1826,7 @@ def api_generate_test_from_bank():
 		import random
 		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
 		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
+		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
