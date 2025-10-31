@@ -4718,21 +4718,30 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						return -1;
 					};
 					const parseInlineOptions = (line) => {
+						// Robust scanner: only treat label markers (a) a. a: 1) 1. 1:) as option starts
+						// when preceded by start/space/comma/semicolon/pipe/dash (to avoid matching '3)' in 'np.eye(3)')
 						const l = softTrim(line);
-						const matches = [];
-						const re = /([A-Za-z\d])[)\.:]\s*/g; // a) a. a: 1) 1. 1:
-						let m;
-						while ((m = re.exec(l)) !== null) {
-							matches.push({ label: m[1], idx: m.index });
+						const starts = [];
+						for (let i = 0; i < l.length - 1; i++) {
+							const ch = l[i];
+							const next = l[i+1];
+							const prev = i === 0 ? '' : l[i-1];
+							if (/^[A-Za-z\d]$/.test(ch) && /[)\.:]/.test(next)) {
+								if (i === 0 || /[\s,;\|\-–—·•]/.test(prev)) {
+									starts.push({ label: ch, idx: i });
+								}
+							}
 						}
-						if (matches.length < 2) return null; // need at least 2 to segment
+						if (starts.length < 2) return null;
 						const out = [];
-						for (let i=0;i<matches.length;i++){
-							const start = matches[i].idx + matches[i].label.length + 1; // skip 'x' + separator
-							const end = i+1 < matches.length ? matches[i+1].idx : l.length;
-							const text = softTrim(l.slice(start, end)).replace(/[\,\s]+$/, '');
-							const slot = mapLabelToIndex(matches[i].label);
-							if (slot >= 0){ out[slot] = text; }
+						for (let i = 0; i < starts.length; i++) {
+							const start = starts[i].idx + 2; // skip label and separator
+							const end = i + 1 < starts.length ? starts[i+1].idx : l.length;
+							let text = l.slice(start, end);
+							// Trim common trailing delimiters
+							text = softTrim(text.replace(/[\s,;]+$/g, ''));
+							const slot = mapLabelToIndex(starts[i].label);
+							if (slot >= 0 && text) out[slot] = text;
 						}
 						return out.filter(Boolean).length ? out : null;
 					};
