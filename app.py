@@ -1602,8 +1602,8 @@ def api_get_subjects():
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-		# Get all question banks, group by university
-		banks = list(question_banks_col.find({}, {"university": 1, "subject": 1}))
+		# Get all question banks, group by university (include full bank info for frontend)
+		banks = list(question_banks_col.find({}, {"university": 1, "subject": 1, "created_at": 1, "_id": 1}))
 		
 		grouped = {}
 		for bank in banks:
@@ -1611,8 +1611,12 @@ def api_get_subjects():
 			subj = bank.get("subject", "")
 			if uni not in grouped:
 				grouped[uni] = []
-			if subj not in grouped[uni]:
-				grouped[uni].append(subj)
+			# Store full bank info (not just subject string)
+			grouped[uni].append({
+				"id": str(bank.get("_id")),
+				"subject": subj,
+				"created_at": bank.get("created_at").isoformat() if bank.get("created_at") else None
+			})
 		
 		# Also return flat list of unique subjects
 		subjects = list(set(bank.get("subject", "") for bank in banks if bank.get("subject")))
