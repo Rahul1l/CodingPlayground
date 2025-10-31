@@ -5598,31 +5598,34 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 			})();
 	</script>
 	<script>
-	// Fallback initializers for test interface (ensures global handlers exist)
+	// Ensure global MCQ handlers are always available (test & classroom)
+	window.classroomAnswers = window.classroomAnswers || {};
+	window.classroomCode = window.classroomCode || {};
+	if (typeof window.selectClassroomMCQ !== 'function'){
+		window.selectClassroomMCQ = function(element, questionIdx){
+			if (!element || !questionIdx) return;
+			const optionIdxStr = element.getAttribute('data-option-index');
+			const optionText = element.getAttribute('data-option-text') || element.textContent.trim();
+			const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
+			const all = document.querySelectorAll(selector);
+			all.forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
+			element.style.background='#dbeafe'; element.style.fontWeight='600'; element.style.border='2px solid #10b981'; element.style.borderLeft='3px solid #10b981';
+			const idx = optionIdxStr!==null ? parseInt(optionIdxStr,10) : NaN;
+			window.classroomAnswers[questionIdx] = Number.isFinite(idx) ? idx : optionText;
+			const statusEl = document.getElementById('mcq-status-'+questionIdx);
+			if (statusEl){ statusEl.textContent = '✓ Selected: ' + optionText; statusEl.style.color = '#10b981'; statusEl.style.fontWeight = '600'; }
+		};
+		window.clearClassroomMCQ = function(questionIdx){
+			const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
+			document.querySelectorAll(selector).forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
+			delete window.classroomAnswers[questionIdx];
+			const statusEl = document.getElementById('mcq-status-'+questionIdx);
+			if (statusEl){ statusEl.textContent = ''; }
+		};
+	}
+	// Test navigator wiring (only if test questions exist)
 	(function(){
-		if (typeof window.selectClassroomMCQ !== 'function'){
-			window.classroomAnswers = window.classroomAnswers || {};
-			window.selectClassroomMCQ = function(element, questionIdx){
-				if (!element || !questionIdx) return;
-				const optionIdxStr = element.getAttribute('data-option-index');
-				const optionText = element.getAttribute('data-option-text') || element.textContent.trim();
-				const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
-				const all = document.querySelectorAll(selector);
-				all.forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
-				element.style.background='#dbeafe'; element.style.fontWeight='600'; element.style.border='2px solid #10b981'; element.style.borderLeft='3px solid #10b981';
-				const idx = optionIdxStr!==null ? parseInt(optionIdxStr,10) : NaN;
-				window.classroomAnswers[questionIdx] = Number.isFinite(idx) ? idx : optionText;
-				const statusEl = document.getElementById('mcq-status-'+questionIdx);
-				if (statusEl){ statusEl.textContent = '✓ Selected: ' + optionText; statusEl.style.color = '#10b981'; statusEl.style.fontWeight = '600'; }
-			};
-			window.clearClassroomMCQ = function(questionIdx){
-				const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
-				document.querySelectorAll(selector).forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
-				delete window.classroomAnswers[questionIdx];
-				const statusEl = document.getElementById('mcq-status-'+questionIdx);
-				if (statusEl){ statusEl.textContent = ''; }
-			};
-		}
+		if (!document.querySelector('.test-question')) return;
 		// Navigator wiring
 		if (document.querySelector('.test-question')){
 			const qs = Array.from(document.querySelectorAll('.test-question'));
