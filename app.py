@@ -49,6 +49,7 @@ try:
     activities_col = db["activities"]
     tests_col = db["tests"]
     submissions_col = db["submissions"]
+    question_banks_col = db["question_banks"]  # Store question bank (subjects, modules, questions)
     
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
@@ -76,6 +77,7 @@ except Exception as e:
         activities_col = db["activities"]
         tests_col = db["tests"]
         submissions_col = db["submissions"]
+        question_banks_col = db["question_banks"]  # Store question bank (subjects, modules, questions)
         
     except Exception as e2:
         print(f"❌ Alternative MongoDB connection also failed: {e2}")
@@ -1402,6 +1404,479 @@ def admin_create_test():
 	return redirect(url_for("admin_dashboard"))
 
 
+# ========== Question Bank API Routes (MongoDB) ==========
+
+@app.route("/api/question-bank/save", methods=["POST"])
+def api_save_question_bank():
+	"""Save question bank (university, subject, modules, questions) to MongoDB"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		data = request.json
+		university = data.get("university", "").strip()
+		subject = data.get("subject", "").strip()
+		modules = data.get("modules", {})
+		
+		if not university or not subject:
+			return jsonify({"ok": False, "error": "University and subject are required"}), 400
+		
+		if not modules or not isinstance(modules, dict):
+			return jsonify({"ok": False, "error": "Modules must be a non-empty object"}), 400
+		
+		# Normalize modules (ensure proper structure)
+		normalized_modules = {}
+		for module_name, questions in modules.items():
+			if not isinstance(questions, list):
+				return jsonify({"ok": False, "error": f"Module '{module_name}' must contain an array of questions"}), 400
+			normalized_modules[module_name] = questions
+		
+		# Upsert question bank document
+		question_banks_col.update_one(
+			{"university": university, "subject": subject},
+			{
+				"$set": {
+					"modules": normalized_modules,
+					"updated_at": datetime.now(timezone.utc)
+				},
+				"$setOnInsert": {
+					"university": university,
+					"subject": subject,
+					"created_at": datetime.now(timezone.utc)
+				}
+			},
+			upsert=True
+		)
+		
+		return jsonify({"ok": True, "message": "Question bank saved successfully"})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/subjects", methods=["GET"])
+def api_get_subjects():
+	"""Get all subjects grouped by university"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		# Get all question banks, group by university
+		banks = list(question_banks_col.find({}, {"university": 1, "subject": 1}))
+		
+		grouped = {}
+		for bank in banks:
+			uni = bank.get("university", "Unknown")
+			subj = bank.get("subject", "")
+			if uni not in grouped:
+				grouped[uni] = []
+			if subj not in grouped[uni]:
+				grouped[uni].append(subj)
+		
+		# Also return flat list of unique subjects
+		subjects = list(set(bank.get("subject", "") for bank in banks if bank.get("subject")))
+		
+		return jsonify({"ok": True, "grouped": grouped, "subjects": sorted(subjects)})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/modules", methods=["GET"])
+def api_get_modules():
+	"""Get modules for a given subject"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		subject = request.args.get("subject", "").strip()
+		if not subject:
+			return jsonify({"ok": False, "error": "Subject parameter is required"}), 400
+		
+		bank = question_banks_col.find_one({"subject": subject})
+		if not bank:
+			return jsonify({"ok": True, "modules": []})
+		
+		modules = list(bank.get("modules", {}).keys())
+		return jsonify({"ok": True, "modules": modules})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/generate-activity", methods=["POST"])
+def api_generate_activity_from_bank():
+	"""Generate classroom activity from question bank"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		data = request.json
+		subject = data.get("subject", "").strip()
+		module = data.get("module", "").strip()
+		num_mcq = int(data.get("num_mcq", 0))
+		num_coding = int(data.get("num_coding", 0))
+		classroom_id = data.get("classroom_id", "").strip()
+		
+		if not subject or not module or not classroom_id:
+			return jsonify({"ok": False, "error": "Subject, module, and classroom_id are required"}), 400
+		
+		if num_mcq < 0 or num_coding < 0 or (num_mcq == 0 and num_coding == 0):
+			return jsonify({"ok": False, "error": "At least one question type must be selected"}), 400
+		
+		# Get question bank
+		bank = question_banks_col.find_one({"subject": subject})
+		if not bank:
+			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
+		
+		module_questions = bank.get("modules", {}).get(module, [])
+		if not module_questions:
+			return jsonify({"ok": False, "error": f"Module '{module}' not found for this subject"}), 404
+		
+		# Filter and randomly select questions
+		import random
+		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
+		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
+		
+		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
+		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
+		
+		selected_questions = selected_mcq + selected_coding
+		random.shuffle(selected_questions)  # Randomize order
+		
+		if len(selected_questions) == 0:
+			return jsonify({"ok": False, "error": "No questions available matching the requested types"}), 400
+		
+		# Convert to format expected by activity system
+		formatted_questions = []
+		for q in selected_questions:
+			if q.get("type") == "mcq":
+				formatted_questions.append({
+					"question_type": "mcq",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"options": q.get("options", []),
+					"correct_answer": q.get("options", [])[q.get("correctOption", 0)] if q.get("options") and q.get("correctOption") is not None else "",
+					"difficulty": "medium"  # Default
+				})
+			else:
+				formatted_questions.append({
+					"question_type": "coding",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"difficulty": "medium_plus",
+					"_local_answer": q.get("answer", ""),  # Store for validation
+					"_local_answer_regex": q.get("answerRegex", "")
+				})
+		
+		# Create activity
+		activity_id = str(uuid4())
+		activity = {
+			"activity_id": activity_id,
+			"classroom_id": classroom_id,
+			"subject": subject,
+			"module": module,
+			"num_mcq": num_mcq,
+			"num_coding": num_coding,
+			"generated": json.dumps({"questions": formatted_questions}),
+			"created_at": datetime.now(timezone.utc),
+			"source": "question_bank"  # Mark as from question bank
+		}
+		activities_col.insert_one(activity)
+		
+		# Track classroom
+		classroom_col.update_one(
+			{"classroom_id": classroom_id},
+			{"$setOnInsert": {"classroom_id": classroom_id, "created_at": datetime.now(timezone.utc)}},
+			upsert=True
+		)
+		
+		return jsonify({"ok": True, "activity_id": activity_id, "questions": formatted_questions, "total": len(selected_questions)})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/generate-test", methods=["POST"])
+def api_generate_test_from_bank():
+	"""Generate test from question bank"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		data = request.json
+		subject = data.get("subject", "").strip()
+		module = data.get("module", "").strip()
+		num_mcq = int(data.get("num_mcq", 0))
+		num_coding = int(data.get("num_coding", 0))
+		test_id = data.get("test_id", "").strip()
+		start_time_str = data.get("start_time", "")
+		end_time_str = data.get("end_time", "")
+		
+		if not all([subject, module, test_id, start_time_str, end_time_str]):
+			return jsonify({"ok": False, "error": "All fields are required"}), 400
+		
+		if num_mcq < 0 or num_coding < 0 or (num_mcq == 0 and num_coding == 0):
+			return jsonify({"ok": False, "error": "At least one question type must be selected"}), 400
+		
+		# Parse datetime strings
+		try:
+			start_time = datetime.fromisoformat(start_time_str)
+			end_time = datetime.fromisoformat(end_time_str)
+			if end_time <= start_time:
+				return jsonify({"ok": False, "error": "End time must be after start time"}), 400
+			from datetime import timedelta
+			timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+			start_time = start_time - timezone_offset
+			start_time = start_time.replace(tzinfo=timezone.utc)
+			end_time = end_time - timezone_offset
+			end_time = end_time.replace(tzinfo=timezone.utc)
+		except Exception as e:
+			return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
+		
+		# Get question bank
+		bank = question_banks_col.find_one({"subject": subject})
+		if not bank:
+			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
+		
+		module_questions = bank.get("modules", {}).get(module, [])
+		if not module_questions:
+			return jsonify({"ok": False, "error": f"Module '{module}' not found for this subject"}), 404
+		
+		# Filter and randomly select questions
+		import random
+		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
+		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
+		
+		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
+		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
+		
+		selected_questions = selected_mcq + selected_coding
+		random.shuffle(selected_questions)
+		
+		if len(selected_questions) == 0:
+			return jsonify({"ok": False, "error": "No questions available matching the requested types"}), 400
+		
+		# Convert to format expected by test system
+		formatted_questions = []
+		for q in selected_questions:
+			if q.get("type") == "mcq":
+				formatted_questions.append({
+					"question_type": "mcq",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"options": q.get("options", []),
+					"correct_answer": q.get("options", [])[q.get("correctOption", 0)] if q.get("options") and q.get("correctOption") is not None else "",
+					"difficulty": "medium"
+				})
+			else:
+				formatted_questions.append({
+					"question_type": "coding",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"difficulty": "medium_plus",
+					"_local_answer": q.get("answer", ""),
+					"_local_answer_regex": q.get("answerRegex", "")
+				})
+		
+		# Create or update test
+		test_doc = {
+			"test_id": test_id,
+			"subject": subject,
+			"module": module,
+			"num_questions": len(selected_questions),
+			"num_mcq": num_mcq,
+			"num_coding": num_coding,
+			"generated": json.dumps({"questions": formatted_questions}),
+			"start_time": start_time,
+			"end_time": end_time,
+			"updated_at": datetime.now(timezone.utc),
+			"source": "question_bank"
+		}
+		
+		tests_col.update_one(
+			{"test_id": test_id},
+			{"$set": test_doc, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+			upsert=True
+		)
+		
+		return jsonify({"ok": True, "test_id": test_id, "questions": formatted_questions, "total": len(selected_questions)})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/question/<activity_id>/<int:question_index>", methods=["GET"])
+def api_get_question_for_validation(activity_id, question_index):
+	"""Get question details for validation (including stored answer)"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		# Try to get from activity first
+		activity = activities_col.find_one({"activity_id": activity_id})
+		if not activity:
+			return jsonify({"ok": False, "error": "Activity not found"}), 404
+		
+		# Parse questions from activity
+		import json
+		generated = json.loads(activity.get("generated", "{}"))
+		questions = generated.get("questions", [])
+		
+		if question_index < 0 or question_index >= len(questions):
+			return jsonify({"ok": False, "error": "Question index out of range"}), 404
+		
+		question = questions[question_index]
+		
+		# If from question bank, get original question with answer
+		if activity.get("source") == "question_bank":
+			subject = activity.get("subject")
+			module = activity.get("module")
+			bank = question_banks_col.find_one({"subject": subject})
+			if bank:
+				module_questions = bank.get("modules", {}).get(module, [])
+				# Find matching question by title or description
+				for orig_q in module_questions:
+					if orig_q.get("title") == question.get("title"):
+						return jsonify({
+							"ok": True,
+							"question": question,
+							"stored_answer": orig_q.get("answer", ""),
+							"stored_answer_regex": orig_q.get("answerRegex", ""),
+							"correct_option": orig_q.get("correctOption")
+						})
+		
+		# Fallback to question data from activity
+		return jsonify({
+			"ok": True,
+			"question": question,
+			"stored_answer": question.get("_local_answer", ""),
+			"stored_answer_regex": question.get("_local_answer_regex", ""),
+			"correct_answer": question.get("correct_answer", "")
+		})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/all", methods=["GET"])
+def api_get_all_question_banks():
+	"""Get all question banks grouped by university (for Questionnaire Management)"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		banks = list(question_banks_col.find({}).sort("created_at", -1))
+		
+		grouped = {}
+		for bank in banks:
+			uni = bank.get("university", "Unknown")
+			if uni not in grouped:
+				grouped[uni] = []
+			grouped[uni].append({
+				"id": str(bank.get("_id")),
+				"subject": bank.get("subject", ""),
+				"modules": bank.get("modules", {}),
+				"created_at": bank.get("created_at").isoformat() if bank.get("created_at") else None,
+				"updated_at": bank.get("updated_at").isoformat() if bank.get("updated_at") else None
+			})
+		
+		return jsonify({"ok": True, "grouped": grouped, "all": banks})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/question-bank/delete", methods=["POST"])
+def api_delete_question_bank():
+	"""Delete a question bank (university + subject)"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		data = request.json
+		university = data.get("university", "").strip()
+		subject = data.get("subject", "").strip()
+		
+		if not university or not subject:
+			return jsonify({"ok": False, "error": "University and subject are required"}), 400
+		
+		result = question_banks_col.delete_one({"university": university, "subject": subject})
+		
+		if result.deleted_count > 0:
+			return jsonify({"ok": True, "message": "Question bank deleted successfully"})
+		else:
+			return jsonify({"ok": False, "error": "Question bank not found"}), 404
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/submission-logs", methods=["GET"])
+def api_get_submission_logs():
+	"""Get submission logs (for admin dashboard) - all submissions from MongoDB"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		# Get all submissions from MongoDB (sorted by most recent)
+		submissions = list(submissions_col.find({}).sort("created_at", -1).limit(100))
+		
+		# Format for frontend
+		formatted = []
+		for sub in submissions:
+			# Try to get subject/module from activity or test
+			subject = sub.get("subject", "Unknown")
+			module = sub.get("module", "Unknown")
+			
+			if sub.get("activity_id") and not subject:
+				act = activities_col.find_one({"activity_id": sub["activity_id"]})
+				if act:
+					subject = act.get("subject", "Unknown")
+					module = act.get("module", "Unknown")
+			
+			if sub.get("test_id") and not subject:
+				test = tests_col.find_one({"test_id": sub["test_id"]})
+				if test:
+					subject = test.get("subject", "Unknown")
+					module = test.get("module", "Unknown")
+			
+			mode = "classroom" if sub.get("context") == "classroom_activity" or sub.get("activity_id") else "test"
+			correct_count = sub.get("correct_count", 0)
+			total_questions = sub.get("total_questions", sub.get("num_questions", 0))
+			
+			formatted.append({
+				"id": str(sub.get("_id")),
+				"when": sub.get("created_at").isoformat() if sub.get("created_at") else datetime.now(timezone.utc).isoformat(),
+				"mode": mode,
+				"subject": subject,
+				"module": module,
+				"correct_count": correct_count,
+				"total_questions": total_questions,
+				"score": correct_count
+			})
+		
+		return jsonify({"ok": True, "submissions": formatted})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/submission-logs/clear", methods=["POST"])
+def api_clear_submission_logs():
+	"""Clear all submission logs (admin only)"""
+	redir = require_admin()
+	if redir:
+		return jsonify({"ok": False, "error": "Unauthorized"}), 401
+	
+	try:
+		# Clear all submissions from MongoDB
+		result = submissions_col.delete_many({})
+		return jsonify({"ok": True, "message": f"Cleared {result.deleted_count} submission logs"})
+	except Exception as e:
+		return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/user/logout")
 def user_logout():
 	session.pop("user_username", None)
@@ -1731,6 +2206,19 @@ def classroom_submit_all():
 	if not activity_id or not answers:
 		return jsonify({"ok": False, "error": "Missing required fields"}), 400
 	
+	# Get activity to check if it's from question bank
+	activity = activities_col.find_one({"activity_id": activity_id})
+	is_from_bank = activity and activity.get("source") == "question_bank"
+	
+	# Get question bank answers if from question bank
+	bank_questions = {}
+	if is_from_bank:
+		subject = activity.get("subject")
+		module = activity.get("module")
+		bank = question_banks_col.find_one({"subject": subject})
+		if bank:
+			bank_questions = {q.get("title", ""): q for q in bank.get("modules", {}).get(module, [])}
+	
 	# Evaluate all answers
 	results = []
 	correct_count = 0
@@ -1743,12 +2231,28 @@ def classroom_submit_all():
 		
 		if question_type == "mcq":
 			selected_answer = answer.get("selected_answer")
-			correct_answer = question_data.get("correct_answer", "")
 			
-			# Check if correct
+			# For question bank: use correctOption index
 			is_correct = False
-			if selected_answer and correct_answer:
-				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			if is_from_bank:
+				bank_q = bank_questions.get(question_data.get("title", ""))
+				if bank_q and isinstance(bank_q.get("correctOption"), int):
+					# selected_answer should be the index (0,1,2,3)
+					if isinstance(selected_answer, (int, str)):
+						try:
+							is_correct = int(selected_answer) == bank_q.get("correctOption")
+						except (ValueError, TypeError):
+							is_correct = False
+				else:
+					# Fallback to string comparison
+					correct_answer = question_data.get("correct_answer", "")
+					if selected_answer and correct_answer:
+						is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			else:
+				# Original logic
+				correct_answer = question_data.get("correct_answer", "")
+				if selected_answer and correct_answer:
+					is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
 			
 			if is_correct:
 				correct_count += 1
@@ -1758,7 +2262,7 @@ def classroom_submit_all():
 				"question_type": "mcq",
 				"question_title": question_data.get("title", ""),
 				"selected_answer": selected_answer,
-				"correct_answer": correct_answer,
+				"correct_answer": question_data.get("correct_answer", ""),
 				"is_correct": is_correct,
 				"explanation": question_data.get("explanation", "")
 			})
@@ -1766,10 +2270,31 @@ def classroom_submit_all():
 		elif question_type == "coding":
 			user_code = answer.get("user_code")
 			
-			# Get AI feedback for coding question
+			# First check against MongoDB stored answer if from question bank
+			is_correct = False
+			if is_from_bank:
+				bank_q = bank_questions.get(question_data.get("title", ""))
+				if bank_q:
+					stored_answer = bank_q.get("answer", "")
+					stored_regex = bank_q.get("answerRegex", "")
+					
+					if stored_regex:
+						import re
+						try:
+							regex_pattern = re.compile(stored_regex, re.IGNORECASE)
+							is_correct = bool(regex_pattern.search(user_code or ""))
+						except:
+							pass
+					elif stored_answer:
+						# Normalize both for comparison
+						def normalize(s):
+							return (s or "").strip().replace(" ", "").lower()
+						is_correct = normalize(user_code) == normalize(stored_answer)
+			
+			# Get AI feedback for coding question (only if not already correct from stored answer)
 			ai_feedback = ""
 			score = 0.0
-			if user_code and openai.api_key:
+			if user_code and openai.api_key and (not is_correct or is_from_bank):
 				try:
 					trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
 
@@ -1786,6 +2311,13 @@ Return a JSON with:
   "feedback": "Your evaluation"
 }"""
 
+					# Include stored answer if from question bank for better validation
+					stored_answer_text = ""
+					if is_from_bank:
+						bank_q = bank_questions.get(question_data.get("title", ""))
+						if bank_q and bank_q.get("answer"):
+							stored_answer_text = f"\n**Expected Answer (from question bank):**\n```python\n{bank_q.get('answer')}\n```\n\nCompare the student's code with the expected answer."
+					
 					prompt = f"""Evaluate this student's code for a classroom activity. Provide encouraging, educational feedback.
 
 **Problem:** {question_data.get('description', 'N/A')}
@@ -1794,7 +2326,7 @@ Return a JSON with:
 ```python
 {user_code}
 ```
-
+{stored_answer_text}
 **Provide Feedback as JSON:**
 {{
   "score": 0.0 to 1.0,
@@ -1809,21 +2341,29 @@ Return a JSON with:
 					if json_match:
 						feedback_data = json.loads(json_match.group())
 						score = float(feedback_data.get("score", 0.5))
-						is_correct = feedback_data.get("is_correct", score >= 0.7)
 						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+						# Only use AI's is_correct if we haven't already determined it from stored answer
+						if not is_from_bank:
+							is_correct = feedback_data.get("is_correct", score >= 0.7)
+						elif not is_correct:
+							# If stored answer didn't match, AI can still validate
+							is_correct = feedback_data.get("is_correct", score >= 0.7)
 					else:
 						ai_feedback = response_text
-						is_correct = True
-						score = 0.7
+						if not is_from_bank:
+							is_correct = True
+							score = 0.7
 				except Exception as e:
 					print(f"AI feedback error: {e}")
 					ai_feedback = "Your code has been submitted successfully."
-					is_correct = True
-					score = 0.7
+					if not is_from_bank:
+						is_correct = True
+						score = 0.7
 			else:
 				ai_feedback = "Your code has been submitted successfully."
-				is_correct = True
-				score = 0.7
+				if not is_from_bank:
+					is_correct = True
+					score = 0.7
 			
 			if is_correct:
 				correct_count += 1
@@ -2128,17 +2668,8 @@ def test_start():
 	else:
 		return render_template("index.html", view="test", error="No test scheduled" )
 	
-	# Initialize progress and anti-cheat tracking
-	if session.get("test_progress") is None:
-		session["test_progress"] = 0
-	if session.get("test_warnings") is None:
-		session["test_warnings"] = 0
-	if session.get("test_violations") is None:
-		session["test_violations"] = []
-	
 	# Parse the generated JSON to extract questions and filter by type (same logic as classroom activity)
 	questions = []
-	current_question = None
 	try:
 		import json
 		generated_data = json.loads(test_doc.get("generated", "{}"))
@@ -2155,24 +2686,14 @@ def test_start():
 		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
 		
 		print(f"Test {test_doc.get('test_id')}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
-		
-		# Get current question based on progress
-		progress = session["test_progress"]
-		if progress < len(questions):
-			current_question = questions[progress]
-			print(f"Current question (progress {progress}): {current_question.get('title', 'No title') if current_question else 'None'}")
-		else:
-			print(f"Progress {progress} is beyond question count {len(questions)}")
 	except Exception as e:
 		print(f"Error parsing test JSON: {e}")
 		import traceback
 		traceback.print_exc()
 		questions = []
 	
-	# Show the actual test interface
-	return render_template("index.html", view="test_interface", test=test_doc, progress=session["test_progress"], 
-		questions=questions, current_question=current_question, 
-		warning_count=session.get("test_warnings", 0))
+	# Show all questions at once (same as classroom activity interface)
+	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
 
 
 @app.route("/test/violation", methods=["POST"])  # Record test violations
@@ -2230,7 +2751,255 @@ def test_violation():
 	})
 
 
-@app.route("/test/submit", methods=["POST"])  # Sequential submission, no output displayed
+@app.route("/test/submit_all", methods=["POST"])
+def test_submit_all():
+	"""Submit all answers for a test at once (same logic as classroom activity)"""
+	redir = require_user()
+	if redir:
+		return jsonify({"ok": False, "error": "Not authenticated"}), 401
+	
+	user = users_col.find_one({"username": session["user_username"]})
+	if user.get("role") not in ("test", "both"):
+		return jsonify({"ok": False, "error": "Not authorized"}), 403
+	
+	data = request.json
+	test_id = data.get("test_id")
+	answers = data.get("answers", [])
+	
+	if not test_id or not answers:
+		return jsonify({"ok": False, "error": "Missing required fields"}), 400
+	
+	# Get test to check if it's from question bank and verify test is still open
+	test_doc = tests_col.find_one({"test_id": test_id})
+	if not test_doc:
+		return jsonify({"ok": False, "error": "Test not found"}), 404
+	
+	# Check if test is still open
+	now = datetime.now(timezone.utc)
+	start_time = test_doc.get("start_time")
+	end_time = test_doc.get("end_time")
+	scheduled_at = test_doc.get("scheduled_at")
+	
+	if start_time and start_time.tzinfo is None:
+		start_time = start_time.replace(tzinfo=timezone.utc)
+	if end_time and end_time.tzinfo is None:
+		end_time = end_time.replace(tzinfo=timezone.utc)
+	if scheduled_at and scheduled_at.tzinfo is None:
+		scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+	
+	if start_time and end_time:
+		if now < start_time:
+			return jsonify({"ok": False, "error": "Test not yet open"}), 403
+		elif now > end_time:
+			return jsonify({"ok": False, "error": "Test has expired"}), 403
+	elif scheduled_at:
+		if now < scheduled_at:
+			return jsonify({"ok": False, "error": "Test not yet open"}), 403
+	
+	# Check if already completed
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id
+	})
+	if already_completed:
+		return jsonify({"ok": False, "error": "You have already completed this test"}), 403
+	
+	# Get question bank answers if from question bank (same logic as classroom)
+	is_from_bank = test_doc.get("source") == "question_bank"
+	bank_questions = {}
+	if is_from_bank:
+		subject = test_doc.get("subject")
+		module = test_doc.get("module")
+		bank = question_banks_col.find_one({"subject": subject})
+		if bank:
+			bank_questions = {q.get("title", ""): q for q in bank.get("modules", {}).get(module, [])}
+	
+	# Evaluate all answers (same logic as classroom_submit_all)
+	results = []
+	correct_count = 0
+	total_questions = len(answers)
+	
+	for answer in answers:
+		question_index = answer.get("question_index")
+		question_type = answer.get("question_type")
+		question_data = answer.get("question_data", {})
+		
+		if question_type == "mcq":
+			selected_answer = answer.get("selected_answer")
+			
+			# For question bank: use correctOption index
+			is_correct = False
+			if is_from_bank:
+				bank_q = bank_questions.get(question_data.get("title", ""))
+				if bank_q and isinstance(bank_q.get("correctOption"), int):
+					if isinstance(selected_answer, (int, str)):
+						try:
+							is_correct = int(selected_answer) == bank_q.get("correctOption")
+						except (ValueError, TypeError):
+							is_correct = False
+				else:
+					correct_answer = question_data.get("correct_answer", "")
+					if selected_answer and correct_answer:
+						is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			else:
+				correct_answer = question_data.get("correct_answer", "")
+				if selected_answer and correct_answer:
+					is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "mcq",
+				"question_title": question_data.get("title", ""),
+				"selected_answer": selected_answer,
+				"correct_answer": question_data.get("correct_answer", ""),
+				"is_correct": is_correct,
+				"explanation": question_data.get("explanation", "")
+			})
+			
+		elif question_type == "coding":
+			user_code = answer.get("user_code")
+			
+			# Check against MongoDB stored answer if from question bank
+			is_correct = False
+			if is_from_bank:
+				bank_q = bank_questions.get(question_data.get("title", ""))
+				if bank_q:
+					stored_answer = bank_q.get("answer", "")
+					stored_regex = bank_q.get("answerRegex", "")
+					
+					if stored_regex:
+						import re
+						try:
+							regex_pattern = re.compile(stored_regex, re.IGNORECASE)
+							is_correct = bool(regex_pattern.search(user_code or ""))
+						except:
+							pass
+					elif stored_answer:
+						def normalize(s):
+							return (s or "").strip().replace(" ", "").lower()
+						is_correct = normalize(user_code) == normalize(stored_answer)
+			
+			# Get AI feedback for coding question
+			ai_feedback = ""
+			score = 0.0
+			if user_code and openai.api_key and (not is_correct or is_from_bank):
+				try:
+					trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
+
+Your approach:
+- **Student-Centered**: Provide constructive feedback
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply
+
+Return a JSON with:
+{
+  "score": 0.0 to 1.0,
+  "is_correct": true/false,
+  "feedback": "Your evaluation"
+}"""
+
+					# Include stored answer if from question bank for better validation
+					stored_answer_text = ""
+					if is_from_bank:
+						bank_q = bank_questions.get(question_data.get("title", ""))
+						if bank_q and bank_q.get("answer"):
+							stored_answer_text = f"\n**Expected Answer (from question bank):**\n```python\n{bank_q.get('answer')}\n```\n\nCompare the student's code with the expected answer."
+					
+					prompt = f"""Evaluate this student's code for a test. Provide encouraging, educational feedback.
+
+**Problem:** {question_data.get('description', 'N/A')}
+
+**Student's Code:**
+```python
+{user_code}
+```
+{stored_answer_text}
+**Provide Feedback as JSON:**
+{{
+  "score": 0.0 to 1.0,
+  "is_correct": true if mostly correct, false otherwise,
+  "feedback": "Encouraging feedback with strengths and suggestions"
+}}"""
+
+					response_text = _ai_generate(prompt, trainer_role)
+					import re
+					json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+					if json_match:
+						feedback_data = json.loads(json_match.group())
+						score = float(feedback_data.get("score", 0.5))
+						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+						if not is_from_bank:
+							is_correct = feedback_data.get("is_correct", score >= 0.7)
+						elif not is_correct:
+							is_correct = feedback_data.get("is_correct", score >= 0.7)
+					else:
+						ai_feedback = response_text
+						if not is_from_bank:
+							is_correct = True
+							score = 0.7
+				except Exception as e:
+					print(f"AI feedback error: {e}")
+					ai_feedback = "Your code has been submitted successfully."
+					if not is_from_bank:
+						is_correct = True
+						score = 0.7
+			else:
+				ai_feedback = "Your code has been submitted successfully."
+				if not is_from_bank:
+					is_correct = True
+					score = 0.7
+			
+			if is_correct:
+				correct_count += 1
+			
+			results.append({
+				"question_index": question_index,
+				"question_type": "coding",
+				"question_title": question_data.get("title", ""),
+				"user_code": user_code,
+				"ai_feedback": ai_feedback,
+				"is_correct": is_correct,
+				"score": score
+			})
+	
+	# Calculate percentage
+	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
+	
+	# Store aggregate submission in database
+	submission_doc = {
+		"username": user["username"],
+		"university": user.get("university", "Unknown"),
+		"context": "test_complete",
+		"test_id": test_id,
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results,
+		"subject": test_doc.get("subject"),
+		"module": test_doc.get("module"),
+		"created_at": datetime.now(timezone.utc)
+	}
+	
+	submissions_col.insert_one(submission_doc)
+	
+	# Return results to frontend
+	return jsonify({
+		"ok": True,
+		"total_questions": total_questions,
+		"correct_count": correct_count,
+		"score": f"{correct_count}/{total_questions}",
+		"percentage": percentage,
+		"details": results
+	})
+
+
+@app.route("/test/submit", methods=["POST"])  # Legacy sequential submission (kept for backward compatibility)
 def test_submit():
 	redir = require_user()
 	if redir:

@@ -1111,6 +1111,29 @@ pre, code {
     transform: translateX(3px);
 }
 
+/* Question Generator Tabs */
+.qgTabBtn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #6b7280;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.qgTabBtn:hover {
+    color: #667eea;
+}
+
+.qgTabBtn.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    font-weight: 600;
+}
+
 /* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
     .hero-content h1 {
@@ -1664,27 +1687,112 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<section class="grid">
 				<div class="card">
 					<h2>Create Classroom Activity</h2>
-				<form method="post" action="/admin/create_classroom_activity">
-					<label>Subject<input type="text" name="subject" required></label>
-					<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-					<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq"></label>
-					<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding"></label>
-					<label>Classroom ID<input type="text" name="classroom_id" required></label>
-					<button class="btn" type="submit">Generate Activity</button>
-				</form>
+					<p class="muted" style="margin-bottom: 0.75rem;">Generate from Local Question Bank</p>
+					<form id="createClassroomForm">
+						<label>Subject
+							<select id="classroomSubject" required></select>
+						</label>
+						<label>Module
+							<select id="classroomModule" required></select>
+						</label>
+						<label>Number of MCQ Questions<input type="number" id="classroomMcq" min="0" max="50" value="2" required></label>
+						<label>Number of Coding Questions<input type="number" id="classroomCoding" min="0" max="50" value="1" required></label>
+						<label>Classroom ID<input type="text" id="classroomId" required></label>
+						<button class="btn" type="submit">Generate Activity</button>
+					</form>
+					<div id="classroomWarning" class="muted" style="margin-top: 0.5rem; display: none; color: #dc2626;"></div>
 				</div>
 				<div class="card">
 					<h2>Create Test</h2>
-					<form method="post" action="/admin/create_test">
-						<label>Subject<input type="text" name="subject" required></label>
-						<label>ToC<textarea name="toc" rows="3" placeholder="Table of Contents"></textarea></label>
-						<label>Number of MCQ Questions<input type="number" min="0" max="20" value="2" name="num_mcq"></label>
-						<label>Number of Coding Questions<input type="number" min="0" max="20" value="1" name="num_coding"></label>
-						<label>Test ID<input type="text" name="test_id" required></label>
-						<label>Test Start Time<input type="datetime-local" name="start_datetime" required></label>
-						<label>Test End Time<input type="datetime-local" name="end_datetime" required></label>
+					<p class="muted" style="margin-bottom: 0.75rem;">Generate from Local Question Bank</p>
+					<form id="createTestForm">
+						<label>Subject
+							<select id="testSubject" required></select>
+						</label>
+						<label>Module
+							<select id="testModule" required></select>
+						</label>
+						<label>Number of MCQ Questions<input type="number" id="testMcq" min="0" max="50" value="2" required></label>
+						<label>Number of Coding Questions<input type="number" id="testCoding" min="0" max="50" value="1" required></label>
+						<label>Test ID<input type="text" id="testId" required></label>
+						<label>Test Start Time<input type="datetime-local" id="testStart" required></label>
+						<label>Test End Time<input type="datetime-local" id="testEnd" required></label>
 						<button class="btn" type="submit">Create Test</button>
 					</form>
+					<div id="testWarning" class="muted" style="margin-top: 0.5rem; display: none; color: #dc2626;"></div>
+				</div>
+			</section>
+
+			<!-- Local Question Bank: Question Generator -->
+			<section class="grid">
+				<div class="card">
+					<h2>🧩 Question Generator</h2>
+					<p class="muted" style="margin-bottom: 0.75rem;">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
+					<form id="localQGForm">
+						<label>University
+							<input type="text" id="qgUniversity" placeholder="e.g., MIT" required>
+						</label>
+						<label>Subject Name
+							<input type="text" id="qgSubject" placeholder="e.g., Data Structures" required>
+						</label>
+						<div id="qgModulesContainer" style="margin-top: 0.75rem;"></div>
+						<div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+							<button class="btn" id="qgAddModuleBtn">➕ Add Module</button>
+							<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
+						</div>
+						<div style="margin-top: 0.75rem;">
+							<button class="btn" id="qgSubmitBankBtn">💾 Save Subject to Question Bank</button>
+						</div>
+					</form>
+					<details style="margin-top: 0.75rem;">
+						<summary style="cursor: pointer; font-weight: 600; color: #667eea;">Show Question JSON Example</summary>
+						<pre style="background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 6px; overflow:auto; font-size: 0.85rem;">
+[
+  {
+    "type": "mcq",
+    "title": "What is the time complexity of binary search?",
+    "description": "Choose the correct answer.",
+    "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],
+    "correctOption": 1
+  },
+  {
+    "type": "coding",
+    "title": "Reverse a string",
+    "description": "Write code to reverse a string.",
+    "answer": "function reverseString(s){return s.split('').reverse().join('')}"
+  }
+]
+						</pre>
+						<p class="muted">Paste the JSON above for each module. For MCQ, set <code>correctOption</code> to the index of the correct choice (0-based). For coding, provide either <code>answer</code> (string compare after trimming) or <code>answerRegex</code> (case-insensitive).</p>
+					</details>
+				</div>
+				<div class="card">
+					<h2>📊 Local Submission Logs</h2>
+					<p class="muted" style="margin-bottom: 0.75rem;">Shows attempts generated via Local Question Bank only.</p>
+					<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+						<button class="btn" id="logsRefreshBtn">Refresh</button>
+						<button class="btn secondary" id="logsClearBtn">Clear</button>
+					</div>
+					<div class="table-container" style="max-height: 260px; overflow:auto; border: 1px solid #e5e7eb; border-radius: 6px;">
+						<table style="width:100%;">
+							<thead>
+								<tr>
+									<th style="text-align:left; padding: 0.5rem;">When</th>
+									<th style="text-align:left; padding: 0.5rem;">Mode</th>
+									<th style="text-align:left; padding: 0.5rem;">Subject</th>
+									<th style="text-align:left; padding: 0.5rem;">Module</th>
+									<th style="text-align:left; padding: 0.5rem;">Score</th>
+								</tr>
+							</thead>
+							<tbody id="logsTableBody"></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="card">
+					<h2>🗂️ Questionnaire Management</h2>
+					<p class="muted" style="margin-bottom: 0.75rem;">All local activities grouped by university. View, edit, export CSV, or delete.</p>
+					<div id="qmGroups"></div>
+					<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
 				</div>
 			</section>
 
@@ -3049,442 +3157,288 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 			{% endif %}
 
-		{# Test Interface (when test is actually open) #}
+		{# Test Interface (when test is actually open) - Same as Classroom Activity #}
 		{% if view == 'test_interface' %}
 			<div class="flex-between">
 				<h2>{{ test.subject }} - Test</h2>
-				<div class="test-progress">
-					<span class="progress-badge">Question {{ progress + 1 }} of {{ questions|length }}</span>
-					{% if warning_count > 0 %}
-					<span class="warning-indicator" id="warning-indicator">⚠️ Warnings: <span id="warning-count-display">{{ warning_count }}</span>/3</span>
-					{% endif %}
-				</div>
+				<a class="btn secondary" href="/test">← Back to Test Info</a>
 			</div>
 			
-			<!-- Warning Modal -->
-			<div id="warningModal" class="warning-modal">
-				<div class="warning-modal-content">
-					<div class="warning-icon">⚠️</div>
-					<h2 class="warning-title">TEST VIOLATION DETECTED</h2>
-					<p class="warning-message" id="warning-message">Unauthorized action detected</p>
-					<div class="warning-counter" id="warning-counter">Warning 1/3</div>
-					<p style="color: #fef2f2; font-size: 0.9rem;">After 3 warnings, your test will be automatically submitted.</p>
-					<div class="warning-actions">
-						<button class="warning-btn warning-btn-primary" onclick="closeWarningModal()">I Understand</button>
-					</div>
-				</div>
-			</div>
-			
-			{% if current_question %}
-			<section class="card question-card">
-				<div class="question-header">
-					<h3>{{ current_question.title }}</h3>
-					<div style="display: flex; gap: 0.5rem; align-items: center;">
-						<span class="difficulty-badge difficulty-{{ current_question.difficulty }}">
-							{% if current_question.difficulty == 'medium_plus' %}
-								Medium+ (Coding)
-							{% else %}
-								{{ current_question.difficulty|title }}
+			{% if questions %}
+				{% for question in questions %}
+				{% set question_num = loop.index %}
+				<section class="card question-card">
+					<div class="question-header">
+						<h3>Question {{ question_num }}: {{ question.title }}</h3>
+						<div style="display: flex; gap: 0.5rem; align-items: center;">
+							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
+								{% if question.difficulty == 'medium_plus' %}
+									Medium+ (Coding)
+								{% else %}
+									{{ question.difficulty|title }}
+								{% endif %}
+							</span>
+							{% if question.question_type == 'mcq' %}
+							<span class="role-badge role-classroom">📝 MCQ</span>
+							{% elif question.question_type == 'coding' %}
+							<span class="role-badge role-test">💻 Coding</span>
 							{% endif %}
-						</span>
-						{% if current_question.question_type == 'mcq' %}
-						<span class="role-badge role-classroom">📝 MCQ</span>
-						{% elif current_question.question_type == 'coding' %}
-						<span class="role-badge role-test">💻 Coding</span>
+						</div>
+					</div>
+					
+					<div class="question-content">
+						<p><strong>Description:</strong></p>
+						<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+						
+						{# MCQ Questions #}
+						{% if question.question_type == 'mcq' and question.options %}
+						<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
+							<p><strong>Select the correct answer:</strong></p>
+							<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
+								{% for option in question.options %}
+								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+									{{ option }}
+								</div>
+								{% endfor %}
+							</div>
+							
+							<div style="margin-top: 1rem;">
+								<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});">
+									Clear Selection
+								</button>
+								<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem;"></span>
+							</div>
+							
+							{% if question.hints %}
+							<details style="margin-top: 1rem;">
+								<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
+								<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
+									{% for hint in question.hints %}
+									<p>• {{ hint }}</p>
+									{% endfor %}
+								</div>
+							</details>
+							{% endif %}
+						</div>
 						{% endif %}
-						{% if current_question.points %}
-						<span class="role-badge role-both">{{ current_question.points }} points</span>
+						
+						{# Coding Questions #}
+						{% if question.question_type == 'coding' or not question.question_type %}
+						{% if question.input_format %}
+						<p><strong>Input Format:</strong></p>
+						<pre class="format-box">{{ question.input_format }}</pre>
+						{% endif %}
+						
+						{% if question.output_format %}
+						<p><strong>Output Format:</strong></p>
+						<pre class="format-box">{{ question.output_format }}</pre>
+						{% endif %}
+						
+						{% if question.sample_input %}
+						<p><strong>Sample Input:</strong></p>
+						<pre class="sample-box">{{ question.sample_input }}</pre>
+						{% endif %}
+						
+						{% if question.sample_output %}
+						<p><strong>Sample Output:</strong></p>
+						<pre class="sample-box">{{ question.sample_output }}</pre>
+						{% endif %}
+						
+						{% if question.constraints %}
+						<p><strong>Constraints:</strong></p>
+						<p style="color: #f59e0b;">{{ question.constraints }}</p>
+						{% endif %}
 						{% endif %}
 					</div>
-				</div>
-				
-				<div class="question-content">
-					<p><strong>Description:</strong></p>
-					<div style="white-space: pre-wrap; line-height: 1.6;">{{ current_question.description }}</div>
 					
-					{# MCQ Questions #}
-					{% if current_question.question_type == 'mcq' and current_question.options %}
-					<div style="margin-top: 1.5rem;">
-						<p><strong>Select your answer:</strong></p>
-						<div id="mcq-options-{{ progress }}" style="margin: 1rem 0;">
-						{% for option in current_question.options %}
-						<div class="mcq-option" data-option="{{ option[0] }}" data-question-progress="{{ progress }}" onclick="selectMCQOption(this, {{ progress }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
-							{{ option }}
-						</div>
-						{% endfor %}
+					{# Only show code editor for coding questions #}
+					{% if question.question_type == 'coding' or not question.question_type %}
+					<div class="compiler-section" id="coding-question-{{ question_num }}">
+						<h4>🐍 Code Editor</h4>
+						<div class="compiler-container">
+							<div class="code-section">
+								<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
+# Example:
+# def solution():
+#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
+								<div class="compiler-controls">
+									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
+								</div>
+							</div>
+							
+							<div class="output-section">
+								<label>Output:</label>
+								<div id="output-{{ question_num }}" class="output-box">
+									<p class="muted">Click "Run Code" to see the output here...</p>
+								</div>
+							</div>
 						</div>
 						
 						<div style="margin-top: 1rem;">
-							<button type="button" class="btn secondary" onclick="clearTestMCQSelection({{ progress }});">
-								Clear Selection
-							</button>
-							<span id="test-mcq-status-{{ progress }}" class="muted" style="margin-left: 1rem;"></span>
-						</div>
-						
-						{% if current_question.hints %}
-						<details style="margin-top: 1rem;">
-							<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
-							<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
-								{% for hint in current_question.hints %}
-								<p>• {{ hint }}</p>
-								{% endfor %}
-							</div>
-						</details>
-						{% endif %}
-					</div>
-					{% endif %}
-					
-					{# Coding Questions #}
-					{% if current_question.question_type == 'coding' or not current_question.question_type %}
-					{% if current_question.input_format %}
-					<p><strong>Input Format:</strong></p>
-					<pre class="format-box">{{ current_question.input_format }}</pre>
-					{% endif %}
-					
-					{% if current_question.output_format %}
-					<p><strong>Output Format:</strong></p>
-					<pre class="format-box">{{ current_question.output_format }}</pre>
-					{% endif %}
-					
-					{% if current_question.sample_input %}
-					<p><strong>Sample Input:</strong></p>
-					<pre class="sample-box">{{ current_question.sample_input }}</pre>
-					{% endif %}
-					
-					{% if current_question.sample_output %}
-					<p><strong>Sample Output:</strong></p>
-					<pre class="sample-box">{{ current_question.sample_output }}</pre>
-					{% endif %}
-					
-					{% if current_question.constraints %}
-					<p><strong>Constraints:</strong></p>
-					<p style="color: #f59e0b;">{{ current_question.constraints }}</p>
-					{% endif %}
-					{% endif %}
-				</div>
-				
-				{# Only show code editor for coding questions #}
-				{% if current_question.question_type == 'coding' or not current_question.question_type %}
-				<div class="compiler-section">
-					<h4>🐍 Code Editor</h4>
-					<div class="compiler-container">
-						<div class="code-section">
-							<textarea id="test-code" class="question-code" rows="10" placeholder="# Write your solution here
-# Example:
-# def solution():
-#     return 'Hello World'"></textarea>
-							<div class="compiler-controls">
-								<button id="run-test-code" class="btn">▶️ Run Code</button>
-								<button id="clear-test-code" class="btn secondary">🗑️ Clear</button>
-							</div>
-						</div>
-						
-						<div class="output-section">
-							<label>Output:</label>
-							<div id="test-output" class="output-box">
-								<p class="muted">Click "Run Code" to see the output here...</p>
-							</div>
+							<span id="coding-status-{{ question_num }}" class="muted"></span>
 						</div>
 					</div>
-				</div>
-				{% endif %}
-			</section>
-			
-			<form id="testForm" method="post" action="/test/submit" class="mt">
-				<input type="hidden" name="user_code" id="hidden_user_code">
-				<input type="hidden" name="mcq_answer" id="hidden_mcq_answer">
-				<input type="hidden" name="question_type" id="hidden_question_type" value="{{ current_question.question_type if current_question else 'coding' }}">
-				<button class="btn" type="submit">Submit Answer</button>
-			</form>
+					{% endif %}
+				</section>
+				{% endfor %}
 			{% else %}
-			<section class="card">
-				<h2>⚠️ Unable to Display Question</h2>
-				<div class="alert">
-					<p><strong>Debug Information:</strong></p>
-					<ul>
-						<li>Number of questions parsed: {{ questions|length }}</li>
-						<li>Current progress: {{ progress }}</li>
-						<li>Expected questions: {{ test.num_questions }}</li>
-					</ul>
+				<section class="card">
+					<h2>Activity Content</h2>
+					<details open>
+						<summary>Generated Content</summary>
+						<pre class="scroll">{{ test.generated }}</pre>
+					</details>
+				</section>
+			{% endif %}
+			
+			{% if questions %}
+			<section class="card" style="border-left: 4px solid #10b981;">
+				<h3>📝 Submit Your Answers</h3>
+				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
+				<div style="margin-top: 1.5rem;">
+					<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+						✅ Submit All Answers
+					</button>
+					<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
+						Cancel
+					</button>
 				</div>
-				
-				<h3>Raw Test Content:</h3>
-				<details open>
-					<summary>Click to view test content structure</summary>
-					<pre class="scroll">{{ test.generated }}</pre>
-				</details>
-				
-				<p class="muted">If you're seeing this, the test questions couldn't be parsed correctly. This usually happens when the AI-generated content is not in the expected JSON format.</p>
-				
-				<a href="/test" class="btn secondary">← Back to Test Info</a>
+				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
 			</section>
 			{% endif %}
-			<script>
-			// Anti-Cheat System for Test Interface
-			(function(){
-				// FULLSCREEN MODE - Request fullscreen immediately
-				function enterFullscreen() {
-					const elem = document.documentElement;
-					if (elem.requestFullscreen) {
-						elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-					} else if (elem.webkitRequestFullscreen) {
-						elem.webkitRequestFullscreen();
-					} else if (elem.msRequestFullscreen) {
-						elem.msRequestFullscreen();
-					}
-				}
-				
-				// Try to enter fullscreen
-				enterFullscreen();
-				
-				// Alert user about fullscreen requirement
-				alert('⚠️ TEST MODE ACTIVATED\n\n✓ The test will open in fullscreen mode\n✓ Do not switch tabs or windows\n✓ Do not press F11 or Esc\n✓ Violations will be recorded\n\nClick OK to continue');
-				
-				// Configuration
-				const INACTIVITY_TIMEOUT = 60000; // 60 seconds
-				const MAX_WARNINGS = 3;
-				
-				// State
-				let warningCount = {{ warning_count }};
-				let inactivityTimer = null;
-				let lastActivityTime = Date.now();
-				let isInactivityWarningShown = false;
-				
-				// Record violation and show warning
-				async function recordViolation(violationType) {
-					try {
-						const response = await fetch('/test/violation', {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-							},
-							body: JSON.stringify({
-								type: violationType
-							})
-						});
-						
-						const data = await response.json();
-						
-						if (data.ok) {
-							warningCount = data.warning_count;
-							showWarningModal(violationType, data.warning_count, data.auto_close);
-							return data.auto_close;
-						}
-					} catch (error) {
-						console.error('Failed to record violation:', error);
-					}
-					return false;
-				}
-				
-				// Show warning modal
-				function showWarningModal(violationType, count, autoClose) {
-					const modal = document.getElementById('warningModal');
-					const messageEl = document.getElementById('warning-message');
-					const counterEl = document.getElementById('warning-counter');
-					const warningIndicator = document.getElementById('warning-indicator');
-					const warningCountDisplay = document.getElementById('warning-count-display');
-					
-					// Set message based on violation type
-					const messages = {
-						'tab_switch': 'You switched tabs or left the test window. Stay focused on the test!',
-						'window_blur': 'You clicked outside the test window. Keep your focus on the test!',
-						'copy_attempt': 'Copying content is not allowed during the test.',
-						'paste_attempt': 'Pasting content is not allowed during the test.',
-						'cut_attempt': 'Cutting content is not allowed during the test.',
-						'inactivity': 'You were inactive for too long. Stay active during the test!',
-						'devtools': 'Developer tools are not allowed during the test.',
-						'print_screen': 'Screenshots are not allowed during the test.'
-					};
-					
-					messageEl.textContent = messages[violationType] || 'Unauthorized action detected.';
-					counterEl.textContent = `Warning ${count}/${MAX_WARNINGS}`;
-					
-					// Update warning indicator
-					if (warningIndicator) {
-						warningCountDisplay.textContent = count;
-					} else if (count === 1) {
-						// Create warning indicator if it doesn't exist
-						const progressDiv = document.querySelector('.test-progress');
-						if (progressDiv) {
-							const indicator = document.createElement('span');
-							indicator.className = 'warning-indicator';
-							indicator.id = 'warning-indicator';
-							indicator.innerHTML = `⚠️ Warnings: <span id="warning-count-display">${count}</span>/3`;
-							progressDiv.appendChild(indicator);
-						}
-					}
-					
-					modal.style.display = 'block';
-					
-					// Auto-close test if max warnings reached
-					if (autoClose) {
-						setTimeout(() => {
-							alert('Maximum warnings reached. Your test will now be submitted.');
-							document.getElementById('testForm').submit();
-						}, 3000);
-					}
-				}
-				
-				// Close warning modal
-				window.closeWarningModal = function() {
-					document.getElementById('warningModal').style.display = 'none';
-				}
-				
-				// Track user activity
-				function resetActivityTimer() {
-					lastActivityTime = Date.now();
-					isInactivityWarningShown = false;
-					
-					// Clear and restart inactivity timer
-					if (inactivityTimer) {
-						clearTimeout(inactivityTimer);
-					}
-					
-					inactivityTimer = setTimeout(() => {
-						if (!isInactivityWarningShown) {
-							isInactivityWarningShown = true;
-							recordViolation('inactivity');
-						}
-					}, INACTIVITY_TIMEOUT);
-				}
-				
-				// === EVENT LISTENERS ===
-				
-				// 1. Tab switching / Window visibility
-				document.addEventListener('visibilitychange', function() {
-					if (document.hidden) {
-						recordViolation('tab_switch');
-					} else {
-						resetActivityTimer();
-					}
-				});
-				
-				// 2. Window blur (clicking outside)
-				window.addEventListener('blur', function() {
-					recordViolation('window_blur');
-				});
-				
-				window.addEventListener('focus', function() {
-					resetActivityTimer();
-				});
-				
-				// 3. Copy/Cut/Paste prevention
-				document.addEventListener('copy', function(e) {
-					e.preventDefault();
-					recordViolation('copy_attempt');
-				});
-				
-				document.addEventListener('cut', function(e) {
-					e.preventDefault();
-					recordViolation('cut_attempt');
-				});
-				
-				document.addEventListener('paste', function(e) {
-					e.preventDefault();
-					recordViolation('paste_attempt');
-				});
-				
-				// 4. Context menu (right-click)
-				document.addEventListener('contextmenu', function(e) {
-					e.preventDefault();
-					return false;
-				});
-				
-				// 5. Keyboard shortcuts
-				document.addEventListener('keydown', function(e) {
-					// Block copy/paste/cut
-					if (e.ctrlKey || e.metaKey) {
-						if (e.key === 'c' || e.key === 'C') {
-							e.preventDefault();
-							recordViolation('copy_attempt');
-							return false;
-						}
-						if (e.key === 'x' || e.key === 'X') {
-							e.preventDefault();
-							recordViolation('cut_attempt');
-							return false;
-						}
-						if (e.key === 'v' || e.key === 'V') {
-							e.preventDefault();
-							recordViolation('paste_attempt');
-							return false;
-						}
-						// Block Ctrl+S (save)
-						if (e.key === 's' || e.key === 'S') {
-							e.preventDefault();
-							return false;
-						}
-						// Block Ctrl+P (print)
-						if (e.key === 'p' || e.key === 'P') {
-							e.preventDefault();
-							return false;
-						}
-					}
-					
-					// Block F12, Ctrl+Shift+I, Ctrl+Shift+J (DevTools)
-					if (e.key === 'F12' || 
-						(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j'))) {
-						e.preventDefault();
-						recordViolation('devtools');
-						return false;
-					}
-					
-					// Block Print Screen
-					if (e.key === 'PrintScreen') {
-						e.preventDefault();
-						recordViolation('print_screen');
-						return false;
-					}
-					
-					// Track activity
-					resetActivityTimer();
-				});
-				
-				// 6. Mouse activity tracking
-				document.addEventListener('mousemove', resetActivityTimer);
-				document.addEventListener('click', resetActivityTimer);
-				document.addEventListener('scroll', resetActivityTimer);
-				
-				// 7. Prevent browser back button
-				history.pushState(null, document.title, location.href);
-				window.addEventListener('popstate', function() {
-					history.pushState(null, document.title, location.href);
-				});
-				
-				// 8. Warn before leaving page
-				window.addEventListener('beforeunload', function(e) {
-					e.preventDefault();
-					e.returnValue = 'Are you sure you want to leave the test? Your progress may be lost.';
-					return e.returnValue;
-				});
-				
-				// 9. Detect devtools open (advanced)
-				let devtoolsOpen = false;
-				const detectDevTools = () => {
-					const threshold = 160;
-					const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-					const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-					
-					if ((widthThreshold || heightThreshold) && !devtoolsOpen) {
-						devtoolsOpen = true;
-						recordViolation('devtools');
-					} else if (!widthThreshold && !heightThreshold && devtoolsOpen) {
-						devtoolsOpen = false;
-					}
-				};
-				
-				// Check for devtools periodically
-				setInterval(detectDevTools, 1000);
-				
-				// Initialize activity timer
-				resetActivityTimer();
-				
-				console.log('🔒 Anti-cheat system active');
-				console.log('⚠️ Current warnings:', warningCount, '/', MAX_WARNINGS);
-			})();
+		{% endif %}
+		
+		{% if view == 'test_interface' %}
+		<script>
+		// Test submission function - same logic as classroom activity
+		window.submitAllTestAnswers = async function(testId, questions) {
+			// Collect all answers
+			const answers = [];
+			let missingAnswers = [];
 			
-		// MCQ Selection Handler for Tests (Works for ANY question number)
-	window.selectMCQOption = function(element, questionProgress) {
+			// Collect MCQ and coding answers (uses same structure as classroom)
+			questions.forEach((question, index) => {
+				const questionIdx = index + 1;
+				
+				if (question.question_type === 'mcq') {
+					const selectedAnswer = window.classroomAnswers[questionIdx];
+					if (!selectedAnswer) {
+						missingAnswers.push(`Question ${questionIdx} (MCQ)`);
+					}
+					answers.push({
+						question_index: questionIdx,
+						question_type: 'mcq',
+						question_data: question,
+						selected_answer: selectedAnswer || null
+					});
+				} else if (question.question_type === 'coding') {
+					const codeTextarea = document.getElementById(`code-${questionIdx}`);
+					const code = codeTextarea ? codeTextarea.value.trim() : '';
+					if (!code) {
+						missingAnswers.push(`Question ${questionIdx} (Coding)`);
+					}
+					answers.push({
+						question_index: questionIdx,
+						question_type: 'coding',
+						question_data: question,
+						user_code: code || null
+					});
+				}
+			});
+			
+			// Warn if any answers are missing
+			if (missingAnswers.length > 0) {
+				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) {
+					return;
+				}
+			}
+			
+			// Final confirmation
+			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) {
+				return;
+			}
+			
+			try {
+				// Show loading state
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.style.display = 'block';
+				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
+				
+				// Disable all inputs
+				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => {
+					el.disabled = true;
+					el.style.opacity = '0.6';
+					el.style.cursor = 'not-allowed';
+				});
+				
+				// Send to backend
+				const response = await fetch('/test/submit_all', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						test_id: testId,
+						answers: answers
+					})
+				});
+				
+				const result = await response.json();
+				
+				if (result.ok) {
+					// Display final score
+					displayTestFinalResult(result);
+				} else {
+					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
+				}
+			} catch (error) {
+				console.error('Submission error:', error);
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
+			}
+		};
+		
+		// Display final results for test
+		function displayTestFinalResult(result) {
+			const resultDiv = document.getElementById('final-result');
+			
+			let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center;">';
+			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">🎉 Test Submission Complete!</h2>';
+			html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.score}/${result.total_questions}</div>`;
+			html += `<div style="font-size: 1.5rem; margin: 0.5rem 0;">${result.percentage}%</div>`;
+			html += `<p style="margin: 1rem 0 0 0; opacity: 0.9;">You answered ${result.correct_count} out of ${result.total_questions} questions correctly.</p>`;
+			html += '</div>';
+			
+			// Detailed breakdown
+			if (result.details && result.details.length > 0) {
+				html += '<div style="margin-top: 2rem;">';
+				html += '<h3>📊 Detailed Breakdown</h3>';
+				
+				result.details.forEach((detail, index) => {
+					html += '<div style="padding: 1rem; margin: 1rem 0; background: #f9fafb; border-radius: 8px; border-left: 4px solid ';
+					html += detail.is_correct ? '#10b981' : '#dc2626';
+					html += ';">';
+					html += `<h4 style="margin: 0 0 0.5rem 0; color: #000000;">Question ${detail.question_index}</h4>`;
+					html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : 'Coding'}</p>`;
+					html += `<p style="margin: 0.5rem 0 0 0; font-weight: 600; color: ${detail.is_correct ? '#10b981' : '#dc2626'};">`;
+					html += detail.is_correct ? '✅ Correct' : '❌ Incorrect';
+					html += '</p>';
+					html += '</div>';
+				});
+				
+				html += '</div>';
+			}
+			
+			html += '<div style="margin-top: 2rem; text-align: center;">';
+			html += '<button class="btn" onclick="window.location.href=\'/test\'">Return to Test Info</button>';
+			html += '</div>';
+			
+			resultDiv.innerHTML = html;
+		}
+		
+		// MCQ Selection Handler for Tests - use same as classroom
+		window.selectMCQOption = function(element, questionProgress) {
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 		console.log('🔵 SELECT TEST MCQ - Question Progress: ' + questionProgress);
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -4185,7 +4139,6 @@ print(f'Sum: {x + y}')"></textarea>
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 	};
 	
-	// Submit ALL answers at once
 	window.submitAllClassroomAnswers = async function(activityId, questions) {
 		// Collect all answers
 		const answers = [];
@@ -5090,34 +5043,7 @@ print(f'Sum: {x + y}')"></textarea>
 			}
 		}
 
-		// Test restrictions (disable copy/paste, right-click, etc.)
-		function enableTestRestrictions() {
-			// Disable right-click
-			document.addEventListener('contextmenu', e => e.preventDefault());
-			
-			// Disable copy/paste
-			document.addEventListener('copy', e => e.preventDefault());
-			document.addEventListener('paste', e => e.preventDefault());
-			document.addEventListener('cut', e => e.preventDefault());
-			
-			// Disable F12, Ctrl+Shift+I, etc.
-			document.addEventListener('keydown', e => {
-				if (e.key === 'F12' || 
-					(e.ctrlKey && e.shiftKey && e.key === 'I') ||
-					(e.ctrlKey && e.shiftKey && e.key === 'C') ||
-					(e.ctrlKey && e.key === 'U')) {
-					e.preventDefault();
-				}
-			});
-			
-			// Disable text selection
-			document.addEventListener('selectstart', e => e.preventDefault());
-		}
-
-		// Initialize test restrictions if on test page
-		if (window.location.pathname.includes('/test/start')) {
-			enableTestRestrictions();
-		}
+		// Test restrictions removed - tests now display properly without restrictions
 
 		// Auto-save form data
 		function autoSaveForm(formId) {
@@ -5167,6 +5093,740 @@ print(f'Sum: {x + y}')"></textarea>
 		window.confirmDelete = confirmDelete;
 		window.startCountdown = startCountdown;
 		window.showAlert = showAlert;
+
+			// ===== Question Bank & Activity/Test Generation (No OpenAI) =====
+			// All data (question banks, activities, tests, submissions) are stored in MongoDB only
+			(function(){
+				function uid(){ return Math.random().toString(36).slice(2,10); }
+
+				function ensureContainers(){
+					if (document.getElementById('localAttemptContainer')) return;
+					const host = document.createElement('section');
+					host.className = 'card';
+					host.id = 'localAttemptContainer';
+					host.style.display = 'none';
+					host.innerHTML = `
+						<h2 id="attemptTitle">Attempt</h2>
+						<div id="attemptMeta" class="muted" style="margin-bottom: 0.75rem;"></div>
+						<div id="attemptQuestions" style="display: grid; gap: 0.75rem;"></div>
+						<div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+							<button class="btn" id="attemptSubmitBtn">Submit</button>
+							<button class="btn secondary" id="attemptCancelBtn">Cancel</button>
+						</div>
+						<div id="attemptResult" style="margin-top: 0.75rem;"></div>
+					`;
+					document.body.insertBefore(host, document.body.lastElementChild);
+				}
+
+				async function renderSubjectModuleOptions(){
+					const allSelectors = [
+						{subject: 'classroomSubject', module: 'classroomModule'},
+						{subject: 'testSubject', module: 'testModule'}
+					];
+					
+					try {
+						const response = await fetch('/api/question-bank/subjects');
+						const result = await response.json();
+						if (!result.ok) {
+							console.error('Failed to fetch subjects:', result.error);
+							return;
+						}
+						const subjects = result.subjects || [];
+						
+						allSelectors.forEach(({subject: subjId, module: modId})=>{
+							const subjSel = document.getElementById(subjId);
+							const modSel = document.getElementById(modId);
+							if (!subjSel || !modSel) return;
+							subjSel.innerHTML = '';
+							modSel.innerHTML = '';
+							if (subjects.length === 0){
+								subjSel.innerHTML = '<option value="">No subjects found</option>';
+								modSel.innerHTML = '<option value="">-</option>';
+								return;
+							}
+							subjects.forEach(s=>{
+								const opt = document.createElement('option');
+								opt.value = s; opt.textContent = s; subjSel.appendChild(opt);
+							});
+							updateModules(subjId, modId);
+							subjSel.onchange = () => updateModules(subjId, modId);
+						});
+						
+						async function updateModules(subjId, modId){
+							const subjSel = document.getElementById(subjId);
+							const modSel = document.getElementById(modId);
+							if (!subjSel || !modSel) return;
+							modSel.innerHTML='';
+							const subject = subjSel.value;
+							if (!subject) { modSel.innerHTML = '<option value="">-</option>'; return; }
+							
+							try {
+								const modResponse = await fetch(`/api/question-bank/modules?subject=${encodeURIComponent(subject)}`);
+								const modResult = await modResponse.json();
+								const modules = modResult.modules || [];
+								if (modules.length === 0){ modSel.innerHTML = '<option value="">No modules</option>'; return; }
+								modules.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; modSel.appendChild(o); });
+							} catch(err) {
+								console.error('Failed to fetch modules:', err);
+								modSel.innerHTML = '<option value="">Error loading modules</option>';
+							}
+						}
+					} catch(err) {
+						console.error('Failed to fetch subjects:', err);
+					}
+				}
+
+				function addModuleField(){
+					const c = document.getElementById('qgModulesContainer');
+					const idx = c.children.length + 1;
+					const wrap = document.createElement('div');
+					wrap.style.marginTop = '1rem';
+					wrap.style.border = '1px solid #e5e7eb';
+					wrap.style.borderRadius = '8px';
+					wrap.style.padding = '1rem';
+					wrap.style.background = '#f9fafb';
+					const moduleId = `module_${idx}_${Date.now()}`;
+					wrap.innerHTML = `
+						<label style="display: block; margin-bottom: 0.5rem;"><strong>Module Name #${idx}</strong>
+							<input type="text" class="qgModuleName" placeholder="e.g., Arrays" required style="margin-top: 0.25rem;">
+						</label>
+						<div style="margin-top: 0.75rem;">
+							<div style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 0.5rem;">
+								<button type="button" class="qgTabBtn active" data-tab="plain" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; border-bottom: 2px solid #667eea; margin-bottom: -2px;">📝 Plain Text</button>
+								<button type="button" class="qgTabBtn" data-tab="json" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;">🔧 JSON</button>
+							</div>
+							<div id="${moduleId}_plain" class="qgTabContent" style="display: block;">
+								<label style="display: block; margin-bottom: 0.5rem;"><strong>Paste Questions in Plain Text Format</strong>
+									<textarea class="qgModulePlainText" rows="12" placeholder='Example formats:
+Q: What is your name?
+A: YELLOW
+B: NORM
+C: AYUSHMAN
+D: YASH
+Correct: C
+
+Q: What is 2+2?
+A) 3
+B) 4
+C) 5
+D) 6
+Answer: B
+
+Q: Reverse a string
+Description: Write code to reverse a string
+Answer: function reverseString(s){return s.split("").reverse().join("")}
+
+---
+You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.' style="margin-top: 0.25rem;"></textarea>
+								</label>
+								<button type="button" class="btn secondary qgConvertBtn" data-module="${moduleId}" style="margin-top: 0.5rem;">🔄 Convert to JSON</button>
+								<div class="qgConvertStatus" data-module="${moduleId}" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+							</div>
+							<div id="${moduleId}_json" class="qgTabContent" style="display: none;">
+								<label style="display: block; margin-bottom: 0.5rem;"><strong>Questions JSON for this module</strong>
+									<textarea class="qgModuleQuestions" rows="12" placeholder='Paste JSON array of questions' required style="margin-top: 0.25rem;"></textarea>
+								</label>
+							</div>
+						</div>
+					`;
+					c.appendChild(wrap);
+					
+					// Wire up tab switching
+					wrap.querySelectorAll('.qgTabBtn').forEach(btn => {
+						btn.addEventListener('click', function(){
+							const module = this.dataset.module;
+							const tab = this.dataset.tab;
+							wrap.querySelectorAll('.qgTabBtn').forEach(b => b.classList.remove('active'));
+							wrap.querySelectorAll(`[id^="${module}_"]`).forEach(d => d.style.display = 'none');
+							this.classList.add('active');
+							document.getElementById(`${module}_${tab}`).style.display = 'block';
+						});
+					});
+					
+					// Wire up convert button
+					const convertBtn = wrap.querySelector('.qgConvertBtn');
+					if (convertBtn) {
+						convertBtn.addEventListener('click', function(){
+							const module = this.dataset.module;
+							const plainText = wrap.querySelector('.qgModulePlainText')?.value || '';
+							const jsonTextarea = wrap.querySelector('.qgModuleQuestions');
+							const statusDiv = wrap.querySelector('.qgConvertStatus');
+							
+							try {
+								const parsed = parsePlainTextQuestions(plainText);
+								if (parsed.length === 0) {
+									statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No questions found. Check the format.</span>';
+									return;
+								}
+								jsonTextarea.value = JSON.stringify(parsed, null, 2);
+								statusDiv.innerHTML = `<span style="color: #10b981;">✅ Converted ${parsed.length} question(s) successfully!</span>`;
+								// Switch to JSON tab to show result
+								wrap.querySelector('.qgTabBtn[data-tab="json"]').click();
+							} catch(err) {
+								statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
+							}
+						});
+					}
+				}
+				
+				function parsePlainTextQuestions(text){
+					if (!text || !text.trim()) return [];
+					
+					const questions = [];
+					const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+					
+					let currentQ = null;
+					let currentOptions = [];
+					let inDescription = false;
+					let descriptionLines = [];
+					
+					for (let i = 0; i < lines.length; i++) {
+						const line = lines[i];
+						
+						// Detect question start: Q:, Q1:, Question:, Q., etc.
+						if (/^Q\d*[:\\.]?\s*(.+)/i.test(line)) {
+							// Save previous question if exists
+							if (currentQ) {
+								currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
+								if (currentOptions.length > 0) {
+									currentQ.options = currentOptions;
+								}
+								questions.push(currentQ);
+							}
+							
+							// Start new question
+							const match = line.match(/^Q\d*[:\\.]?\s*(.+)/i);
+							currentQ = {
+								type: 'mcq',
+								title: match[1],
+								description: '',
+								options: [],
+								correctOption: undefined
+							};
+							currentOptions = [];
+							descriptionLines = [];
+							inDescription = false;
+							continue;
+						}
+						
+						// Detect options: A:, A), A., 1., etc.
+						const optionMatch = line.match(/^([A-Z\d])[:\\)\\.]\s*(.+)/i);
+						if (optionMatch && currentQ) {
+							inDescription = false;
+							const optionLetter = optionMatch[1].toUpperCase();
+							const optionText = optionMatch[2];
+							
+							// Map letter to index (A=0, B=1, C=2, D=3, 1=0, 2=1, etc.)
+							let optionIndex = -1;
+							if (/[A-Z]/.test(optionLetter)) {
+								optionIndex = optionLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
+							} else if (/\d/.test(optionLetter)) {
+								optionIndex = parseInt(optionLetter, 10) - 1; // 1=0, 2=1, etc.
+							}
+							
+							if (optionIndex >= 0) {
+								if (!currentOptions[optionIndex]) {
+									currentOptions[optionIndex] = optionText;
+								}
+							}
+							continue;
+						}
+						
+						// Detect correct answer: Correct:, Answer:, etc.
+						const correctMatch = line.match(/^(Correct|Answer|Right)[:\\.]?\s*([A-Z\d])/i);
+						if (correctMatch && currentQ) {
+							const answerLetter = correctMatch[2].toUpperCase();
+							let answerIndex = -1;
+							if (/[A-Z]/.test(answerLetter)) {
+								answerIndex = answerLetter.charCodeAt(0) - 65;
+							} else if (/\d/.test(answerLetter)) {
+								answerIndex = parseInt(answerLetter, 10) - 1;
+							}
+							if (answerIndex >= 0) {
+								currentQ.correctOption = answerIndex;
+							}
+							continue;
+						}
+						
+						// Detect coding question indicators
+						if (/^(Code|Coding|Write|Function|Implement|Solve)/i.test(line) && currentQ) {
+							currentQ.type = 'coding';
+							inDescription = true;
+						}
+						
+						// Detect description: Description:, Problem:, Task:, etc.
+						if (/^(Description|Problem|Task|Instruction)[:\\.]?\s*(.+)/i.test(line)) {
+							const descMatch = line.match(/^(Description|Problem|Task|Instruction)[:\\.]?\s*(.+)/i);
+							if (descMatch && currentQ) {
+								descriptionLines.push(descMatch[2]);
+								inDescription = true;
+							}
+							continue;
+						}
+						
+						// Detect answer for coding: Answer:, Solution:, etc.
+						if (/^(Answer|Solution|Expected|Correct Answer)[:\\.]?\s*(.+)/i.test(line) && currentQ && currentQ.type === 'coding') {
+							const ansMatch = line.match(/^(Answer|Solution|Expected|Correct Answer)[:\\.]?\s*(.+)/i);
+							if (ansMatch && !currentQ.answer) {
+								currentQ.answer = ansMatch[2];
+							}
+							continue;
+						}
+						
+						// Collect description lines
+						if (currentQ && (inDescription || descriptionLines.length > 0 || !currentOptions.length)) {
+							// If it's not an option pattern, treat as description
+							if (!/^[A-Z\d][:\\)\\.]/.test(line)) {
+								descriptionLines.push(line);
+								if (!inDescription && currentOptions.length === 0) {
+									// If no options yet, might be coding question
+									if (/code|function|write|implement|solve|algorithm/i.test(line)) {
+										currentQ.type = 'coding';
+									}
+								}
+							}
+						}
+						
+						// Empty line or separator - finalize current question
+						if (line === '' || line === '---' || line === '===') {
+							if (currentQ) {
+								currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
+								if (currentOptions.length > 0) {
+									currentQ.options = currentOptions.filter(o => o);
+								}
+								if (currentQ.type === 'coding' || currentOptions.length === 0) {
+									questions.push(currentQ);
+								}
+								currentQ = null;
+								currentOptions = [];
+								descriptionLines = [];
+								inDescription = false;
+							}
+						}
+					}
+					
+					// Save last question
+					if (currentQ) {
+						currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
+						if (currentOptions.length > 0) {
+							currentQ.options = currentOptions.filter(o => o);
+						}
+						questions.push(currentQ);
+					}
+					
+					// Normalize questions
+					return questions.map(q => {
+						const normalized = {
+							type: q.type || 'mcq',
+							title: q.title || 'Untitled',
+							description: q.description || q.title || '',
+							options: q.options && q.options.length > 0 ? q.options.filter(o => o) : undefined,
+							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
+							answer: q.answer || undefined,
+							answerRegex: q.answerRegex || undefined
+						};
+						
+						// If it's MCQ but no options, or if it's coding, remove options
+						if (normalized.type === 'coding') {
+							delete normalized.options;
+							delete normalized.correctOption;
+						} else if (!normalized.options || normalized.options.length === 0) {
+							normalized.type = 'coding';
+							delete normalized.options;
+							delete normalized.correctOption;
+						}
+						
+						return normalized;
+					});
+				}
+
+				function clearQGForm(){
+					document.getElementById('localQGForm').reset();
+					document.getElementById('qgModulesContainer').innerHTML='';
+				}
+
+				async function onSaveSubject(e){
+					e.preventDefault();
+					const university = (document.getElementById('qgUniversity')?.value||'').trim();
+					const subject = (document.getElementById('qgSubject')?.value||'').trim();
+					if (!university){ alert('University is required'); return; }
+					if (!subject){ alert('Subject is required'); return; }
+					const moduleNames = Array.from(document.querySelectorAll('.qgModuleName')).map(i=>i.value.trim());
+					const moduleJsons = Array.from(document.querySelectorAll('.qgModuleQuestions')).map(t=>t.value.trim());
+					if (moduleNames.length === 0){ alert('Add at least one module'); return; }
+					const modules = {};
+					for (let i=0;i<moduleNames.length;i++){
+						const name = moduleNames[i];
+						if (!name){ alert(`Module #${i+1} name is required`); return; }
+						let qs;
+						try { qs = JSON.parse(moduleJsons[i]||'[]'); } catch(err){ alert(`Module "${name}" has invalid JSON`); return; }
+						if (!Array.isArray(qs)){ alert(`Module "${name}" questions must be an array`); return; }
+						const normalized = qs.map(q=>({
+							id: q.id || uid(),
+							type: q.type === 'mcq' ? 'mcq' : 'coding',
+							title: q.title || 'Untitled',
+							description: q.description || '',
+							options: Array.isArray(q.options) ? q.options : undefined,
+							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
+							answer: typeof q.answer === 'string' ? q.answer : undefined,
+							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined
+						}));
+						modules[name] = normalized;
+					}
+					
+					// Save to MongoDB
+					try {
+						const response = await fetch('/api/question-bank/save', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ university, subject, modules })
+						});
+						const result = await response.json();
+						if (result.ok) {
+							alert('✅ Saved to Question Bank (MongoDB)');
+							renderSubjectModuleOptions();
+							renderQMGroups();
+						} else {
+							alert(`❌ Error: ${result.error}`);
+						}
+					} catch(err) {
+						alert(`❌ Failed to save: ${err.message}`);
+					}
+				}
+
+				function buildAttemptView({mode, subject, moduleName, questions}){
+					ensureContainers();
+					const host = document.getElementById('localAttemptContainer');
+					const list = document.getElementById('attemptQuestions');
+					list.innerHTML = '';
+					document.getElementById('attemptTitle').textContent = mode === 'classroom' ? 'Classroom Activity' : 'Test';
+					document.getElementById('attemptMeta').textContent = `${subject} • ${moduleName} • ${questions.length} questions`;
+					document.getElementById('attemptResult').innerHTML='';
+					host.style.display = '';
+					window.scrollTo({ top: host.offsetTop - 24, behavior: 'smooth' });
+
+					questions.forEach((q, idx)=>{
+						const card = document.createElement('div');
+						card.className = 'card';
+						card.innerHTML = `
+							<h3 style="margin: 0 0 0.5rem 0;">Q${idx+1}. ${q.title}</h3>
+							<p class="muted" style="margin: 0 0 0.5rem 0;">${q.description||''}</p>
+							<div data-question-id="${q.id}">
+								${q.type==='mcq' && Array.isArray(q.options) ? q.options.map((opt,i)=>`<label style='display:block; margin: 0.25rem 0;'><input type='radio' name='q_${q.id}' value='${i}'> ${opt}</label>`).join('') : `<textarea rows='6' style='width:100%;' name='q_${q.id}' placeholder='Write your answer here...'></textarea>`}
+							</div>
+						`;
+						list.appendChild(card);
+					});
+
+					const cancelBtn = document.getElementById('attemptCancelBtn');
+					// Note: Attempt submission removed - all submissions go through server-side endpoints
+					// which store to MongoDB and validate against stored answers
+					if (cancelBtn) cancelBtn.onclick = () => { document.getElementById('localAttemptContainer').style.display='none'; };
+				}
+
+				function normalize(s){ return (s||'').toString().trim().replace(/\s+/g,' ').toLowerCase(); }
+				
+				// Note: Question generation is now handled server-side via MongoDB API endpoints
+				// /api/question-bank/generate-activity and /api/question-bank/generate-test
+
+				async function onCreateClassroom(e){
+					e.preventDefault();
+					const warning = document.getElementById('classroomWarning');
+					warning.style.display='none'; warning.textContent='';
+					
+					const subject = document.getElementById('classroomSubject')?.value;
+					const moduleName = document.getElementById('classroomModule')?.value;
+					const numMcq = Math.max(0, parseInt(document.getElementById('classroomMcq')?.value||'0',10));
+					const numCoding = Math.max(0, parseInt(document.getElementById('classroomCoding')?.value||'0',10));
+					const classroomId = (document.getElementById('classroomId')?.value||'').trim();
+					
+					if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
+					if (numMcq === 0 && numCoding === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
+					if (!classroomId){ warning.style.display=''; warning.textContent='Classroom ID is required.'; return; }
+					
+					try {
+						const response = await fetch('/api/question-bank/generate-activity', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, classroom_id: classroomId })
+						});
+						const result = await response.json();
+						if (result.ok) {
+							alert(`✅ Classroom Activity created!\nActivity ID: ${result.activity_id}\nClassroom ID: ${classroomId}\nQuestions: ${result.total}`);
+							document.getElementById('createClassroomForm').reset();
+							renderSubjectModuleOptions();
+						} else {
+							warning.style.display=''; warning.textContent=result.error || 'Failed to create activity';
+						}
+					} catch(err) {
+						warning.style.display=''; warning.textContent=`Error: ${err.message}`;
+					}
+				}
+
+				async function onCreateTest(e){
+					e.preventDefault();
+					const warning = document.getElementById('testWarning');
+					warning.style.display='none'; warning.textContent='';
+					
+					const subject = document.getElementById('testSubject')?.value;
+					const moduleName = document.getElementById('testModule')?.value;
+					const numMcq = Math.max(0, parseInt(document.getElementById('testMcq')?.value||'0',10));
+					const numCoding = Math.max(0, parseInt(document.getElementById('testCoding')?.value||'0',10));
+					const testId = (document.getElementById('testId')?.value||'').trim();
+					const startTime = document.getElementById('testStart')?.value;
+					const endTime = document.getElementById('testEnd')?.value;
+					
+					if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
+					if (numMcq === 0 && numCoding === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
+					if (!testId){ warning.style.display=''; warning.textContent='Test ID is required.'; return; }
+					if (!startTime || !endTime){ warning.style.display=''; warning.textContent='Start and end times are required.'; return; }
+					
+					try {
+						const response = await fetch('/api/question-bank/generate-test', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, test_id: testId, start_time: startTime, end_time: endTime })
+						});
+						const result = await response.json();
+						if (result.ok) {
+							alert(`✅ Test created!\nTest ID: ${testId}\nQuestions: ${result.total}`);
+							document.getElementById('createTestForm').reset();
+							renderSubjectModuleOptions();
+						} else {
+							warning.style.display=''; warning.textContent=result.error || 'Failed to create test';
+						}
+					} catch(err) {
+						warning.style.display=''; warning.textContent=`Error: ${err.message}`;
+					}
+				}
+
+				function escapeCSV(s){
+					const str = (s==null ? '' : String(s));
+					if (/[,"\n]/.test(str)) return '"' + str.replace(/"/g,'""') + '"';
+					return str;
+				}
+
+				function escapeHTML(s){
+					return (s==null?'' : String(s)).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m]));
+				}
+
+				function exportActivityCSV(activity){
+					const rows = [['university','subject','module','type','title','description','options','correctOption','answer','answerRegex']];
+					const university = activity.university || 'Unknown';
+					Object.keys(activity.modules||{}).forEach(moduleName=>{
+						(activity.modules[moduleName]||[]).forEach(q=>{
+							rows.push([
+								university,
+								activity.subject,
+								moduleName,
+								q.type || 'unknown',
+								q.title || '',
+								q.description || '',
+								Array.isArray(q.options) ? q.options.join(' | ') : '',
+								Number.isInteger(q.correctOption) ? q.correctOption : '',
+								q.answer || '',
+								q.answerRegex || ''
+							]);
+						});
+					});
+					const csv = rows.map(r=>r.map(escapeCSV).join(',')).join('\n');
+					const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.href = url; a.download = `${university}_${activity.subject}_questions.csv`;
+					document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+				}
+
+				async function renderQMGroups(){
+					const el = document.getElementById('qmGroups'); if (!el) return;
+					
+					try {
+						const response = await fetch('/api/question-bank/all');
+						const result = await response.json();
+						if (!result.ok) {
+							el.innerHTML = '<p class="muted">Error loading question banks.</p>';
+							return;
+						}
+						
+						const grouped = result.grouped || {};
+						el.innerHTML = '';
+						const universities = Object.keys(grouped).sort();
+						if (!universities.length){ el.innerHTML = '<p class="muted">No question banks found.</p>'; return; }
+						
+						universities.forEach(u=>{
+							const wrap = document.createElement('div');
+							wrap.style.margin = '0.5rem 0';
+							wrap.innerHTML = `<h3 style='margin:0 0 0.25rem 0;'>${u}</h3>`;
+							const list = document.createElement('div'); list.style.display='grid'; list.style.gap='0.5rem';
+							(grouped[u]||[]).forEach(a=>{
+								// Ensure university is set
+								a.university = u;
+								const row = document.createElement('div');
+								row.style.display='flex'; row.style.alignItems='center'; row.style.justifyContent='space-between';
+								row.style.border='1px solid #e5e7eb'; row.style.borderRadius='6px'; row.style.padding='0.5rem';
+								const createdAt = a.created_at ? new Date(a.created_at).toLocaleString() : 'Unknown';
+								const left = document.createElement('div'); left.innerHTML = `<strong>${a.subject}</strong><div class='muted' style='font-size:0.85rem;'>Modules: ${Object.keys(a.modules||{}).length} • Created: ${createdAt}</div>`;
+								const right = document.createElement('div'); right.style.display='flex'; right.style.gap='0.5rem';
+								const bDetail = document.createElement('button'); bDetail.className='btn secondary'; bDetail.textContent='Details'; bDetail.onclick = ()=> renderQMDetail(a.id, a);
+								const bEdit = document.createElement('button'); bEdit.className='btn secondary'; bEdit.textContent='Edit'; bEdit.onclick = ()=> prefillQGForEdit(a);
+								const bExport = document.createElement('button'); bExport.className='btn secondary'; bExport.textContent='Export CSV'; bExport.onclick = ()=> exportActivityCSV(a);
+								const bDelete = document.createElement('button'); bDelete.className='btn secondary'; bDelete.textContent='Delete'; bDelete.onclick = ()=> deleteActivity(a.subject, a);
+								right.append(bDetail,bEdit,bExport,bDelete);
+								row.append(left,right); list.appendChild(row);
+							});
+							wrap.appendChild(list); el.appendChild(wrap);
+						});
+					} catch(err) {
+						el.innerHTML = '<p class="muted">Error loading question banks.</p>';
+						console.error(err);
+					}
+				}
+
+				function renderQMDetail(activityId, activityData){
+					const container = document.getElementById('qmDetailContainer'); if (!container) return;
+					const a = activityData;
+					if (!a){ container.style.display='none'; container.innerHTML=''; return; }
+					container.style.display='';
+					// Extract university from grouped data or use 'Unknown'
+					const university = a.university || 'Unknown';
+					let html = `<div class='card'><h3 style='margin:0 0 0.5rem 0;'>${university} • ${a.subject}</h3>`;
+					Object.keys(a.modules||{}).forEach(m=>{
+						html += `<h4 style='margin:0.5rem 0;'>Module: ${m}</h4>`;
+						(a.modules[m]||[]).forEach((q,idx)=>{
+							html += `<div style='border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem; margin:0.25rem 0;'>`+
+								`<div><strong>Q${idx+1} (${q.type?.toUpperCase() || 'UNKNOWN'})</strong>: ${escapeHTML(q.title || 'Untitled')}</div>`+
+								`<div class='muted' style='font-size:0.9rem;'>${escapeHTML(q.description||'')}</div>`+
+								`${q.type==='mcq' && Array.isArray(q.options) ? `<div style='margin-top:0.25rem;'>Options: ${q.options.map((o,i)=> i===q.correctOption?`<strong>${escapeHTML(o)}</strong>`:escapeHTML(o)).join(' | ')}</div>` : ''}`+
+								`${q.type!=='mcq' && (q.answer||q.answerRegex) ? `<div style='margin-top:0.25rem;'>Answer: <code>${escapeHTML(q.answer||q.answerRegex)}</code></div>` : ''}`+
+								`</div>`;
+						});
+					});
+					html += `</div>`;
+					container.innerHTML = html;
+				}
+
+				function prefillQGForEdit(activityData){
+					const a = activityData;
+					if (!a) return;
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+					const uni = document.getElementById('qgUniversity'); 
+					const subj = document.getElementById('qgSubject');
+					const university = a.university || 'Unknown';
+					if (uni) uni.value = university; 
+					if (subj) subj.value = a.subject;
+					document.getElementById('qgModulesContainer').innerHTML='';
+					Object.keys(a.modules||{}).forEach((m)=>{
+						addModuleField();
+						const wraps = document.querySelectorAll('#qgModulesContainer > div');
+						const current = wraps[wraps.length-1];
+						current.querySelector('.qgModuleName').value = m;
+						current.querySelector('.qgModuleQuestions').value = JSON.stringify(a.modules[m], null, 2);
+					});
+					let delBtn = document.getElementById('qgDeleteActivityBtn');
+					if (!delBtn){
+						delBtn = document.createElement('button'); delBtn.id='qgDeleteActivityBtn'; delBtn.className='btn secondary'; delBtn.type='button'; delBtn.textContent='Delete This Question Bank';
+						document.getElementById('qgSubmitBankBtn')?.parentElement?.appendChild(delBtn);
+					}
+					delBtn.onclick = async function(){ 
+						await deleteActivity(a.subject, a); 
+					};
+				}
+
+				async function deleteActivity(subject, activityData){
+					if (!confirm('Delete this question bank?')) return;
+					const university = activityData.university || 'Unknown';
+					try {
+						const response = await fetch('/api/question-bank/delete', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ university, subject })
+						});
+						const result = await response.json();
+						if (result.ok) {
+							alert('✅ Question bank deleted successfully');
+							renderSubjectModuleOptions();
+							renderQMGroups();
+							document.getElementById('qmDetailContainer').style.display='none';
+						} else {
+							alert(`❌ Error: ${result.error}`);
+						}
+					} catch(err) {
+						alert(`❌ Failed to delete: ${err.message}`);
+					}
+				}
+
+				async function renderLogs(){
+					const body = document.getElementById('logsTableBody'); if (!body) return;
+					body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem;">Loading...</td></tr>';
+					
+					try {
+						const response = await fetch('/api/submission-logs');
+						const result = await response.json();
+						if (!result.ok) {
+							body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#dc2626;">Error loading logs</td></tr>';
+							return;
+						}
+						
+						const list = result.submissions || [];
+						body.innerHTML = '';
+						if (list.length === 0) {
+							body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#6b7280;">No submission logs found</td></tr>';
+							return;
+						}
+						
+						list.forEach(s=>{
+							const tr = document.createElement('tr');
+							tr.innerHTML = `
+								<td style='padding:0.5rem;'>${new Date(s.when).toLocaleString()}</td>
+								<td style='padding:0.5rem; text-transform: capitalize;'>${s.mode}</td>
+								<td style='padding:0.5rem;'>${s.subject}</td>
+								<td style='padding:0.5rem;'>${s.module || 'N/A'}</td>
+								<td style='padding:0.5rem;'>${s.mode==='classroom' ? `${s.correct_count}/${s.total_questions}` : '—'}</td>
+							`;
+							body.appendChild(tr);
+						});
+					} catch(err) {
+						body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#dc2626;">Error loading logs</td></tr>';
+						console.error(err);
+					}
+				}
+
+				document.addEventListener('DOMContentLoaded', function(){
+					// Wire Question Generator form
+					const addModuleBtn = document.getElementById('qgAddModuleBtn');
+					if (addModuleBtn){ addModuleBtn.addEventListener('click', function(e){ e.preventDefault(); addModuleField(); }); }
+					const clearBtn = document.getElementById('qgClearAllBtn');
+					if (clearBtn){ clearBtn.addEventListener('click', function(){ clearQGForm(); }); }
+					const saveBtn = document.getElementById('qgSubmitBankBtn');
+					if (saveBtn){ saveBtn.addEventListener('click', onSaveSubject); }
+
+					// Wire Create Classroom/Test forms
+					const classroomForm = document.getElementById('createClassroomForm');
+					if (classroomForm){ classroomForm.addEventListener('submit', onCreateClassroom); }
+					const testForm = document.getElementById('createTestForm');
+					if (testForm){ testForm.addEventListener('submit', onCreateTest); }
+
+					renderSubjectModuleOptions();
+					renderQMGroups();
+					renderLogs();
+					const btnR = document.getElementById('logsRefreshBtn'); if (btnR) btnR.addEventListener('click', renderLogs);
+					const btnC = document.getElementById('logsClearBtn'); if (btnC) btnC.addEventListener('click', async function(){ 
+						if (!confirm('Clear all submission logs? This action cannot be undone.')) return;
+						try {
+							const response = await fetch('/api/submission-logs/clear', { method: 'POST' });
+							const result = await response.json();
+							if (result.ok) {
+								alert(result.message || 'Submission logs cleared');
+								renderLogs();
+							} else {
+								alert(`Error: ${result.error}`);
+							}
+						} catch(err) {
+							alert(`Failed to clear logs: ${err.message}`);
+						}
+					});
+				});
+			})();
 	</script>
 </body>
 </html>
