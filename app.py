@@ -2623,36 +2623,36 @@ Return a JSON with:
   "feedback": "Encouraging feedback with strengths and suggestions"
 }}"""
 
-					response_text = _ai_generate(prompt, trainer_role)
-					# Try to parse JSON from response
-					import re
-					json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-					if json_match:
-						feedback_data = json.loads(json_match.group())
-						score = float(feedback_data.get("score", 0.5))
-						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
-						# Only use AI's is_correct if we haven't already determined it from stored answer
-						if not is_from_bank:
-							is_correct = feedback_data.get("is_correct", score >= 0.7)
-						elif not is_correct:
-							# If stored answer didn't match, AI can still validate
-							is_correct = feedback_data.get("is_correct", score >= 0.7)
-					else:
-						ai_feedback = response_text
-						if not is_from_bank:
-							is_correct = True
-							score = 0.7
-					except Exception as e:
-						print(f"AI feedback error: {e}")
-						ai_feedback = "Your code has been submitted successfully."
-						if not is_from_bank:
-							is_correct = True
-							score = 0.7
+				response_text = _ai_generate(prompt, trainer_role)
+				# Try to parse JSON from response
+				import re
+				json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+				if json_match:
+					feedback_data = json.loads(json_match.group())
+					score = float(feedback_data.get("score", 0.5))
+					ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+					# Only use AI's is_correct if we haven't already determined it from stored answer
+					if not is_from_bank:
+						is_correct = feedback_data.get("is_correct", score >= 0.7)
+					elif not is_correct:
+						# If stored answer didn't match, AI can still validate
+						is_correct = feedback_data.get("is_correct", score >= 0.7)
 				else:
-					ai_feedback = "Your code has been submitted successfully."
+					ai_feedback = response_text
 					if not is_from_bank:
 						is_correct = True
 						score = 0.7
+			except Exception as e:
+				print(f"AI feedback error: {e}")
+				ai_feedback = "Your code has been submitted successfully."
+				if not is_from_bank:
+					is_correct = True
+					score = 0.7
+		else:
+			ai_feedback = "Your code has been submitted successfully."
+			if not is_from_bank:
+				is_correct = True
+				score = 0.7
 			
 			if is_correct:
 				correct_count += 1
