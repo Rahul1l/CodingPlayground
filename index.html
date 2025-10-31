@@ -3251,7 +3251,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% endif %}
 
 		{# Admin: Question Generator #}
+		<h1 style="color:green;font-size:50px;">BEFORE IF CHECK</h1>
+		<p style="color:blue;font-size:30px;">View is: {{ view }}</p>
+		<p style="color:blue;font-size:30px;">Checking: view == 'admin_question_generator'</p>
+		<p style="color:blue;font-size:30px;">Result: {% if view == 'admin_question_generator' %}TRUE{% else %}FALSE{% endif %}</p>
+		
 		{% if view == 'admin_question_generator' %}
+			<h1 style="color:red;font-size:50px;">INSIDE IF - THIS SHOULD SHOW!</h1>
 			<section class="card">
 				<div class="flex-between">
 					<h2>🧩 Question Generator</h2>
