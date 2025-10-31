@@ -1923,11 +1923,19 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% endfor %}
 			{% else %}
 				<section class="card">
-					<h2>Activity Content</h2>
-					<details open>
-						<summary>Generated Content</summary>
-						<pre class="scroll">{{ activity.generated }}</pre>
-					</details>
+					{% if view == 'test_interface' %}
+						<h2>Test Content</h2>
+						<details open>
+							<summary>Generated Content</summary>
+							<pre class="scroll">{{ test.generated }}</pre>
+						</details>
+					{% else %}
+						<h2>Activity Content</h2>
+						<details open>
+							<summary>Generated Content</summary>
+							<pre class="scroll">{{ activity.generated }}</pre>
+						</details>
+					{% endif %}
 				</section>
 			{% endif %}
 			</div>
@@ -2437,6 +2445,54 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					'test': 'Test Submission',
 					'classroom': 'Classroom Submission'
 				};
+
+		// Submit answers for Test view (posts to /test/submit_all)
+		window.submitAllTestAnswers = async function(testId, questions) {
+			// Reuse the same collection logic as classroom
+			const answers = [];
+			let missingAnswers = [];
+			questions.forEach((question, index) => {
+				const questionIdx = index + 1;
+				if (question.question_type === 'mcq') {
+					const selectedAnswer = window.classroomAnswers[questionIdx];
+					const hasSelection = !(selectedAnswer === undefined || selectedAnswer === null || (typeof selectedAnswer === 'string' && selectedAnswer.trim() === ''));
+					if (!hasSelection) missingAnswers.push(`Question ${questionIdx} (MCQ)`);
+					answers.push({ question_index: questionIdx, question_type: 'mcq', question_data: question, selected_answer: hasSelection ? selectedAnswer : null });
+				} else if (question.question_type === 'coding') {
+					const codeTextarea = document.getElementById(`code-${questionIdx}`);
+					const code = codeTextarea ? codeTextarea.value.trim() : '';
+					if (!code) missingAnswers.push(`Question ${questionIdx} (Coding)`);
+					answers.push({ question_index: questionIdx, question_type: 'coding', question_data: question, user_code: code || null });
+				}
+			});
+
+			if (missingAnswers.length > 0) {
+				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) return;
+			}
+			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) return;
+
+			try {
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.style.display = 'block';
+				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
+				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
+				const response = await fetch('/test/submit_all', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ test_id: testId, answers })
+				});
+				const result = await response.json();
+				if (result.ok) {
+					displayFinalResult(result);
+				} else {
+					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
+				}
+			} catch (error) {
+				console.error('Submission error:', error);
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
+			}
+		};
 				const contextName = contextNames[context] || context;
 				
 				// Confirm deletion
@@ -2831,8 +2887,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{# Activity Detail #}
 		{% if view == 'activity' or view == 'test_interface' %}
 			<div class="flex-between">
-				<h2>{{ activity.subject }} Activity</h2>
-				<a class="btn secondary" href="/classroom">← Back to Activities</a>
+				{% if view == 'test_interface' %}
+					<h2>{{ test.subject }} - Test</h2>
+					<a class="btn secondary" href="/test">← Back to Test Info</a>
+				{% else %}
+					<h2>{{ activity.subject }} Activity</h2>
+					<a class="btn secondary" href="/classroom">← Back to Activities</a>
+				{% endif %}
 			</div>
 			
 			{% if questions %}
@@ -2970,12 +3031,21 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<h3>📝 Submit Your Answers</h3>
 				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
 				<div style="margin-top: 1.5rem;">
-					<button class="btn" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-						✅ Submit All Answers
-					</button>
-					<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
-						Cancel
-					</button>
+					{% if view == 'test_interface' %}
+						<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+							✅ Submit All Answers
+						</button>
+						<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
+							Cancel
+						</button>
+					{% else %}
+						<button class="btn" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+							✅ Submit All Answers
+						</button>
+						<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
+							Cancel
+						</button>
+					{% endif %}
 				</div>
 				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
 			</section>
@@ -3680,7 +3750,7 @@ print(f'Sum: {x + y}')"></textarea>
 		
 		let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center;">';
 		html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">🎉 Submission Complete!</h2>';
-		html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.score}/${result.total_questions}</div>`;
+		html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.correct_count}/${result.total_questions}</div>`;
 		html += `<div style="font-size: 1.5rem; margin: 0.5rem 0;">${result.percentage}%</div>`;
 		html += `<p style="margin: 1rem 0 0 0; opacity: 0.9;">You answered ${result.correct_count} out of ${result.total_questions} questions correctly.</p>`;
 		html += '</div>';
