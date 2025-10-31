@@ -767,7 +767,7 @@ def admin_submissions():
 		subj = s.get("subject_name") or "Unknown"
 		grouped_submissions.setdefault(uni, {})
 		grouped_submissions[uni].setdefault(subj, []).append(s)
-
+	
 	# Get statistics
 	stats = {
 		'total_submissions': submissions_col.count_documents({}),
@@ -820,14 +820,14 @@ def admin_export_submissions():
 	redir = require_admin()
 	if redir:
 		return redir
-
+	
 	# Get filter parameters
 	filter_context = request.args.get('context', 'all')
 	filter_test = request.args.get('test_id', 'all')
 	filter_user = request.args.get('username', 'all')
 	filter_university = request.args.get('university', 'all')
 	filter_subject = request.args.get('subject')
-
+	
 	# Build query
 	query = {}
 	if filter_context != 'all':
@@ -838,7 +838,7 @@ def admin_export_submissions():
 		query['username'] = filter_user
 	if filter_university != 'all':
 		query['university'] = filter_university
-
+	
 	# Subject filter (optional)
 	if filter_subject:
 		or_clauses = [{'subject': filter_subject}]
@@ -860,26 +860,26 @@ def admin_export_submissions():
 	try:
 		# Get all submissions matching filters
 		submissions = list(submissions_col.find(query).sort("created_at", -1))
-
+		
 		# Create CSV file in memory
 		output = StringIO()
 		writer = csv.writer(output)
-
+		
 		# Write header
 		writer.writerow(['Username', 'University', 'Subject', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
-
+		
 		# Write data
 		for sub in submissions:
 			created_at = sub.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if sub.get('created_at') else ''
 			details = ''
-
+			
 			if sub.get('context') == 'test_violation':
 				details = f"Violation: {sub.get('violation_type', 'N/A')}"
 			elif sub.get('context') in ['test', 'classroom_mcq', 'classroom_coding']:
 				details = f"Question: {sub.get('question_title', 'N/A')}"
 			elif sub.get('context') == 'test_complete':
 				details = f"Score: {sub.get('final_score', 'N/A')}%"
-
+			
 			# Infer subject for CSV
 			subject_csv = sub.get('subject', '')
 			if not subject_csv:
@@ -908,7 +908,7 @@ def admin_export_submissions():
 				created_at,
 				details
 			])
-
+		
 		output.seek(0)
 		filename = f'submissions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
 		if filter_university != 'all':
@@ -918,14 +918,14 @@ def admin_export_submissions():
 		if filter_context != 'all':
 			filename += f'_{filter_context}'
 		filename += '.csv'
-
+		
 		return send_file(
 			BytesIO(output.getvalue().encode('utf-8')),
 			mimetype='text/csv',
 			as_attachment=True,
 			download_name=filename
 		)
-
+		
 	except Exception as e:
 		print(f"Export error: {e}")
 		return jsonify({"success": False, "error": f"Export failed: {str(e)}"})
@@ -1580,28 +1580,14 @@ def api_save_question_bank():
 			normalized_modules[module_name] = questions
 		
 		# Upsert question bank document
-		# Merge modules instead of overwriting entire dictionary
-		existing = question_banks_col.find_one({"university": university, "subject": subject})
-		base_modules = existing.get("modules", {}) if existing else {}
-		merged_modules = dict(base_modules)
-		# Overwrite per-module key if provided in payload; keep others intact
-		for mname, mqs in normalized_modules.items():
-			merged_modules[mname] = mqs
-		question_banks_col.update_one(
-			{"university": university, "subject": subject},
-			{
-				"$set": {
-					"modules": merged_modules,
-					"updated_at": datetime.now(timezone.utc)
-				},
-				"$setOnInsert": {
-					"university": university,
-					"subject": subject,
-					"created_at": datetime.now(timezone.utc)
-				}
-			},
-			upsert=True
-		)
+		# Create a new question bank document every time (no merging/overwriting)
+		question_banks_col.insert_one({
+			"university": university,
+			"subject": subject,
+			"modules": normalized_modules,
+			"created_at": datetime.now(timezone.utc),
+			"updated_at": datetime.now(timezone.utc)
+		})
 		
 		return jsonify({"ok": True, "message": "Question bank saved successfully"})
 	except Exception as e:
@@ -1638,20 +1624,29 @@ def api_get_subjects():
 
 @app.route("/api/question-bank/modules", methods=["GET"])
 def api_get_modules():
-	"""Get modules for a given university+subject (disambiguate duplicates)"""
+	"""Get modules for a given bank (bank_id) or university+subject"""
 	redir = require_admin()
 	if redir:
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-		university = request.args.get("university", "").strip()
-		subject = request.args.get("subject", "").strip()
-		if not subject:
-			return jsonify({"ok": False, "error": "Subject parameter is required"}), 400
-		query = {"subject": subject}
-		if university:
-			query["university"] = university
-		bank = question_banks_col.find_one(query)
+		bank_id = request.args.get("bank_id", "").strip()
+		bank = None
+		if bank_id:
+			from bson import ObjectId
+			try:
+				bank = question_banks_col.find_one({"_id": ObjectId(bank_id)})
+			except Exception:
+				bank = None
+		else:
+			university = request.args.get("university", "").strip()
+			subject = request.args.get("subject", "").strip()
+			if not subject:
+				return jsonify({"ok": False, "error": "Subject parameter is required"}), 400
+			query = {"subject": subject}
+			if university:
+				query["university"] = university
+			bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": True, "modules": []})
 		modules = list(bank.get("modules", {}).keys())
@@ -1670,6 +1665,7 @@ def api_generate_activity_from_bank():
 	try:
 		data = request.json
 		university = data.get("university", "").strip()
+		bank_id = data.get("bank_id", "").strip()
 		subject = data.get("subject", "").strip()
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
@@ -1685,11 +1681,19 @@ def api_generate_activity_from_bank():
 		if num_mcq < 0 or num_coding < 0 or num_hands_on < 0 or (num_mcq == 0 and num_coding == 0 and num_hands_on == 0):
 			return jsonify({"ok": False, "error": "At least one question type must be selected"}), 400
 		
-		# Get question bank (prefer university+subject if provided)
-		query = {"subject": subject}
-		if university:
-			query["university"] = university
-		bank = question_banks_col.find_one(query)
+		# Get question bank (prefer bank_id; fallback to university+subject)
+		bank = None
+		if bank_id:
+			from bson import ObjectId
+			try:
+				bank = question_banks_col.find_one({"_id": ObjectId(bank_id)})
+			except Exception:
+				bank = None
+		if not bank:
+			query = {"subject": subject}
+			if university:
+				query["university"] = university
+			bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
 		
@@ -1820,6 +1824,7 @@ def api_generate_test_from_bank():
 	try:
 		data = request.json
 		university = data.get("university", "").strip()
+		bank_id = data.get("bank_id", "").strip()
 		subject = data.get("subject", "").strip()
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
@@ -1850,11 +1855,19 @@ def api_generate_test_from_bank():
 		except Exception as e:
 			return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 		
-		# Get question bank (prefer university+subject if provided)
-		query = {"subject": subject}
-		if university:
-			query["university"] = university
-		bank = question_banks_col.find_one(query)
+		# Get question bank (prefer bank_id; fallback to university+subject)
+		bank = None
+		if bank_id:
+			from bson import ObjectId
+			try:
+				bank = question_banks_col.find_one({"_id": ObjectId(bank_id)})
+			except Exception:
+				bank = None
+		if not bank:
+			query = {"subject": subject}
+			if university:
+				query["university"] = university
+			bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
 		
@@ -2054,18 +2067,25 @@ def api_delete_question_bank():
 	
 	try:
 		data = request.json
+		bank_id = (data.get("bank_id", "") or "").strip()
+		if bank_id:
+			from bson import ObjectId
+			try:
+				result = question_banks_col.delete_one({"_id": ObjectId(bank_id)})
+			except Exception:
+				result = None
+			if result and result.deleted_count > 0:
+				return jsonify({"ok": True, "message": "Question bank deleted successfully"})
+			return jsonify({"ok": False, "error": "Question bank not found"}), 404
+		# Fallback legacy deletion by keys
 		university = data.get("university", "").strip()
 		subject = data.get("subject", "").strip()
-		
 		if not university or not subject:
-			return jsonify({"ok": False, "error": "University and subject are required"}), 400
-		
+			return jsonify({"ok": False, "error": "bank_id or (university and subject) required"}), 400
 		result = question_banks_col.delete_one({"university": university, "subject": subject})
-		
 		if result.deleted_count > 0:
 			return jsonify({"ok": True, "message": "Question bank deleted successfully"})
-		else:
-			return jsonify({"ok": False, "error": "Question bank not found"}), 404
+		return jsonify({"ok": False, "error": "Question bank not found"}), 404
 	except Exception as e:
 		return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -2469,8 +2489,8 @@ def classroom_submit_all():
 			answers = []
 	else:
 		data = request.json or {}
-		activity_id = data.get("activity_id")
-		answers = data.get("answers", [])
+	activity_id = data.get("activity_id")
+	answers = data.get("answers", [])
 	
 	if not activity_id or not answers:
 		return jsonify({"ok": False, "error": "Missing required fields"}), 400
@@ -2520,8 +2540,8 @@ def classroom_submit_all():
 			else:
 				# Original logic
 				correct_answer = question_data.get("correct_answer", "")
-				if selected_answer and correct_answer:
-					is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
+			if selected_answer and correct_answer:
+				is_correct = selected_answer.strip().upper()[0] == correct_answer.strip().upper()[0]
 			
 			if is_correct:
 				correct_count += 1
@@ -2586,7 +2606,7 @@ Return a JSON with:
 						bank_q = bank_questions.get(question_data.get("title", ""))
 						if bank_q and bank_q.get("answer"):
 							stored_answer_text = f"\n**Expected Answer (from question bank):**\n```python\n{bank_q.get('answer')}\n```\n\nCompare the student's code with the expected answer."
-					
+
 					prompt = f"""Evaluate this student's code for a classroom activity. Provide encouraging, educational feedback.
 
 **Problem:** {question_data.get('description', 'N/A')}
@@ -2620,19 +2640,19 @@ Return a JSON with:
 					else:
 						ai_feedback = response_text
 						if not is_from_bank:
-							is_correct = True
-							score = 0.7
+						is_correct = True
+						score = 0.7
 				except Exception as e:
 					print(f"AI feedback error: {e}")
 					ai_feedback = "Your code has been submitted successfully."
 					if not is_from_bank:
-						is_correct = True
-						score = 0.7
+					is_correct = True
+					score = 0.7
 			else:
 				ai_feedback = "Your code has been submitted successfully."
 				if not is_from_bank:
-					is_correct = True
-					score = 0.7
+				is_correct = True
+				score = 0.7
 			
 			if is_correct:
 				correct_count += 1

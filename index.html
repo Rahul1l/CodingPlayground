@@ -1699,6 +1699,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<label>Subject
 							<select id="classroomSubject" required></select>
 						</label>
+						<label>Question Bank
+							<select id="classroomBank" required></select>
+						</label>
 						<label>Module
 							<select id="classroomModule" required></select>
 						</label>
@@ -1719,6 +1722,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</label>
 						<label>Subject
 							<select id="testSubject" required></select>
+						</label>
+						<label>Question Bank
+							<select id="testBank" required></select>
 						</label>
 						<label>Module
 							<select id="testModule" required></select>
@@ -4858,26 +4864,44 @@ print(f'Sum: {x + y}')"></textarea>
 							const uniSel = document.getElementById(uniId);
 							const subjSel = document.getElementById(subjId);
 							const modSel = document.getElementById(modId);
+							const bankSel = document.getElementById(subjId.replace('Subject','Bank'));
 							if (!uniSel || !subjSel || !modSel) return;
 							// Fill universities
 							uniSel.innerHTML = '';
-							Object.keys(grouped).sort().forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; uniSel.appendChild(o); });
+							const universities = Object.keys(grouped).sort();
+							if (universities.length === 0){ uniSel.innerHTML = '<option value="">No universities</option>'; subjSel.innerHTML='<option value="">-</option>'; modSel.innerHTML='<option value="">-</option>'; return; }
+							universities.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; uniSel.appendChild(o); });
 							// When university changes, populate subjects
 							function updateSubjects(){
-								subjSel.innerHTML=''; modSel.innerHTML='';
+								subjSel.innerHTML=''; modSel.innerHTML=''; if (bankSel) bankSel.innerHTML='';
 								const u = uniSel.value;
-								const subs = (grouped[u]||[]).map(x=>x.subject).filter(Boolean);
+								const raw = grouped[u] || [];
+								// Support both string list and object list forms
+								const subs = raw.map(x => (typeof x === 'string') ? x : (x && x.subject ? x.subject : '')).filter(Boolean);
 								const uniqSubs = Array.from(new Set(subs));
-								if (uniqSubs.length === 0){ subjSel.innerHTML='<option value="">No subjects</option>'; modSel.innerHTML='<option value="">-</option>'; return; }
+								if (uniqSubs.length === 0){ subjSel.innerHTML='<option value="">No subjects</option>'; modSel.innerHTML='<option value="">-</option>'; if (bankSel) bankSel.innerHTML='<option value="">-</option>'; return; }
 								uniqSubs.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; subjSel.appendChild(o); });
+								updateBanks();
+							}
+							function updateBanks(){
+								if (!bankSel){ return updateModules(); }
+								bankSel.innerHTML=''; modSel.innerHTML='';
+								const u = uniSel.value; const s = subjSel.value;
+								const raw = grouped[u] || [];
+								const items = raw.filter(x=> (x && x.subject===s));
+								if (items.length === 0){ bankSel.innerHTML='<option value="">No banks</option>'; modSel.innerHTML='<option value=\"\">-</option>'; return; }
+								items.forEach(it=>{ const created = it.created_at? new Date(it.created_at).toLocaleString(): 'Unknown'; const label = `${s} • ${created}`; const o=document.createElement('option'); o.value=it.id; o.textContent=label; bankSel.appendChild(o); });
 								updateModules();
 							}
 							async function updateModules(){
 								modSel.innerHTML='';
-								const u = uniSel.value; const s = subjSel.value;
+								const u = uniSel.value; const s = subjSel.value; const b = bankSel? bankSel.value:'';
 								if (!u || !s){ modSel.innerHTML='<option value="">-</option>'; return; }
 								try{
-									const modResponse = await fetch(`/api/question-bank/modules?university=${encodeURIComponent(u)}&subject=${encodeURIComponent(s)}`);
+									let url = '';
+									if (b){ url = `/api/question-bank/modules?bank_id=${encodeURIComponent(b)}`; }
+									else { url = `/api/question-bank/modules?university=${encodeURIComponent(u)}&subject=${encodeURIComponent(s)}`; }
+									const modResponse = await fetch(url);
 									const modResult = await modResponse.json();
 									const modules = modResult.modules || [];
 									if (modules.length === 0){ modSel.innerHTML = '<option value="">No modules</option>'; return; }
@@ -4888,7 +4912,8 @@ print(f'Sum: {x + y}')"></textarea>
 								}
 							}
 							uniSel.onchange = updateSubjects;
-							subjSel.onchange = updateModules;
+							subjSel.onchange = updateBanks;
+							if (bankSel) bankSel.onchange = updateModules;
 							// Initialize
 							updateSubjects();
 						});
@@ -5268,8 +5293,9 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					e.preventDefault();
 					const warning = document.getElementById('classroomWarning');
 					warning.style.display='none'; warning.textContent='';
-					const university = document.getElementById('classroomUniversity')?.value;
-					const subject = document.getElementById('classroomSubject')?.value;
+						const university = document.getElementById('classroomUniversity')?.value;
+						const subject = document.getElementById('classroomSubject')?.value;
+						const bankId = document.getElementById('classroomBank')?.value;
 					const moduleName = document.getElementById('classroomModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('classroomMcq')?.value||'0',10));
 					const numCoding = Math.max(0, parseInt(document.getElementById('classroomCoding')?.value||'0',10));
@@ -5284,7 +5310,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-activity', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-						body: JSON.stringify({ university, subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, classroom_id: classroomId })
+							body: JSON.stringify({ university, subject, bank_id: bankId, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, classroom_id: classroomId })
 						});
 						const result = await response.json();
 						if (result.ok) {
@@ -5303,8 +5329,9 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					e.preventDefault();
 					const warning = document.getElementById('testWarning');
 					warning.style.display='none'; warning.textContent='';
-					const university = document.getElementById('testUniversity')?.value;
-					const subject = document.getElementById('testSubject')?.value;
+						const university = document.getElementById('testUniversity')?.value;
+						const subject = document.getElementById('testSubject')?.value;
+						const bankId = document.getElementById('testBank')?.value;
 					const moduleName = document.getElementById('testModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('testMcq')?.value||'0',10));
 					const numCoding = Math.max(0, parseInt(document.getElementById('testCoding')?.value||'0',10));
@@ -5322,7 +5349,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-test', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-						body: JSON.stringify({ university, subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, test_id: testId, start_time: startTime, end_time: endTime })
+							body: JSON.stringify({ university, subject, bank_id: bankId, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, test_id: testId, start_time: startTime, end_time: endTime })
 						});
 						const result = await response.json();
 						if (result.ok) {
@@ -5392,26 +5419,48 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						
 						universities.forEach(u=>{
 							const wrap = document.createElement('div');
-							wrap.style.margin = '0.5rem 0';
+							wrap.style.margin = '0.75rem 0';
 							wrap.innerHTML = `<h3 style='margin:0 0 0.25rem 0;'>${u}</h3>`;
-							const list = document.createElement('div'); list.style.display='grid'; list.style.gap='0.5rem';
-							(grouped[u]||[]).forEach(a=>{
-								// Ensure university is set
-								a.university = u;
-								const row = document.createElement('div');
-								row.style.display='flex'; row.style.alignItems='center'; row.style.justifyContent='space-between';
-								row.style.border='1px solid #e5e7eb'; row.style.borderRadius='6px'; row.style.padding='0.5rem';
+							const container = document.createElement('div'); container.style.display='grid'; container.style.gap='0.75rem';
+							const entries = (grouped[u]||[]);
+							// Group by subject
+							const bySubject = {};
+							entries.forEach(a=>{ a.university=u; const s=a.subject||'Unknown'; (bySubject[s]||(bySubject[s]=[])).push(a); });
+							Object.keys(bySubject).sort().forEach(subject=>{
+								const items = bySubject[subject];
+								const a = items[0];
+								const box = document.createElement('div');
+								box.style.border='1px solid #e5e7eb'; box.style.borderRadius='8px'; box.style.padding='0.75rem';
 								const createdAt = a.created_at ? new Date(a.created_at).toLocaleString() : 'Unknown';
-								const left = document.createElement('div'); left.innerHTML = `<strong>${a.subject}</strong><div class='muted' style='font-size:0.85rem;'>Modules: ${Object.keys(a.modules||{}).length} • Created: ${createdAt}</div>`;
-								const right = document.createElement('div'); right.style.display='flex'; right.style.gap='0.5rem';
-								const bDetail = document.createElement('button'); bDetail.className='btn secondary'; bDetail.textContent='Details'; bDetail.onclick = ()=> renderQMDetail(a.id, a);
-								const bEdit = document.createElement('button'); bEdit.className='btn secondary'; bEdit.textContent='Edit'; bEdit.onclick = ()=> prefillQGForEdit(a);
-								const bExport = document.createElement('button'); bExport.className='btn secondary'; bExport.textContent='Export CSV'; bExport.onclick = ()=> exportActivityCSV(a);
-								const bDelete = document.createElement('button'); bDelete.className='btn secondary'; bDelete.textContent='Delete'; bDelete.onclick = ()=> deleteActivity(a.subject, a);
-								right.append(bDetail,bEdit,bExport,bDelete);
-								row.append(left,right); list.appendChild(row);
+								let html = `<div style='display:flex; align-items:center; justify-content:space-between;'>`+
+									`<div><strong>${subject}</strong><div class='muted' style='font-size:0.85rem;'>Created: ${createdAt}</div></div>`+
+									`<div style='display:flex; gap:0.5rem;'>`+
+									`<button class='btn secondary' type='button' data-action='detail'>Details</button>`+
+									`<button class='btn secondary' type='button' data-action='edit'>Edit</button>`+
+									`<button class='btn secondary' type='button' data-action='export'>Export CSV</button>`+
+									`<button class='btn secondary' type='button' data-action='delete'>Delete</button>`+
+									`</div>`+
+								`</div>`;
+								// Modules list
+								const moduleNames = Object.keys(a.modules||{});
+								html += `<div style='margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:0.5rem;'>`+
+									(moduleNames.length? moduleNames.map(m=>`<span style='background:#f3f4f6; border:1px solid #e5e7eb; padding:0.25rem 0.5rem; border-radius:6px;'>${m}</span>`).join('') : `<span class='muted'>No modules</span>`) +
+								`</div>`;
+								box.innerHTML = html;
+								const btns = box.querySelectorAll('button');
+								btns.forEach(b=>{
+									b.addEventListener('click', function(){
+										const act = this.getAttribute('data-action');
+										if (act==='detail') return renderQMDetail(a.id, a);
+										if (act==='edit') return prefillQGForEdit(a);
+										if (act==='export') return exportActivityCSV(a);
+									if (act==='delete') return deleteActivity(a);
+									});
+								});
+								container.appendChild(box);
 							});
-							wrap.appendChild(list); el.appendChild(wrap);
+							wrap.appendChild(container);
+							el.appendChild(wrap);
 						});
 					} catch(err) {
 						el.innerHTML = '<p class="muted">Error loading question banks.</p>';
@@ -5469,14 +5518,14 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					};
 				}
 
-				async function deleteActivity(subject, activityData){
+				async function deleteActivity(activityData){
 					if (!confirm('Delete this question bank?')) return;
-					const university = activityData.university || 'Unknown';
+					const bankId = activityData.id;
 					try {
 						const response = await fetch('/api/question-bank/delete', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({ university, subject })
+							body: JSON.stringify({ bank_id: bankId })
 						});
 						const result = await response.json();
 						if (result.ok) {
