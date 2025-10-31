@@ -492,18 +492,30 @@ def admin_classroom_activities():
 @app.route("/admin/question-generator")
 def admin_question_generator():
     """Admin view for Question Generator (separate tab)"""
+    print("=" * 80)
+    print("🔍 DEBUG: /admin/question-generator route called")
+    print(f"Session: {session}")
+    print("=" * 80)
     redir = require_admin()
     if redir:
+        print("❌ Admin check failed, redirecting...")
         return redir
+    print("✅ Rendering template with view='admin_question_generator'")
     return render_template("index.html", view="admin_question_generator")
 
 
 @app.route("/admin/questionnaire-management")
 def admin_questionnaire_management():
     """Admin view for Questionnaire Management (separate tab)"""
+    print("=" * 80)
+    print("🔍 DEBUG: /admin/questionnaire-management route called")
+    print(f"Session: {session}")
+    print("=" * 80)
     redir = require_admin()
     if redir:
+        print("❌ Admin check failed, redirecting...")
         return redir
+    print("✅ Rendering template with view='admin_questionnaire_management'")
     return render_template("index.html", view="admin_questionnaire_management")
 
 
