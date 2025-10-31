@@ -729,7 +729,7 @@ def admin_submissions():
 	
 	# Get submissions
 	submissions = list(submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page))
-	# Normalize display fields to avoid template errors (e.g., strftime on non-datetime)
+	# Normalize display fields to avoid template errors (e.g., strftime on non-datetime) and add subject
 	from datetime import datetime as _dt
 	for s in submissions:
 		created_at = s.get("created_at")
@@ -737,6 +737,21 @@ def admin_submissions():
 			s["created_at_str"] = created_at.strftime('%Y-%m-%d %H:%M:%S')
 		else:
 			s["created_at_str"] = created_at if created_at else "N/A"
+		# Infer subject where missing for grouping/export
+		subject_name = s.get("subject")
+		if not subject_name:
+			try:
+				if s.get("test_id"):
+					_test = tests_col.find_one({"test_id": s["test_id"]}, {"subject": 1})
+					if _test and _test.get("subject"):
+						subject_name = _test.get("subject")
+				elif s.get("activity_id"):
+					_act = activities_col.find_one({"activity_id": s["activity_id"]}, {"subject": 1})
+					if _act and _act.get("subject"):
+						subject_name = _act.get("subject")
+			except Exception:
+				pass
+		s["subject_name"] = subject_name or "Unknown"
 	total_submissions = submissions_col.count_documents(query)
 	total_pages = (total_submissions + per_page - 1) // per_page
 	
@@ -745,6 +760,14 @@ def admin_submissions():
 	all_users = submissions_col.distinct("username")
 	all_universities = submissions_col.distinct("university")
 	
+	# Build grouped structure: university -> subject -> [submissions]
+	grouped_submissions = {}
+	for s in submissions:
+		uni = s.get("university") or "Unknown"
+		subj = s.get("subject_name") or "Unknown"
+		grouped_submissions.setdefault(uni, {})
+		grouped_submissions[uni].setdefault(subj, []).append(s)
+
 	# Get statistics
 	stats = {
 		'total_submissions': submissions_col.count_documents({}),
@@ -788,7 +811,8 @@ def admin_submissions():
 		submissions=submissions, page=page, total_pages=total_pages, total_submissions=total_submissions,
 		filter_context=filter_context, filter_test=filter_test, filter_user=filter_user, filter_university=filter_university,
 		all_tests=all_tests, all_users=all_users, all_universities=all_universities, stats=stats, 
-		university_stats=university_stats, violation_stats=violation_stats, user_violations=user_violations)
+		university_stats=university_stats, violation_stats=violation_stats, user_violations=user_violations,
+		grouped_submissions=grouped_submissions)
 
 
 @app.route("/admin/submissions/export")
@@ -797,14 +821,15 @@ def admin_export_submissions():
 	if redir:
 		return redir
 	
-	# Get filter parameters
-	filter_context = request.args.get('context', 'all')
-	filter_test = request.args.get('test_id', 'all')
-	filter_user = request.args.get('username', 'all')
-	filter_university = request.args.get('university', 'all')
+    # Get filter parameters
+    filter_context = request.args.get('context', 'all')
+    filter_test = request.args.get('test_id', 'all')
+    filter_user = request.args.get('username', 'all')
+    filter_university = request.args.get('university', 'all')
+    filter_subject = request.args.get('subject')
 	
-	# Build query
-	query = {}
+    # Build query
+    query = {}
 	if filter_context != 'all':
 		query['context'] = filter_context
 	if filter_test != 'all':
@@ -813,6 +838,24 @@ def admin_export_submissions():
 		query['username'] = filter_user
 	if filter_university != 'all':
 		query['university'] = filter_university
+
+    # Subject filter (optional)
+    if filter_subject:
+        or_clauses = [{'subject': filter_subject}]
+        try:
+            test_ids = [t.get('test_id') for t in tests_col.find({'subject': filter_subject}, {'test_id': 1}) if t.get('test_id')]
+            if test_ids:
+                or_clauses.append({'test_id': {'$in': test_ids}})
+            act_ids = [a.get('activity_id') for a in activities_col.find({'subject': filter_subject}, {'activity_id': 1}) if a.get('activity_id')]
+            if act_ids:
+                or_clauses.append({'activity_id': {'$in': act_ids}})
+        except Exception:
+            pass
+        if or_clauses:
+            if query:
+                query = {'$and': [query, {'$or': or_clauses}]}
+            else:
+                query = {'$or': or_clauses}
 	
 	try:
 		# Get all submissions matching filters
@@ -822,8 +865,8 @@ def admin_export_submissions():
 		output = StringIO()
 		writer = csv.writer(output)
 		
-		# Write header
-		writer.writerow(['Username', 'University', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
+    # Write header
+    writer.writerow(['Username', 'University', 'Subject', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
 		
 		# Write data
 		for sub in submissions:
@@ -837,20 +880,34 @@ def admin_export_submissions():
 			elif sub.get('context') == 'test_complete':
 				details = f"Score: {sub.get('final_score', 'N/A')}%"
 			
-			writer.writerow([
-				sub.get('username', ''),
-				sub.get('university', 'Unknown'),
-				sub.get('context', ''),
-				sub.get('test_id', ''),
-				sub.get('activity_id', ''),
-				sub.get('question_type', ''),
-				sub.get('question_index', ''),
-				sub.get('is_correct', ''),
-				sub.get('violation_type', ''),
-				sub.get('warning_number', ''),
-				created_at,
-				details
-			])
+        # Infer subject for CSV
+        subject_csv = sub.get('subject', '')
+        if not subject_csv:
+            try:
+                if sub.get('test_id'):
+                    _t = tests_col.find_one({'test_id': sub.get('test_id')}, {'subject': 1})
+                    subject_csv = (_t or {}).get('subject', '')
+                elif sub.get('activity_id'):
+                    _a = activities_col.find_one({'activity_id': sub.get('activity_id')}, {'subject': 1})
+                    subject_csv = (_a or {}).get('subject', '')
+            except Exception:
+                subject_csv = subject_csv or ''
+
+        writer.writerow([
+            sub.get('username', ''),
+            sub.get('university', 'Unknown'),
+            subject_csv,
+            sub.get('context', ''),
+            sub.get('test_id', ''),
+            sub.get('activity_id', ''),
+            sub.get('question_type', ''),
+            sub.get('question_index', ''),
+            sub.get('is_correct', ''),
+            sub.get('violation_type', ''),
+            sub.get('warning_number', ''),
+            created_at,
+            details
+        ])
 		
 		output.seek(0)
 		filename = f'submissions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}'

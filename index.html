@@ -1930,11 +1930,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<pre class="scroll">{{ test.generated }}</pre>
 						</details>
 					{% else %}
-						<h2>Activity Content</h2>
-						<details open>
-							<summary>Generated Content</summary>
-							<pre class="scroll">{{ activity.generated }}</pre>
-						</details>
+					<h2>Activity Content</h2>
+					<details open>
+						<summary>Generated Content</summary>
+						<pre class="scroll">{{ activity.generated }}</pre>
+					</details>
 					{% endif %}
 				</section>
 			{% endif %}
@@ -2373,14 +2373,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 									{% elif sub.context == 'test_complete' %}
 									<strong style="color: #10b981;">Final Score: {{ sub.final_score|default(0) }}%</strong>
 									{% set fs = sub.final_score|default(0)|int %}
-									<br><small class="muted">Grade: 
+										<br><small class="muted">Grade: 
 									{% if fs >= 90 %}A
 									{% elif fs >= 80 %}B
 									{% elif fs >= 70 %}C
 									{% elif fs >= 60 %}D
-									{% else %}F
-									{% endif %}
-									</small>
+										{% else %}F
+										{% endif %}
+										</small>
 									{% elif sub.context == 'classroom_activity_complete' %}
 										<strong style="color: #8b5cf6;">Score: {{ sub.score }}</strong>
 										<br><small class="muted">{{ sub.percentage }}% ({{ sub.correct_count }}/{{ sub.total_questions }} correct)</small>
@@ -2432,6 +2432,54 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 				{% else %}
 				<p class="muted">No submissions found matching the current filters.</p>
+				{% endif %}
+			</section>
+
+			{# Grouped by University → Subject #}
+			<section class="card" style="margin-top: 1.5rem;">
+				<h3>🏛️ Grouped by University → Subject</h3>
+				{% if grouped_submissions %}
+					{% for uni, subj_map in grouped_submissions.items() %}
+						<div style="margin-top: 1rem;">
+							<h4 style="margin: 0 0 0.5rem 0;">{{ uni }}</h4>
+							{% for subj, items in subj_map.items() %}
+								<div style="padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 6px; margin: 0.5rem 0;">
+									<div class="flex-between" style="align-items: center;">
+										<strong>📚 {{ subj }}</strong>
+										<a class="btn secondary small" href="/admin/submissions/export?university={{ uni|urlencode }}&subject={{ subj|urlencode }}">Export Subject CSV</a>
+									</div>
+									<div class="table-container" style="margin-top: 0.5rem;">
+										<table>
+											<thead>
+												<tr>
+													<th>Date/Time</th>
+													<th>Username</th>
+													<th>Context</th>
+													<th>Test ID</th>
+													<th style="min-width: 160px;">Actions</th>
+											</tr>
+										</thead>
+										<tbody>
+											{% for sub in items %}
+											<tr>
+												<td>{{ sub.created_at_str }}</td>
+												<td>{{ sub.username }}</td>
+												<td>{{ sub.context }}</td>
+												<td>{{ sub.test_id if sub.test_id else '-' }}</td>
+												<td>
+													<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small">Details</a>
+												</td>
+											</tr>
+											{% endfor %}
+										</tbody>
+										</table>
+									</div>
+								</div>
+							{% endfor %}
+						</div>
+					{% endfor %}
+				{% else %}
+					<p class="muted">No submissions found to group.</p>
 				{% endif %}
 			</section>
 			</div>
@@ -2847,8 +2895,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<h2>{{ test.subject }} - Test</h2>
 					<a class="btn secondary" href="/test">← Back to Test Info</a>
 				{% else %}
-					<h2>{{ activity.subject }} Activity</h2>
-					<a class="btn secondary" href="/classroom">← Back to Activities</a>
+				<h2>{{ activity.subject }} Activity</h2>
+				<a class="btn secondary" href="/classroom">← Back to Activities</a>
 				{% endif %}
 			</div>
 			
@@ -2996,11 +3044,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</button>
 					{% else %}
 						<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-							✅ Submit All Answers
-						</button>
-						<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
-							Cancel
-						</button>
+						✅ Submit All Answers
+					</button>
+					<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
+						Cancel
+					</button>
 					{% endif %}
 				</div>
 				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
@@ -3739,13 +3787,13 @@ print(f'Sum: {x + y}')"></textarea>
 					displayFinalResult(result);
 				} else {
 					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style=\"color: #dc2626; font-size: 1.2rem;\">❌ Error: ${result.error}</p></div>`;
-				}
-			} catch (error) {
-				console.error('Submission error:', error);
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
 			}
-		};
+		} catch (error) {
+			console.error('Submission error:', error);
+			const resultDiv = document.getElementById('final-result');
+			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
+		}
+	};
 	
 	// Display final results
 	function displayFinalResult(result) {
