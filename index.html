@@ -2911,7 +2911,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<div class="flex-between">
 				{% if view == 'test_interface' %}
 					<h2>{{ test.subject }} - Test</h2>
-					<a class="btn secondary" href="/test">← Back to Test Info</a>
+					<div style="display:flex; align-items:center; gap:0.75rem;">
+						<div id="test-timer" style="font-weight:700; color:#dc2626;"></div>
+						<a class="btn secondary" href="/test">← Back to Test Info</a>
+					</div>
 				{% else %}
 				<h2>{{ activity.subject }} Activity</h2>
 				<a class="btn secondary" href="/classroom">← Back to Activities</a>
@@ -2921,7 +2924,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% if questions %}
 				{% for question in questions %}
 				{% set question_num = loop.index %}
-				<section class="card question-card">
+				<section class="card question-card{% if view == 'test_interface' %} test-question{% endif %}" data-index="{{ question_num }}" data-type="{{ question.question_type }}" {% if view == 'test_interface' and question_num > 1 %}style="display:none;"{% endif %}>
 					<div class="question-header">
 						<h3>Question {{ question_num }}: {{ question.title }}</h3>
 						<!-- DEBUG: question_num = {{ question_num }}, loop.index = {{ loop.index }} -->
@@ -3080,6 +3083,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
 			</section>
+			{% if view == 'test_interface' %}
+			<section class="card" id="test-nav" style="margin-top:1rem;">
+				<div class="flex-between">
+					<div>
+						<button class="btn secondary" type="button" id="btnPrev">← Previous</button>
+						<button class="btn" type="button" id="btnNext">Next →</button>
+					</div>
+					<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
+				</div>
+			</section>
+			{% endif %}
 			{% else %}
 			<section class="card">
 				<form method="post" action="/classroom/complete">
@@ -3898,6 +3912,58 @@ print(f'Sum: {x + y}')"></textarea>
 			
 			html += '</div>';
 		}
+
+		// Initialize Test Navigator and Timer
+		(function(){
+			if ('{{ view }}' !== 'test_interface') return;
+			const questions = Array.from(document.querySelectorAll('.test-question'));
+			if (questions.length === 0) return;
+			let current = 1;
+			const total = questions.length;
+			const btnPrev = document.getElementById('btnPrev');
+			const btnNext = document.getElementById('btnNext');
+			const navError = document.getElementById('nav-error');
+			function show(idx){
+				questions.forEach((el,i)=>{ el.style.display = (i+1) === idx ? '' : 'none'; });
+				if (btnPrev) btnPrev.disabled = (idx === 1);
+				if (btnNext) btnNext.textContent = (idx === total) ? 'Finish' : 'Next →';
+				navError.textContent='';
+			}
+			function isAnswered(idx){
+				const el = document.querySelector(`.test-question[data-index="${idx}"]`);
+				const type = el ? el.getAttribute('data-type') : '';
+				if (type === 'mcq') return window.classroomAnswers[idx] !== undefined && window.classroomAnswers[idx] !== null && window.classroomAnswers[idx] !== '';
+				if (type === 'coding'){
+					const ta = document.getElementById(`code-${idx}`);
+					return !!(ta && ta.value.trim());
+				}
+				if (type === 'hands_on'){
+					const fi = document.getElementById(`handson-file-${idx}`);
+					return !!(fi && fi.files && fi.files[0]);
+				}
+				return true;
+			}
+			if (btnPrev) btnPrev.addEventListener('click', ()=>{ if (current>1){ current--; show(current);} });
+			if (btnNext) btnNext.addEventListener('click', ()=>{
+				if (!isAnswered(current)) { navError.textContent = `Please answer Question ${current} before proceeding.`; return; }
+				if (current < total){ current++; show(current); }
+				else { document.querySelector('#test-nav')?.scrollIntoView({behavior:'smooth'}); }
+			});
+			show(current);
+			// Timer
+			try{
+				const endMs = {{ end_time_ms or 'null' }};
+				if (endMs){
+					const timerEl = document.getElementById('test-timer');
+					function fmt(ms){ const s=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(s/60); const ss=(s%60).toString().padStart(2,'0'); return `${m}:${ss}`; }
+					const iv = setInterval(()=>{
+						const remain = endMs - Date.now();
+						if (timerEl) timerEl.textContent = fmt(remain);
+						if (remain <= 0){ clearInterval(iv); try{ window.submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }}); }catch(e){} }
+					}, 1000);
+				}
+			}catch(e){}
+		})();
 		
 		html += '<div style="margin-top: 2rem; text-align: center;">';
 		html += '<button class="btn" onclick="window.location.href=\'/classroom\'">Return to Classroom</button>';

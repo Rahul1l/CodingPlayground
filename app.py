@@ -2936,7 +2936,17 @@ def test_start():
 		questions = []
 	
 	# Show all questions at once (same as classroom activity interface)
-	return render_template("index.html", view="test_interface", test=test_doc, questions=questions)
+	# Provide end time millis for client timer (local timezone)
+	end_time_ms = None
+	try:
+		if end_time:
+			from datetime import timedelta
+			timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+			end_local = end_time + timezone_offset
+			end_time_ms = int(end_local.timestamp() * 1000)
+	except Exception:
+		end_time_ms = None
+	return render_template("index.html", view="test_interface", test=test_doc, questions=questions, end_time_ms=end_time_ms)
 
 
 @app.route("/test/violation", methods=["POST"])  # Record test violations
