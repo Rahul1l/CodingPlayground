@@ -2918,7 +2918,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% if view == 'test_interface' %}
 					<h2>{{ test.subject }} - Test</h2>
 					<div style="display:flex; align-items:center; gap:0.75rem;">
-						<div id="test-timer" style="font-weight:700; color:#dc2626;"></div>
+						<div id="test-timer" data-end-ms="{{ end_time_ms|default('') }}" style="font-weight:700; color:#dc2626;"></div>
 						<a class="btn secondary" href="/test">← Back to Test Info</a>
 					</div>
 				{% else %}
@@ -3624,7 +3624,7 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 		
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('✅ SELECTION COMPLETE - Question #' + questionIdx + ' → Answer: "' + option + '"');
+		console.log('✅ SELECTION COMPLETE - Question #' + questionIdx + ' → Answer: "' + (Number.isFinite(optionIdx) ? optionIdx : optionText) + '"');
 		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 	};
 	
@@ -5547,6 +5547,81 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					initQuestionBankUI();
 				}
 			})();
+	</script>
+	<script>
+	// Fallback initializers for test interface (ensures global handlers exist)
+	(function(){
+		if (typeof window.selectClassroomMCQ !== 'function'){
+			window.classroomAnswers = window.classroomAnswers || {};
+			window.selectClassroomMCQ = function(element, questionIdx){
+				if (!element || !questionIdx) return;
+				const optionIdxStr = element.getAttribute('data-option-index');
+				const optionText = element.getAttribute('data-option-text') || element.textContent.trim();
+				const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
+				const all = document.querySelectorAll(selector);
+				all.forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
+				element.style.background='#dbeafe'; element.style.fontWeight='600'; element.style.border='2px solid #10b981'; element.style.borderLeft='3px solid #10b981';
+				const idx = optionIdxStr!==null ? parseInt(optionIdxStr,10) : NaN;
+				window.classroomAnswers[questionIdx] = Number.isFinite(idx) ? idx : optionText;
+				const statusEl = document.getElementById('mcq-status-'+questionIdx);
+				if (statusEl){ statusEl.textContent = '✓ Selected: ' + optionText; statusEl.style.color = '#10b981'; statusEl.style.fontWeight = '600'; }
+			};
+			window.clearClassroomMCQ = function(questionIdx){
+				const selector = '.mcq-option-classroom[data-question-idx="'+questionIdx+'"]';
+				document.querySelectorAll(selector).forEach(opt=>{ opt.style.background='#f0f9ff'; opt.style.fontWeight='normal'; opt.style.border='1px solid #bfdbfe'; opt.style.borderLeft='3px solid #3b82f6'; });
+				delete window.classroomAnswers[questionIdx];
+				const statusEl = document.getElementById('mcq-status-'+questionIdx);
+				if (statusEl){ statusEl.textContent = ''; }
+			};
+		}
+		// Navigator wiring
+		if (document.querySelector('.test-question')){
+			const qs = Array.from(document.querySelectorAll('.test-question'));
+			let current = 1; const total = qs.length;
+			const btnPrev = document.getElementById('btnPrev');
+			const btnNext = document.getElementById('btnNext');
+			const btnSubmit = document.getElementById('btnSubmit');
+			const navError = document.getElementById('nav-error') || { textContent: '' };
+			function show(i){ qs.forEach((el,idx)=>{ el.style.display = (idx+1)===i ? '' : 'none'; }); if (btnPrev) btnPrev.disabled = (i===1); if (btnNext) btnNext.style.display = (i===total)?'none':''; if (btnSubmit) btnSubmit.style.display=(i===total)?'':''; navError.textContent=''; }
+			function isAnswered(i){ const el = document.querySelector('.test-question[data-index="'+i+'"]'); const t = el? el.getAttribute('data-type'):''; if (t==='mcq') return window.classroomAnswers[i]!==undefined && window.classroomAnswers[i]!==null && window.classroomAnswers[i]!==''; if (t==='coding'){ const ta=document.getElementById('code-'+i); return !!(ta && ta.value.trim()); } if (t==='hands_on'){ const fi=document.getElementById('handson-file-'+i); return !!(fi && fi.files && fi.files[0]); } return true; }
+			if (btnPrev && !btnPrev.dataset.wired){ btnPrev.dataset.wired='1'; btnPrev.addEventListener('click', ()=>{ if (current>1){ current--; show(current);} }); }
+			if (btnNext && !btnNext.dataset.wired){ btnNext.dataset.wired='1'; btnNext.addEventListener('click', ()=>{ if (!isAnswered(current)){ navError.textContent='Please answer Question '+current+' before proceeding.'; return; } if (current<total){ current++; show(current);} }); }
+			if (btnSubmit && !btnSubmit.dataset.wired){ btnSubmit.dataset.wired='1'; btnSubmit.addEventListener('click', ()=>{ if (!isAnswered(current)){ navError.textContent='Please answer Question '+current+' before proceeding.'; return; } if (window.submitAllTestAnswers){ try{ window.submitAllTestAnswers('{{ test.test_id if test else '' }}', {{ questions | tojson | forceescape if questions else '[]' }}); }catch(e){} } }); }
+			show(current);
+		}
+		// Minimal submit fallback
+		if (typeof window.submitAllTestAnswers !== 'function'){
+			window.submitAllTestAnswers = async function(testId, questions){
+				try{
+					const answers = [];
+					let hasHands=false;
+					(questions||[]).forEach((q,idx)=>{
+						const qi = idx+1;
+						if (q.question_type==='mcq'){
+							answers.push({ question_index: qi, question_type:'mcq', question_data:q, selected_answer: window.classroomAnswers[qi] });
+						}else if(q.question_type==='coding'){
+							const ta=document.getElementById('code-'+qi); answers.push({ question_index: qi, question_type:'coding', question_data:q, user_code: ta? ta.value.trim():'' });
+						}else if(q.question_type==='hands_on'){
+							hasHands=true; answers.push({ question_index: qi, question_type:'hands_on', question_data:q, file_field: 'file_q'+qi });
+						}
+					});
+					let resp;
+					if (hasHands){
+						const fd=new FormData(); fd.append('test_id', testId); fd.append('answers', JSON.stringify(answers)); answers.forEach(a=>{ if(a.question_type==='hands_on'){ const f=document.getElementById('handson-file-'+a.question_index); if(f && f.files && f.files[0]) fd.append(a.file_field, f.files[0]); }});
+						resp = await fetch('/test/submit_all',{ method:'POST', body: fd });
+					}else{
+						resp = await fetch('/test/submit_all',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ test_id: testId, answers }) });
+					}
+					const data = await resp.json();
+					if (data.ok){ window.location.href = '/user/home'; } else { alert('Submission failed: '+(data.error||'Unknown error')); }
+				}catch(err){ alert('Submission error: '+err.message); }
+			};
+		}
+		// Timer fallback
+		(function(){ const t = document.getElementById('test-timer'); if (!t || t.dataset.timerWired) return; const endAttr = parseInt(t.getAttribute('data-end-ms')); if (!endAttr || Number.isNaN(endAttr)) return; t.dataset.timerWired='1'; function fmt(ms){ const s=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(s/60); const ss=(s%60).toString().padStart(2,'0'); return m+':'+ss; } const iv=setInterval(()=>{ const remain = endAttr - Date.now(); t.textContent = fmt(remain); if (remain<=0){ clearInterval(iv); if (window.submitAllTestAnswers){ try{ window.submitAllTestAnswers('{{ test.test_id if test else '' }}', {{ questions | tojson | forceescape if questions else '[]' }}); }catch(e){} } } },1000); })();
+		// Anti-cheat fallback
+		if (!window.__antiCheatWired && document.querySelector('.test-question')){ window.__antiCheatWired=true; function report(type){ try{ fetch('/test/violation',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({type}) }); }catch(e){} } document.addEventListener('contextmenu', function(e){ e.preventDefault(); report('right_click'); }); document.addEventListener('keydown', function(e){ const k=(e.key||'').toLowerCase(); if (e.ctrlKey && (k==='c'||k==='v'||k==='x'||k==='tab')){ e.preventDefault(); report('ctrl+'+k); } }); document.addEventListener('copy', function(e){ e.preventDefault(); report('copy'); }); document.addEventListener('paste', function(e){ e.preventDefault(); report('paste'); }); document.addEventListener('cut', function(e){ e.preventDefault(); report('cut'); }); document.addEventListener('visibilitychange', function(){ if (document.hidden) report('tab_switch'); }); window.addEventListener('blur', function(){ report('window_blur'); }); }
+	})();
 	</script>
 </body>
 </html>
