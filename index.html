@@ -3287,6 +3287,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		
 		{% if view == 'test_interface' %}
 		<script>
+		// Ensure shared answer state exists for test view
+		window.classroomAnswers = window.classroomAnswers || {};
+		window.classroomCode = window.classroomCode || {};
 		// Test submission function - same logic as classroom activity
 		window.submitAllTestAnswers = async function(testId, questions) {
 			// Collect all answers
