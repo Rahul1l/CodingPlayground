@@ -40,7 +40,7 @@ try:
     # Try the exact same pattern as working app
     client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
     client.admin.command('ping')
-    print("✅ MongoDB connected successfully")
+    print("[SUCCESS] MongoDB connected successfully")
     
     db = client[Config.DATABASE_NAME]
     admins_col = db["admins"]
@@ -52,7 +52,7 @@ try:
     question_banks_col = db["question_banks"]  # Store question bank (subjects, modules, questions)
     
 except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+    print(f"[ERROR] MongoDB connection failed: {e}")
     print("Trying alternative connection method...")
     
     # Try with explicit SSL context (sometimes needed on AWS EC2)
@@ -68,7 +68,7 @@ except Exception as e:
             ssl_context=ssl_context
         )
         client.admin.command('ping')
-        print("✅ MongoDB connected successfully with SSL context")
+        print("[SUCCESS] MongoDB connected successfully with SSL context")
         
         db = client[Config.DATABASE_NAME]
         admins_col = db["admins"]
@@ -80,7 +80,7 @@ except Exception as e:
         question_banks_col = db["question_banks"]  # Store question bank (subjects, modules, questions)
         
     except Exception as e2:
-        print(f"❌ Alternative MongoDB connection also failed: {e2}")
+        print(f"[ERROR] Alternative MongoDB connection also failed: {e2}")
         print("App cannot start without MongoDB connection")
         exit(1)
 
@@ -492,30 +492,18 @@ def admin_classroom_activities():
 @app.route("/admin/question-generator")
 def admin_question_generator():
     """Admin view for Question Generator (separate tab)"""
-    print("=" * 80)
-    print("🔍 DEBUG: /admin/question-generator route called")
-    print(f"Session: {session}")
-    print("=" * 80)
     redir = require_admin()
     if redir:
-        print("❌ Admin check failed, redirecting...")
         return redir
-    print("✅ Rendering template with view='admin_question_generator'")
     return render_template("index.html", view="admin_question_generator")
 
 
 @app.route("/admin/questionnaire-management")
 def admin_questionnaire_management():
     """Admin view for Questionnaire Management (separate tab)"""
-    print("=" * 80)
-    print("🔍 DEBUG: /admin/questionnaire-management route called")
-    print(f"Session: {session}")
-    print("=" * 80)
     redir = require_admin()
     if redir:
-        print("❌ Admin check failed, redirecting...")
         return redir
-    print("✅ Rendering template with view='admin_questionnaire_management'")
     return render_template("index.html", view="admin_questionnaire_management")
 
 
