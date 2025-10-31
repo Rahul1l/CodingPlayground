@@ -3087,12 +3087,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							No test has been scheduled for you.
 						</div>
 				{% endif %}
-			</div>
-		{% endif %}
+			{% endif %}
 		{% endif %}
 
 
-	{# Admin: Question Generator #}
+		{# Admin: Question Generator #}
 		{% if view == 'admin_question_generator' %}
 			<section class="card">
 				<div class="flex-between">
@@ -3242,7 +3241,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			alert('Test has expired. The test window has closed and you can no longer attempt this test.');
 		}
 		</script>
-		{% endif %}
 		{% endif %}
 
 		{# Test Result #}
