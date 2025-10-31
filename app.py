@@ -495,7 +495,8 @@ def admin_question_generator():
     redir = require_admin()
     if redir:
         return redir
-    return render_template("index.html", view="admin_question_generator")
+    # Pass empty variables to prevent template errors
+    return render_template("index.html", view="admin_question_generator", questions=None, test=None, activity=None)
 
 
 @app.route("/admin/questionnaire-management")
@@ -504,7 +505,8 @@ def admin_questionnaire_management():
     redir = require_admin()
     if redir:
         return redir
-    return render_template("index.html", view="admin_questionnaire_management")
+    # Pass empty variables to prevent template errors
+    return render_template("index.html", view="admin_questionnaire_management", questions=None, test=None, activity=None)
 
 
 @app.route("/admin/classroom-activities/<activity_id>")
