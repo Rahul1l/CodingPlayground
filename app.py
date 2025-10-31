@@ -2640,19 +2640,19 @@ Return a JSON with:
 					else:
 						ai_feedback = response_text
 						if not is_from_bank:
-						is_correct = True
-						score = 0.7
-				except Exception as e:
-					print(f"AI feedback error: {e}")
+							is_correct = True
+							score = 0.7
+					except Exception as e:
+						print(f"AI feedback error: {e}")
+						ai_feedback = "Your code has been submitted successfully."
+						if not is_from_bank:
+							is_correct = True
+							score = 0.7
+				else:
 					ai_feedback = "Your code has been submitted successfully."
 					if not is_from_bank:
-					is_correct = True
-					score = 0.7
-			else:
-				ai_feedback = "Your code has been submitted successfully."
-				if not is_from_bank:
-				is_correct = True
-				score = 0.7
+						is_correct = True
+						score = 0.7
 			
 			if is_correct:
 				correct_count += 1
