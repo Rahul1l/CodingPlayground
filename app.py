@@ -2486,31 +2486,6 @@ def classroom_submit_all():
 			})
 			
 		elif question_type == "coding":
-		elif question_type == "hands_on":
-			# Save uploaded file
-			file_field = answer.get('file_field')
-			upload_info = {"saved": False}
-			try:
-				if file_field and file_field in request.files:
-					f = request.files[file_field]
-					if f and f.filename:
-						import os
-						from werkzeug.utils import secure_filename
-						upload_dir = os.path.join(os.getcwd(), 'uploads')
-						os.makedirs(upload_dir, exist_ok=True)
-						fname = secure_filename(f.filename)
-						unique_name = f"{activity_id}_{question_index}_{fname}"
-						save_path = os.path.join(upload_dir, unique_name)
-						f.save(save_path)
-						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
-			except Exception as e:
-				upload_info = {"saved": False, "error": str(e)}
-			results.append({
-				"question_index": question_index,
-				"question_type": "hands_on",
-				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
-			})
 			user_code = answer.get("user_code")
 			
 			# First check against MongoDB stored answer if from question bank
@@ -2619,6 +2594,31 @@ Return a JSON with:
 				"ai_feedback": ai_feedback,
 				"is_correct": is_correct,
 				"score": score
+			})
+		elif question_type == "hands_on":
+			# Save uploaded file
+			file_field = answer.get('file_field')
+			upload_info = {"saved": False}
+			try:
+				if file_field and file_field in request.files:
+					f = request.files[file_field]
+					if f and f.filename:
+						import os
+						from werkzeug.utils import secure_filename
+						upload_dir = os.path.join(os.getcwd(), 'uploads')
+						os.makedirs(upload_dir, exist_ok=True)
+						fname = secure_filename(f.filename)
+						unique_name = f"{activity_id}_{question_index}_{fname}"
+						save_path = os.path.join(upload_dir, unique_name)
+						f.save(save_path)
+						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
+			except Exception as e:
+				upload_info = {"saved": False, "error": str(e)}
+			results.append({
+				"question_index": question_index,
+				"question_type": "hands_on",
+				"question_title": question_data.get("title", ""),
+				"hands_on_file": upload_info
 			})
 	
 	# Calculate percentage
