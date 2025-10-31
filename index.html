@@ -2371,15 +2371,16 @@ student2,unique003,Stanford,both,act002,test002</pre>
 										<br><small class="muted">Warning {{ sub.warning_number }}/3</small>
 										{% endif %}
 									{% elif sub.context == 'test_complete' %}
-										<strong style="color: #10b981;">Final Score: {{ sub.final_score }}%</strong>
-										<br><small class="muted">Grade: 
-										{% if sub.final_score >= 90 %}A
-										{% elif sub.final_score >= 80 %}B
-										{% elif sub.final_score >= 70 %}C
-										{% elif sub.final_score >= 60 %}D
-										{% else %}F
-										{% endif %}
-										</small>
+									<strong style="color: #10b981;">Final Score: {{ sub.final_score|default(0) }}%</strong>
+									{% set fs = sub.final_score|default(0)|int %}
+									<br><small class="muted">Grade: 
+									{% if fs >= 90 %}A
+									{% elif fs >= 80 %}B
+									{% elif fs >= 70 %}C
+									{% elif fs >= 60 %}D
+									{% else %}F
+									{% endif %}
+									</small>
 									{% elif sub.context == 'classroom_activity_complete' %}
 										<strong style="color: #8b5cf6;">Score: {{ sub.score }}</strong>
 										<br><small class="muted">{{ sub.percentage }}% ({{ sub.correct_count }}/{{ sub.total_questions }} correct)</small>
