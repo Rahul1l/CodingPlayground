@@ -3032,14 +3032,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
 				<div style="margin-top: 1.5rem;">
 					{% if view == 'test_interface' %}
-						<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+						<button class="btn" type="button" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
 							✅ Submit All Answers
 						</button>
 						<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
 							Cancel
 						</button>
 					{% else %}
-						<button class="btn" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+						<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
 							✅ Submit All Answers
 						</button>
 						<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
