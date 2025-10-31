@@ -3271,6 +3271,19 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</details>
 			</div>
 		</section>
+		<script>
+		// Ensure the Question Generator controls are wired when this view is active
+		document.addEventListener('DOMContentLoaded', function(){
+			const addModuleBtn = document.getElementById('qgAddModuleBtn');
+			if (addModuleBtn){ addModuleBtn.addEventListener('click', function(e){ e.preventDefault(); if (typeof addModuleField === 'function') addModuleField(); }); }
+			const clearBtn = document.getElementById('qgClearAllBtn');
+			if (clearBtn){ clearBtn.addEventListener('click', function(){ if (typeof clearQGForm === 'function') clearQGForm(); }); }
+			const saveBtn = document.getElementById('qgSubmitBankBtn');
+			if (saveBtn){ saveBtn.addEventListener('click', function(e){ if (typeof onSaveSubject === 'function') onSaveSubject(e); }); }
+			// Auto-add first module for better UX
+			if (typeof addModuleField === 'function') addModuleField();
+		});
+		</script>
 		{% endif %}
 
 		{# Admin: Questionnaire Management (separate tab) #}
@@ -3283,10 +3296,139 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
 			</div>
 		</section>
+		<script>
+		// Ensure groups load when this view is active
+		document.addEventListener('DOMContentLoaded', function(){
+			if (typeof renderQMGroups === 'function'){ renderQMGroups(); }
+		});
+		</script>
 		{% endif %}
 		
-		{% if view == 'test_interface' %}
-		<script>
+{% if view == 'test_interface' %}
+	<div class="flex-between">
+		<h2>{{ test.subject }} - Test</h2>
+		<a class="btn secondary" href="/test">← Back to Test Info</a>
+	</div>
+
+	{% if questions %}
+		{% for question in questions %}
+		{% set question_num = loop.index %}
+		<section class="card question-card">
+			<div class="question-header">
+				<h3>Question {{ question_num }}: {{ question.title }}</h3>
+				<div style="display: flex; gap: 0.5rem; align-items: center;">
+					<span class="difficulty-badge difficulty-{{ question.difficulty }}">
+						{% if question.difficulty == 'medium_plus' %}
+							Medium+ (Coding)
+						{% else %}
+							{{ question.difficulty|title }}
+						{% endif %}
+					</span>
+					{% if question.question_type == 'mcq' %}
+					<span class="role-badge role-classroom">📝 MCQ</span>
+					{% elif question.question_type == 'coding' %}
+					<span class="role-badge role-test">💻 Coding</span>
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="question-content">
+				<p><strong>Description:</strong></p>
+				<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+
+				{% if question.question_type == 'mcq' and question.options %}
+				<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
+					<p><strong>Select the correct answer:</strong></p>
+					<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
+						{% for option in question.options %}
+						<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+							{{ option }}
+						</div>
+						{% endfor %}
+					</div>
+					<div style="margin-top: 1rem;">
+						<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});">Clear Selection</button>
+						<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem;"></span>
+					</div>
+				</div>
+				{% endif %}
+
+				{# Coding Questions #}
+				{% if question.question_type == 'coding' or not question.question_type %}
+					{% if question.input_format %}
+					<p><strong>Input Format:</strong></p>
+					<pre class="format-box">{{ question.input_format }}</pre>
+					{% endif %}
+					{% if question.output_format %}
+					<p><strong>Output Format:</strong></p>
+					<pre class="format-box">{{ question.output_format }}</pre>
+					{% endif %}
+					{% if question.sample_input %}
+					<p><strong>Sample Input:</strong></p>
+					<pre class="sample-box">{{ question.sample_input }}</pre>
+					{% endif %}
+					{% if question.sample_output %}
+					<p><strong>Sample Output:</strong></p>
+					<pre class="sample-box">{{ question.sample_output }}</pre>
+					{% endif %}
+					{% if question.constraints %}
+					<p><strong>Constraints:</strong></p>
+					<p style="color: #f59e0b;">{{ question.constraints }}</p>
+					{% endif %}
+				{% endif %}
+			</div>
+
+			{% if question.question_type == 'coding' or not question.question_type %}
+			<div class="compiler-section" id="coding-question-{{ question_num }}">
+				<h4>🐍 Code Editor</h4>
+				<div class="compiler-container">
+					<div class="code-section">
+						<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
+# Example:
+# def solution():
+#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
+						<div class="compiler-controls">
+							<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+							<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
+						</div>
+					</div>
+					<div class="output-section">
+						<label>Output:</label>
+						<div id="output-{{ question_num }}" class="output-box">
+							<p class="muted">Click "Run Code" to see the output here...</p>
+						</div>
+					</div>
+				</div>
+				<div style="margin-top: 1rem;">
+					<span id="coding-status-{{ question_num }}" class="muted"></span>
+				</div>
+			</div>
+			{% endif %}
+		</section>
+		{% endfor %}
+	{% else %}
+		<section class="card">
+			<h2>Test Content</h2>
+			<details open>
+				<summary>Generated Content</summary>
+				<pre class="scroll">{{ test.generated }}</pre>
+			</details>
+		</section>
+	{% endif %}
+
+	{% if questions %}
+	<section class="card" style="border-left: 4px solid #10b981;">
+		<h3>📝 Submit Your Answers</h3>
+		<p class="muted">Review all your answers above and click Submit when ready.</p>
+		<div style="margin-top: 1.5rem;">
+			<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">✅ Submit All Answers</button>
+			<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">Cancel</button>
+		</div>
+		<div id="final-result" style="margin-top: 2rem; display: none;"></div>
+	</section>
+	{% endif %}
+
+<script>
 		// Ensure shared answer state exists for test view
 		window.classroomAnswers = window.classroomAnswers || {};
 		window.classroomCode = window.classroomCode || {};
