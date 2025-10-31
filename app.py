@@ -1,3 +1,28 @@
+@app.route("/admin/submissions/file")
+def admin_download_submission_file():
+    redir = require_admin()
+    if redir:
+        return redir
+    sub_id = request.args.get('sub_id')
+    idx = int(request.args.get('idx', '0'))
+    from bson.objectid import ObjectId
+    try:
+        obj_id = ObjectId(sub_id)
+    except Exception:
+        return abort(400)
+    sub = submissions_col.find_one({"_id": obj_id})
+    if not sub:
+        return abort(404)
+    details = sub.get('details', [])
+    if idx < 0 or idx >= len(details):
+        return abort(404)
+    d = details[idx]
+    fi = d.get('hands_on_file') or {}
+    path = fi.get('file_path')
+    name = fi.get('file_name', 'upload')
+    if not path or not os.path.exists(path):
+        return abort(404)
+    return send_file(path, as_attachment=True, download_name=name)
 import os
 import sys
 import subprocess
@@ -1637,6 +1662,8 @@ def api_generate_activity_from_bank():
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
 		num_coding = int(data.get("num_coding", 0))
+		num_hands_on = int(data.get("num_hands_on", 0))
+		num_hands_on = int(data.get("num_hands_on", 0))
 		classroom_id = data.get("classroom_id", "").strip()
 		
 		if not subject or not module or not classroom_id:
@@ -1658,11 +1685,14 @@ def api_generate_activity_from_bank():
 		import random
 		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
 		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
+		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
+		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
+		selected_handson = random.sample(handson_pool, min(num_hands_on, len(handson_pool)))
 		
-		selected_questions = selected_mcq + selected_coding
+		selected_questions = selected_mcq + selected_coding + selected_handson
 		random.shuffle(selected_questions)  # Randomize order
 		
 		if len(selected_questions) == 0:
@@ -1698,7 +1728,7 @@ def api_generate_activity_from_bank():
                     "correct_answer": _get_correct_answer(q),
 					"difficulty": "medium"  # Default
 				})
-			else:
+			elif q.get("type") == "coding":
 				formatted_questions.append({
 					"question_type": "coding",
 					"title": q.get("title", "Untitled"),
@@ -1706,6 +1736,14 @@ def api_generate_activity_from_bank():
 					"difficulty": "medium_plus",
 					"_local_answer": q.get("answer", ""),  # Store for validation
 					"_local_answer_regex": q.get("answerRegex", "")
+				})
+			else:
+				# hands_on
+				formatted_questions.append({
+					"question_type": "hands_on",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"difficulty": "medium"
 				})
 		
 		# Create activity
@@ -1789,8 +1827,9 @@ def api_generate_test_from_bank():
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
+		selected_handson = random.sample(handson_pool, min(num_hands_on, len(handson_pool)))
 		
-		selected_questions = selected_mcq + selected_coding
+		selected_questions = selected_mcq + selected_coding + selected_handson
 		random.shuffle(selected_questions)
 		
 		if len(selected_questions) == 0:
@@ -1825,7 +1864,7 @@ def api_generate_test_from_bank():
                     "correct_answer": _get_correct_answer(q),
 					"difficulty": "medium"
 				})
-			else:
+			elif q.get("type") == "coding":
 				formatted_questions.append({
 					"question_type": "coding",
 					"title": q.get("title", "Untitled"),
@@ -1833,6 +1872,13 @@ def api_generate_test_from_bank():
 					"difficulty": "medium_plus",
 					"_local_answer": q.get("answer", ""),
 					"_local_answer_regex": q.get("answerRegex", "")
+				})
+			else:
+				formatted_questions.append({
+					"question_type": "hands_on",
+					"title": q.get("title", "Untitled"),
+					"description": q.get("description", ""),
+					"difficulty": "medium"
 				})
 		
 		# Create or update test
@@ -2360,9 +2406,20 @@ def classroom_submit_all():
 	if user.get("role") not in ("classroom", "both"):
 		return jsonify({"ok": False, "error": "Not authorized"}), 403
 	
-	data = request.json
-	activity_id = data.get("activity_id")
-	answers = data.get("answers", [])
+	# Accept JSON or multipart (for hands-on uploads)
+	answers = []
+	activity_id = None
+	if request.content_type and 'multipart/form-data' in request.content_type:
+		activity_id = request.form.get('activity_id')
+		try:
+			import json as _json
+			answers = _json.loads(request.form.get('answers','[]'))
+		except Exception:
+			answers = []
+	else:
+		data = request.json or {}
+		activity_id = data.get("activity_id")
+		answers = data.get("answers", [])
 	
 	if not activity_id or not answers:
 		return jsonify({"ok": False, "error": "Missing required fields"}), 400
@@ -2429,6 +2486,31 @@ def classroom_submit_all():
 			})
 			
 		elif question_type == "coding":
+		elif question_type == "hands_on":
+			# Save uploaded file
+			file_field = answer.get('file_field')
+			upload_info = {"saved": False}
+			try:
+				if file_field and file_field in request.files:
+					f = request.files[file_field]
+					if f and f.filename:
+						import os
+						from werkzeug.utils import secure_filename
+						upload_dir = os.path.join(os.getcwd(), 'uploads')
+						os.makedirs(upload_dir, exist_ok=True)
+						fname = secure_filename(f.filename)
+						unique_name = f"{activity_id}_{question_index}_{fname}"
+						save_path = os.path.join(upload_dir, unique_name)
+						f.save(save_path)
+						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
+			except Exception as e:
+				upload_info = {"saved": False, "error": str(e)}
+			results.append({
+				"question_index": question_index,
+				"question_type": "hands_on",
+				"question_title": question_data.get("title", ""),
+				"hands_on_file": upload_info
+			})
 			user_code = answer.get("user_code")
 			
 			# First check against MongoDB stored answer if from question bank
@@ -2923,9 +3005,20 @@ def test_submit_all():
 	if user.get("role") not in ("test", "both"):
 		return jsonify({"ok": False, "error": "Not authorized"}), 403
 	
-	data = request.json
-	test_id = data.get("test_id")
-	answers = data.get("answers", [])
+	# Accept JSON or multipart (for hands-on uploads)
+	answers = []
+	test_id = None
+	if request.content_type and 'multipart/form-data' in request.content_type:
+		test_id = request.form.get('test_id')
+		try:
+			import json as _json
+			answers = _json.loads(request.form.get('answers','[]'))
+		except Exception:
+			answers = []
+	else:
+		data = request.json or {}
+		test_id = data.get("test_id")
+		answers = data.get("answers", [])
 	
 	if not test_id or not answers:
 		return jsonify({"ok": False, "error": "Missing required fields"}), 400
@@ -3022,6 +3115,30 @@ def test_submit_all():
 			})
 			
 		elif question_type == "coding":
+		elif question_type == "hands_on":
+			file_field = answer.get('file_field')
+			upload_info = {"saved": False}
+			try:
+				if file_field and file_field in request.files:
+					f = request.files[file_field]
+					if f and f.filename:
+						import os
+						from werkzeug.utils import secure_filename
+						upload_dir = os.path.join(os.getcwd(), 'uploads')
+						os.makedirs(upload_dir, exist_ok=True)
+						fname = secure_filename(f.filename)
+						unique_name = f"{test_id}_{question_index}_{fname}"
+						save_path = os.path.join(upload_dir, unique_name)
+						f.save(save_path)
+						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
+			except Exception as e:
+				upload_info = {"saved": False, "error": str(e)}
+			results.append({
+				"question_index": question_index,
+				"question_type": "hands_on",
+				"question_title": question_data.get("title", ""),
+				"hands_on_file": upload_info
+			})
 			user_code = answer.get("user_code")
 			
 			# Check against MongoDB stored answer if from question bank

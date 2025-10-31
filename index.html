@@ -1701,6 +1701,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</label>
 						<label>Number of MCQ Questions<input type="number" id="classroomMcq" min="0" max="50" value="2" required></label>
 						<label>Number of Coding Questions<input type="number" id="classroomCoding" min="0" max="50" value="1" required></label>
+						<label>Number of Hands-on Questions<input type="number" id="classroomHandsOn" min="0" max="50" value="0" required></label>
 						<label>Classroom ID<input type="text" id="classroomId" required></label>
 					<button class="btn" type="submit">Generate Activity</button>
 				</form>
@@ -1718,6 +1719,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</label>
 						<label>Number of MCQ Questions<input type="number" id="testMcq" min="0" max="50" value="2" required></label>
 						<label>Number of Coding Questions<input type="number" id="testCoding" min="0" max="50" value="1" required></label>
+						<label>Number of Hands-on Questions<input type="number" id="testHandsOn" min="0" max="50" value="0" required></label>
 						<label>Test ID<input type="text" id="testId" required></label>
 						<label>Test Start Time<input type="datetime-local" id="testStart" required></label>
 						<label>Test End Time<input type="datetime-local" id="testEnd" required></label>
@@ -2643,6 +2645,22 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</section>
 			{% endif %}
 
+				{% if submission.details %}
+				<section class="card">
+					<h3>📎 Uploaded Files</h3>
+					<ul>
+					{% for d in submission.details %}
+						{% if d.question_type == 'hands_on' and d.hands_on_file and d.hands_on_file.saved %}
+						<li>
+							Question {{ d.question_index }}: 
+							<a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ d.hands_on_file.file_name }}</a>
+						</li>
+						{% endif %}
+					{% endfor %}
+					</ul>
+			</section>
+			{% endif %}
+
 			{% if submission.context == 'classroom_mcq' %}
 			<section class="card">
 				<h3>🎓 Classroom MCQ Submission</h3>
@@ -3016,6 +3034,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<div style="margin-top: 1rem;">
 							<span id="coding-status-{{ question_num }}" class="muted"></span>
 						</div>
+					</div>
+					{% endif %}
+
+					{# Hands-on Questions #}
+					{% if question.question_type == 'hands_on' %}
+					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem;">
+						<p><strong>Hands-on Upload:</strong></p>
+						<input type="file" id="handson-file-{{ question_num }}" />
+						<p class="muted" style="margin-top: 0.5rem;">Upload any file type as your solution.</p>
 					</div>
 					{% endif %}
 				</section>
@@ -3665,7 +3692,8 @@ print(f'Sum: {x + y}')"></textarea>
 		const answers = [];
 		let missingAnswers = [];
 		
-		// Collect MCQ and coding answers
+		let hasHandsOn = false;
+		// Collect MCQ, coding, hands_on answers
 		questions.forEach((question, index) => {
 			const questionIdx = index + 1;
 			
@@ -3693,6 +3721,19 @@ print(f'Sum: {x + y}')"></textarea>
 					question_data: question,
 					user_code: code || null
 				});
+			} else if (question.question_type === 'hands_on') {
+				hasHandsOn = true;
+				const fileInput = document.getElementById(`handson-file-${questionIdx}`);
+				const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+				if (!file) {
+					missingAnswers.push(`Question ${questionIdx} (Hands-on)`);
+				}
+				answers.push({
+					question_index: questionIdx,
+					question_type: 'hands_on',
+					question_data: question,
+					file_field: `file_q${questionIdx}`
+				});
 			}
 		});
 		
@@ -3715,23 +3756,35 @@ print(f'Sum: {x + y}')"></textarea>
 			resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
 			
 			// Disable all inputs
-			document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => {
+			document.querySelectorAll('.mcq-option-classroom, textarea, button, input[type=file]').forEach(el => {
 				el.disabled = true;
 				el.style.opacity = '0.6';
 				el.style.cursor = 'not-allowed';
 			});
 			
-			// Send to backend
-			const response = await fetch('/classroom/submit_all', {
+			// Send to backend (FormData if hands-on present)
+			let response;
+			if (hasHandsOn) {
+				const fd = new FormData();
+				fd.append('activity_id', activityId);
+				fd.append('answers', JSON.stringify(answers));
+				answers.forEach(ans => {
+					if (ans.question_type === 'hands_on'){
+						const qi = ans.question_index;
+						const fileEl = document.getElementById(`handson-file-${qi}`);
+						if (fileEl && fileEl.files && fileEl.files[0]){
+							fd.append(ans.file_field, fileEl.files[0]);
+						}
+					}
+				});
+				response = await fetch('/classroom/submit_all', { method: 'POST', body: fd });
+			} else {
+				response = await fetch('/classroom/submit_all', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					activity_id: activityId,
-					answers: answers
-				})
-			});
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ activity_id: activityId, answers })
+				});
+			}
 			
 			const result = await response.json();
 			
@@ -3752,6 +3805,7 @@ print(f'Sum: {x + y}')"></textarea>
 		window.submitAllTestAnswers = async function(testId, questions) {
 			const answers = [];
 			let missingAnswers = [];
+			let hasHandsOn = false;
 			questions.forEach((question, index) => {
 				const questionIdx = index + 1;
 				if (question.question_type === 'mcq') {
@@ -3764,6 +3818,12 @@ print(f'Sum: {x + y}')"></textarea>
 					const code = codeTextarea ? codeTextarea.value.trim() : '';
 					if (!code) missingAnswers.push(`Question ${questionIdx} (Coding)`);
 					answers.push({ question_index: questionIdx, question_type: 'coding', question_data: question, user_code: code || null });
+				} else if (question.question_type === 'hands_on') {
+					hasHandsOn = true;
+					const fileInput = document.getElementById(`handson-file-${questionIdx}`);
+					const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+					if (!file) missingAnswers.push(`Question ${questionIdx} (Hands-on)`);
+					answers.push({ question_index: questionIdx, question_type: 'hands_on', question_data: question, file_field: `file_q${questionIdx}` });
 				}
 			});
 
@@ -3776,17 +3836,30 @@ print(f'Sum: {x + y}')"></textarea>
 				const resultDiv = document.getElementById('final-result');
 				resultDiv.style.display = 'block';
 				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
-				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
-				const response = await fetch('/test/submit_all', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ test_id: testId, answers })
-				});
+				document.querySelectorAll('.mcq-option-classroom, textarea, button, input[type=file]').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
+				let response;
+				if (hasHandsOn) {
+					const fd = new FormData();
+					fd.append('test_id', testId);
+					fd.append('answers', JSON.stringify(answers));
+					answers.forEach(ans => {
+						if (ans.question_type === 'hands_on'){
+							const qi = ans.question_index;
+							const fileEl = document.getElementById(`handson-file-${qi}`);
+							if (fileEl && fileEl.files && fileEl.files[0]){
+								fd.append(ans.file_field, fileEl.files[0]);
+							}
+						}
+					});
+					response = await fetch('/test/submit_all', { method: 'POST', body: fd });
+				} else {
+					response = await fetch('/test/submit_all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ test_id: testId, answers }) });
+				}
 				const result = await response.json();
 				if (result.ok) {
 					displayFinalResult(result);
 				} else {
-					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style=\"color: #dc2626; font-size: 1.2rem;\">❌ Error: ${result.error}</p></div>`;
+					resultDiv.innerHTML = `<div style=\"padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;\"><p style=\"color: #dc2626; font-size: 1.2rem;\">❌ Error: ${result.error}</p></div>`;
 			}
 		} catch (error) {
 			console.error('Submission error:', error);
@@ -5090,6 +5163,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const moduleName = document.getElementById('classroomModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('classroomMcq')?.value||'0',10));
 					const numCoding = Math.max(0, parseInt(document.getElementById('classroomCoding')?.value||'0',10));
+					const numHandsOn = Math.max(0, parseInt(document.getElementById('classroomHandsOn')?.value||'0',10));
 					const classroomId = (document.getElementById('classroomId')?.value||'').trim();
 					
 					if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
@@ -5100,7 +5174,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-activity', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, classroom_id: classroomId })
+						body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, classroom_id: classroomId })
 						});
 						const result = await response.json();
 						if (result.ok) {
@@ -5124,6 +5198,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const moduleName = document.getElementById('testModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('testMcq')?.value||'0',10));
 					const numCoding = Math.max(0, parseInt(document.getElementById('testCoding')?.value||'0',10));
+					const numHandsOn = Math.max(0, parseInt(document.getElementById('testHandsOn')?.value||'0',10));
 					const testId = (document.getElementById('testId')?.value||'').trim();
 					const startTime = document.getElementById('testStart')?.value;
 					const endTime = document.getElementById('testEnd')?.value;
@@ -5137,7 +5212,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-test', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, test_id: testId, start_time: startTime, end_time: endTime })
+						body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, test_id: testId, start_time: startTime, end_time: endTime })
 						});
 						const result = await response.json();
 						if (result.ok) {
