@@ -3125,32 +3125,7 @@ def test_submit_all():
 			})
 			
 		elif question_type == "coding":
-		elif question_type == "hands_on":
-			file_field = answer.get('file_field')
-			upload_info = {"saved": False}
-			try:
-				if file_field and file_field in request.files:
-					f = request.files[file_field]
-					if f and f.filename:
-						import os
-						from werkzeug.utils import secure_filename
-						upload_dir = os.path.join(os.getcwd(), 'uploads')
-						os.makedirs(upload_dir, exist_ok=True)
-						fname = secure_filename(f.filename)
-						unique_name = f"{test_id}_{question_index}_{fname}"
-						save_path = os.path.join(upload_dir, unique_name)
-						f.save(save_path)
-						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
-			except Exception as e:
-				upload_info = {"saved": False, "error": str(e)}
-			results.append({
-				"question_index": question_index,
-				"question_type": "hands_on",
-				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
-			})
 			user_code = answer.get("user_code")
-			
 			# Check against MongoDB stored answer if from question bank
 			is_correct = False
 			if is_from_bank:
@@ -3158,7 +3133,6 @@ def test_submit_all():
 				if bank_q:
 					stored_answer = bank_q.get("answer", "")
 					stored_regex = bank_q.get("answerRegex", "")
-					
 					if stored_regex:
 						import re
 						try:
@@ -3170,8 +3144,7 @@ def test_submit_all():
 						def normalize(s):
 							return (s or "").strip().replace(" ", "").lower()
 						is_correct = normalize(user_code) == normalize(stored_answer)
-			
-			# Get AI feedback for coding question
+			# AI feedback
 			ai_feedback = ""
 			score = 0.0
 			if user_code and openai.api_key and (not is_correct or is_from_bank):
@@ -3190,14 +3163,11 @@ Return a JSON with:
   "is_correct": true/false,
   "feedback": "Your evaluation"
 }"""
-
-					# Include stored answer if from question bank for better validation
 					stored_answer_text = ""
 					if is_from_bank:
 						bank_q = bank_questions.get(question_data.get("title", ""))
 						if bank_q and bank_q.get("answer"):
 							stored_answer_text = f"\n**Expected Answer (from question bank):**\n```python\n{bank_q.get('answer')}\n```\n\nCompare the student's code with the expected answer."
-					
 					prompt = f"""Evaluate this student's code for a test. Provide encouraging, educational feedback.
 
 **Problem:** {question_data.get('description', 'N/A')}
@@ -3213,7 +3183,6 @@ Return a JSON with:
   "is_correct": true if mostly correct, false otherwise,
   "feedback": "Encouraging feedback with strengths and suggestions"
 }}"""
-
 					response_text = _ai_generate(prompt, trainer_role)
 					import re
 					json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
@@ -3241,10 +3210,8 @@ Return a JSON with:
 				if not is_from_bank:
 					is_correct = True
 					score = 0.7
-			
 			if is_correct:
 				correct_count += 1
-			
 			results.append({
 				"question_index": question_index,
 				"question_type": "coding",
@@ -3253,6 +3220,30 @@ Return a JSON with:
 				"ai_feedback": ai_feedback,
 				"is_correct": is_correct,
 				"score": score
+			})
+		elif question_type == "hands_on":
+			file_field = answer.get('file_field')
+			upload_info = {"saved": False}
+			try:
+				if file_field and file_field in request.files:
+					f = request.files[file_field]
+					if f and f.filename:
+						import os
+						from werkzeug.utils import secure_filename
+						upload_dir = os.path.join(os.getcwd(), 'uploads')
+						os.makedirs(upload_dir, exist_ok=True)
+						fname = secure_filename(f.filename)
+						unique_name = f"{test_id}_{question_index}_{fname}"
+						save_path = os.path.join(upload_dir, unique_name)
+						f.save(save_path)
+						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
+			except Exception as e:
+				upload_info = {"saved": False, "error": str(e)}
+			results.append({
+				"question_index": question_index,
+				"question_type": "hands_on",
+				"question_title": question_data.get("title", ""),
+				"hands_on_file": upload_info
 			})
 	
 	# Calculate percentage
