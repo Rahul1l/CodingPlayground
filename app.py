@@ -820,16 +820,16 @@ def admin_export_submissions():
 	redir = require_admin()
 	if redir:
 		return redir
-	
-    # Get filter parameters
-    filter_context = request.args.get('context', 'all')
-    filter_test = request.args.get('test_id', 'all')
-    filter_user = request.args.get('username', 'all')
-    filter_university = request.args.get('university', 'all')
-    filter_subject = request.args.get('subject')
-	
-    # Build query
-    query = {}
+
+	# Get filter parameters
+	filter_context = request.args.get('context', 'all')
+	filter_test = request.args.get('test_id', 'all')
+	filter_user = request.args.get('username', 'all')
+	filter_university = request.args.get('university', 'all')
+	filter_subject = request.args.get('subject')
+
+	# Build query
+	query = {}
 	if filter_context != 'all':
 		query['context'] = filter_context
 	if filter_test != 'all':
@@ -839,76 +839,76 @@ def admin_export_submissions():
 	if filter_university != 'all':
 		query['university'] = filter_university
 
-    # Subject filter (optional)
-    if filter_subject:
-        or_clauses = [{'subject': filter_subject}]
-        try:
-            test_ids = [t.get('test_id') for t in tests_col.find({'subject': filter_subject}, {'test_id': 1}) if t.get('test_id')]
-            if test_ids:
-                or_clauses.append({'test_id': {'$in': test_ids}})
-            act_ids = [a.get('activity_id') for a in activities_col.find({'subject': filter_subject}, {'activity_id': 1}) if a.get('activity_id')]
-            if act_ids:
-                or_clauses.append({'activity_id': {'$in': act_ids}})
-        except Exception:
-            pass
-        if or_clauses:
-            if query:
-                query = {'$and': [query, {'$or': or_clauses}]}
-            else:
-                query = {'$or': or_clauses}
-	
+	# Subject filter (optional)
+	if filter_subject:
+		or_clauses = [{'subject': filter_subject}]
+		try:
+			test_ids = [t.get('test_id') for t in tests_col.find({'subject': filter_subject}, {'test_id': 1}) if t.get('test_id')]
+			if test_ids:
+				or_clauses.append({'test_id': {'$in': test_ids}})
+			act_ids = [a.get('activity_id') for a in activities_col.find({'subject': filter_subject}, {'activity_id': 1}) if a.get('activity_id')]
+			if act_ids:
+				or_clauses.append({'activity_id': {'$in': act_ids}})
+		except Exception:
+			pass
+		if or_clauses:
+			if query:
+				query = {'$and': [query, {'$or': or_clauses}]}
+			else:
+				query = {'$or': or_clauses}
+
 	try:
 		# Get all submissions matching filters
 		submissions = list(submissions_col.find(query).sort("created_at", -1))
-		
+
 		# Create CSV file in memory
 		output = StringIO()
 		writer = csv.writer(output)
-		
-    # Write header
-    writer.writerow(['Username', 'University', 'Subject', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
-		
+
+		# Write header
+		writer.writerow(['Username', 'University', 'Subject', 'Context', 'Test ID', 'Activity ID', 'Question Type', 'Question Index', 'Is Correct', 'Violation Type', 'Warning Number', 'Created At', 'Details'])
+
 		# Write data
 		for sub in submissions:
 			created_at = sub.get('created_at', '').strftime('%Y-%m-%d %H:%M:%S') if sub.get('created_at') else ''
 			details = ''
-			
+
 			if sub.get('context') == 'test_violation':
 				details = f"Violation: {sub.get('violation_type', 'N/A')}"
 			elif sub.get('context') in ['test', 'classroom_mcq', 'classroom_coding']:
 				details = f"Question: {sub.get('question_title', 'N/A')}"
 			elif sub.get('context') == 'test_complete':
 				details = f"Score: {sub.get('final_score', 'N/A')}%"
-			
-        # Infer subject for CSV
-        subject_csv = sub.get('subject', '')
-        if not subject_csv:
-            try:
-                if sub.get('test_id'):
-                    _t = tests_col.find_one({'test_id': sub.get('test_id')}, {'subject': 1})
-                    subject_csv = (_t or {}).get('subject', '')
-                elif sub.get('activity_id'):
-                    _a = activities_col.find_one({'activity_id': sub.get('activity_id')}, {'subject': 1})
-                    subject_csv = (_a or {}).get('subject', '')
-            except Exception:
-                subject_csv = subject_csv or ''
 
-        writer.writerow([
-            sub.get('username', ''),
-            sub.get('university', 'Unknown'),
-            subject_csv,
-            sub.get('context', ''),
-            sub.get('test_id', ''),
-            sub.get('activity_id', ''),
-            sub.get('question_type', ''),
-            sub.get('question_index', ''),
-            sub.get('is_correct', ''),
-            sub.get('violation_type', ''),
-            sub.get('warning_number', ''),
-            created_at,
-            details
-        ])
-		
+			# Infer subject for CSV
+			subject_csv = sub.get('subject', '')
+			if not subject_csv:
+				try:
+					if sub.get('test_id'):
+						_t = tests_col.find_one({'test_id': sub.get('test_id')}, {'subject': 1})
+						subject_csv = (_t or {}).get('subject', '')
+					elif sub.get('activity_id'):
+						_a = activities_col.find_one({'activity_id': sub.get('activity_id')}, {'subject': 1})
+						subject_csv = (_a or {}).get('subject', '')
+				except Exception:
+					subject_csv = subject_csv or ''
+
+			writer.writerow([
+				sub.get('username', ''),
+				sub.get('university', 'Unknown'),
+				subject_csv,
+				sub.get('context', ''),
+				sub.get('test_id', ''),
+				sub.get('activity_id', ''),
+				sub.get('question_type', ''),
+				sub.get('question_index', ''),
+				sub.get('is_correct', ''),
+				sub.get('violation_type', ''),
+				sub.get('warning_number', ''),
+				created_at,
+				details
+			])
+
 		output.seek(0)
 		filename = f'submissions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
 		if filter_university != 'all':
@@ -918,14 +918,14 @@ def admin_export_submissions():
 		if filter_context != 'all':
 			filename += f'_{filter_context}'
 		filename += '.csv'
-		
+
 		return send_file(
 			BytesIO(output.getvalue().encode('utf-8')),
 			mimetype='text/csv',
 			as_attachment=True,
 			download_name=filename
 		)
-		
+
 	except Exception as e:
 		print(f"Export error: {e}")
 		return jsonify({"success": False, "error": f"Export failed: {str(e)}"})
