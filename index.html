@@ -3245,11 +3245,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% endif %}
 		{% endif %}
 
-		{# Admin: Question Generator (separate tab) #}
+		{# Admin: Question Generator #}
 		{% if view == 'admin_question_generator' %}
 			<section class="card">
-				<h2>🧩 Question Generator</h2>
-				<p class="muted">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
+				<div class="flex-between">
+					<h2>🧩 Question Generator</h2>
+					<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
+				</div>
+				<p class="muted">Create subjects with modules and questions. All data stored in MongoDB.</p>
+			</section>
+
+			<section class="card">
 				<form id="localQGForm">
 					<label>University
 						<input type="text" id="qgUniversity" placeholder="e.g., MIT" required>
@@ -3257,408 +3263,34 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<label>Subject Name
 						<input type="text" id="qgSubject" placeholder="e.g., Data Structures" required>
 					</label>
-					<div id="qgModulesContainer"></div>
+					<div id="qgModulesContainer" style="margin-top: 1rem;"></div>
 					<div style="margin-top: 1rem;">
 						<button class="btn" id="qgAddModuleBtn" type="button">➕ Add Module</button>
 						<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
 					</div>
 					<div style="margin-top: 1rem;">
-						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save Subject to Question Bank</button>
+						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save to Question Bank</button>
 					</div>
 				</form>
 			</section>
 		{% endif %}
 
-		{# Admin: Questionnaire Management (separate tab) #}
+		{# Admin: Questionnaire Management #}
 		{% if view == 'admin_questionnaire_management' %}
 			<section class="card">
-				<h2>🗂️ Questionnaire Management</h2>
-				<p class="muted">All activities grouped by university. View, edit, export CSV, or delete.</p>
+				<div class="flex-between">
+					<h2>🗂️ Questionnaire Management</h2>
+					<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
+				</div>
+				<p class="muted">View, edit, and manage all question banks stored in MongoDB.</p>
+			</section>
+
+			<section class="card">
 				<div id="qmGroups"></div>
-				<div id="qmDetailContainer" style="margin-top: 1rem; display:none;"></div>
+				<div id="qmDetailContainer" style="margin-top: 1.5rem; display:none;"></div>
 			</section>
 		{% endif %}
 		
-		{% if view == 'test_interface' %}
-			<div class="flex-between">
-				<h2>{{ test.subject }} - Test</h2>
-				<a class="btn secondary" href="/test">← Back to Test Info</a>
-			</div>
-
-			{% if questions %}
-		{% for question in questions %}
-		{% set question_num = loop.index %}
-		<section class="card question-card">
-			<div class="question-header">
-				<h3>Question {{ question_num }}: {{ question.title }}</h3>
-				<div style="display: flex; gap: 0.5rem; align-items: center;">
-					<span class="difficulty-badge difficulty-{{ question.difficulty }}">
-						{% if question.difficulty == 'medium_plus' %}
-							Medium+ (Coding)
-						{% else %}
-							{{ question.difficulty|title }}
-						{% endif %}
-					</span>
-					{% if question.question_type == 'mcq' %}
-					<span class="role-badge role-classroom">📝 MCQ</span>
-					{% elif question.question_type == 'coding' %}
-					<span class="role-badge role-test">💻 Coding</span>
-					{% endif %}
-				</div>
-			</div>
-
-			<div class="question-content">
-				<p><strong>Description:</strong></p>
-				<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
-
-				{% if question.question_type == 'mcq' and question.options %}
-				<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
-					<p><strong>Select the correct answer:</strong></p>
-					<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
-						{% for option in question.options %}
-						<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
-							{{ option }}
-						</div>
-						{% endfor %}
-					</div>
-					<div style="margin-top: 1rem;">
-						<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});">Clear Selection</button>
-						<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem;"></span>
-					</div>
-				</div>
-				{% endif %}
-
-				{# Coding Questions #}
-				{% if question.question_type == 'coding' or not question.question_type %}
-					{% if question.input_format %}
-					<p><strong>Input Format:</strong></p>
-					<pre class="format-box">{{ question.input_format }}</pre>
-					{% endif %}
-					{% if question.output_format %}
-					<p><strong>Output Format:</strong></p>
-					<pre class="format-box">{{ question.output_format }}</pre>
-					{% endif %}
-					{% if question.sample_input %}
-					<p><strong>Sample Input:</strong></p>
-					<pre class="sample-box">{{ question.sample_input }}</pre>
-					{% endif %}
-					{% if question.sample_output %}
-					<p><strong>Sample Output:</strong></p>
-					<pre class="sample-box">{{ question.sample_output }}</pre>
-					{% endif %}
-					{% if question.constraints %}
-					<p><strong>Constraints:</strong></p>
-					<p style="color: #f59e0b;">{{ question.constraints }}</p>
-					{% endif %}
-				{% endif %}
-			</div>
-
-			{% if question.question_type == 'coding' or not question.question_type %}
-			<div class="compiler-section" id="coding-question-{{ question_num }}">
-				<h4>🐍 Code Editor</h4>
-				<div class="compiler-container">
-					<div class="code-section">
-						<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
-# Example:
-# def solution():
-#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-						<div class="compiler-controls">
-							<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-							<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
-						</div>
-					</div>
-					<div class="output-section">
-						<label>Output:</label>
-						<div id="output-{{ question_num }}" class="output-box">
-							<p class="muted">Click "Run Code" to see the output here...</p>
-						</div>
-					</div>
-				</div>
-				<div style="margin-top: 1rem;">
-					<span id="coding-status-{{ question_num }}" class="muted"></span>
-				</div>
-			</div>
-			{% endif %}
-		</section>
-		{% endfor %}
-	{% else %}
-		<section class="card">
-			<h2>Test Content</h2>
-			<details open>
-				<summary>Generated Content</summary>
-				<pre class="scroll">{{ test.generated }}</pre>
-			</details>
-		</section>
-	{% endif %}
-
-	{% if questions %}
-	<section class="card" style="border-left: 4px solid #10b981;">
-		<h3>📝 Submit Your Answers</h3>
-		<p class="muted">Review all your answers above and click Submit when ready.</p>
-		<div style="margin-top: 1.5rem;">
-			<button class="btn" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">✅ Submit All Answers</button>
-			<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">Cancel</button>
-		</div>
-		<div id="final-result" style="margin-top: 2rem; display: none;"></div>
-	</section>
-	{% endif %}
-
-<script>
-		// Test interface script - runs when view == 'test_interface'
-		// Initialize shared answer state for test view (reuses classroom logic)
-		window.classroomAnswers = window.classroomAnswers || {};
-		window.classroomCode = window.classroomCode || {};
-		
-		// Test submission function - same logic as classroom activity
-		window.submitAllTestAnswers = async function(testId, questions) {
-			// Collect all answers
-			const answers = [];
-			let missingAnswers = [];
-			
-			// Collect MCQ and coding answers (uses same structure as classroom)
-			questions.forEach((question, index) => {
-				const questionIdx = index + 1;
-				
-				if (question.question_type === 'mcq') {
-					const selectedAnswer = window.classroomAnswers[questionIdx];
-					if (!selectedAnswer) {
-						missingAnswers.push(`Question ${questionIdx} (MCQ)`);
-					}
-					answers.push({
-						question_index: questionIdx,
-						question_type: 'mcq',
-						question_data: question,
-						selected_answer: selectedAnswer || null
-					});
-				} else if (question.question_type === 'coding') {
-					const codeTextarea = document.getElementById(`code-${questionIdx}`);
-					const code = codeTextarea ? codeTextarea.value.trim() : '';
-					if (!code) {
-						missingAnswers.push(`Question ${questionIdx} (Coding)`);
-					}
-					answers.push({
-						question_index: questionIdx,
-						question_type: 'coding',
-						question_data: question,
-						user_code: code || null
-					});
-				}
-			});
-			
-			// Warn if any answers are missing
-			if (missingAnswers.length > 0) {
-				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) {
-					return;
-				}
-			}
-			
-			// Final confirmation
-			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) {
-				return;
-			}
-			
-			try {
-				// Show loading state
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.style.display = 'block';
-				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
-				
-				// Disable all inputs
-				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => {
-					el.disabled = true;
-					el.style.opacity = '0.6';
-					el.style.cursor = 'not-allowed';
-				});
-				
-				// Send to backend
-				const response = await fetch('/test/submit_all', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						test_id: testId,
-						answers: answers
-					})
-				});
-				
-				const result = await response.json();
-				
-				if (result.ok) {
-					// Display final score
-					displayTestFinalResult(result);
-				} else {
-					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
-				}
-			} catch (error) {
-				console.error('Submission error:', error);
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
-			}
-		};
-		
-		// Display final results for test
-		function displayTestFinalResult(result) {
-			const resultDiv = document.getElementById('final-result');
-			
-			let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center;">';
-			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">🎉 Test Submission Complete!</h2>';
-			html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.score}/${result.total_questions}</div>`;
-			html += `<div style="font-size: 1.5rem; margin: 0.5rem 0;">${result.percentage}%</div>`;
-			html += `<p style="margin: 1rem 0 0 0; opacity: 0.9;">You answered ${result.correct_count} out of ${result.total_questions} questions correctly.</p>`;
-			html += '</div>';
-			
-			// Detailed breakdown
-			if (result.details && result.details.length > 0) {
-				html += '<div style="margin-top: 2rem;">';
-				html += '<h3>📊 Detailed Breakdown</h3>';
-				
-				result.details.forEach((detail, index) => {
-					html += '<div style="padding: 1rem; margin: 1rem 0; background: #f9fafb; border-radius: 8px; border-left: 4px solid ';
-					html += detail.is_correct ? '#10b981' : '#dc2626';
-					html += ';">';
-					html += `<h4 style="margin: 0 0 0.5rem 0; color: #000000;">Question ${detail.question_index}</h4>`;
-					html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : 'Coding'}</p>`;
-					html += `<p style="margin: 0.5rem 0 0 0; font-weight: 600; color: ${detail.is_correct ? '#10b981' : '#dc2626'};">`;
-					html += detail.is_correct ? '✅ Correct' : '❌ Incorrect';
-					html += '</p>';
-					html += '</div>';
-				});
-				
-				html += '</div>';
-			}
-			
-			html += '<div style="margin-top: 2rem; text-align: center;">';
-			html += '<button class="btn" onclick="window.location.href=\'/test\'">Return to Test Info</button>';
-			html += '</div>';
-			
-		resultDiv.innerHTML = html;
-	}
-	
-	// Note: MCQ selection handlers (selectClassroomMCQ, clearClassroomMCQ) are loaded via the shared
-	// activity/test script block below, so test interface reuses classroom logic
-	
-	// Test interface compiler functionality (legacy - kept for backward compatibility)
-	document.addEventListener('DOMContentLoaded', function() {
-				const codeTextarea = document.getElementById('test-code');
-				const runButton = document.getElementById('run-test-code');
-				const clearButton = document.getElementById('clear-test-code');
-				const outputDiv = document.getElementById('test-output');
-				const testForm = document.getElementById('testForm');
-				const hiddenUserCode = document.getElementById('hidden_user_code');
-				
-				if (codeTextarea && runButton && outputDiv) {
-					// Run code function
-					async function runCode() {
-						const code = codeTextarea.value.trim();
-						if (!code) {
-							outputDiv.innerHTML = '<p class="muted">Please enter some Python code to run.</p>';
-							return;
-						}
-						
-						// Show loading state
-						runButton.disabled = true;
-						runButton.textContent = '⏳ Running...';
-						outputDiv.innerHTML = '<p class="muted">Executing code...</p>';
-						
-						try {
-							const formData = new FormData();
-							formData.append('code', code);
-							
-							const response = await fetch('/compiler/execute', {
-								method: 'POST',
-								body: formData
-							});
-							
-							const result = await response.json();
-							
-							// Display results
-							if (result.success) {
-								outputDiv.className = 'output-box output-success';
-								let output = '';
-								if (result.output) {
-									output += result.output;
-								}
-								if (result.error) {
-									output += '\n--- Errors ---\n' + result.error;
-								}
-								outputDiv.textContent = output || 'Code executed successfully (no output)';
-							} else {
-								outputDiv.className = 'output-box output-error';
-								outputDiv.textContent = `Error: ${result.error}`;
-							}
-						} catch (error) {
-							outputDiv.className = 'output-box output-error';
-							outputDiv.textContent = `Network error: ${error.message}`;
-						} finally {
-							// Reset button state
-							runButton.disabled = false;
-							runButton.textContent = '▶️ Run Code';
-						}
-					}
-					
-					// Clear code function
-					function clearCode() {
-						codeTextarea.value = '';
-						outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
-						outputDiv.className = 'output-box';
-					}
-					
-					// Event listeners
-					runButton.addEventListener('click', runCode);
-					clearButton.addEventListener('click', clearCode);
-					
-					// Keyboard shortcut: Ctrl+Enter to run code
-					codeTextarea.addEventListener('keydown', function(e) {
-						if (e.ctrlKey && e.key === 'Enter') {
-							e.preventDefault();
-							runCode();
-						}
-					});
-					
-					// Update hidden fields when form is submitted
-					if (testForm) {
-						testForm.addEventListener('submit', function(e) {
-							// Get question type
-							const questionType = document.getElementById('hidden_question_type').value;
-							const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-							
-							// MANDATORY: Validate that an answer is provided
-							if (questionType === 'mcq') {
-								if (!hiddenMcqAnswer || !hiddenMcqAnswer.value) {
-									e.preventDefault();
-									alert('⚠️ You MUST select an answer before proceeding to the next question.\n\nYou cannot skip questions.');
-									return false;
-								}
-								// Confirm MCQ selection
-								const selectedAnswer = hiddenMcqAnswer.value;
-								if (!confirm(`You selected: ${selectedAnswer}\n\nAre you sure? You cannot change your answer after submitting.`)) {
-									e.preventDefault();
-									return false;
-								}
-							} else if (questionType === 'coding') {
-								// Copy code textarea value for coding questions
-								if (hiddenUserCode && codeTextarea) {
-									hiddenUserCode.value = codeTextarea.value;
-								}
-								
-								if (!hiddenUserCode || !hiddenUserCode.value.trim()) {
-									e.preventDefault();
-									alert('⚠️ You MUST write code before proceeding to the next question.\n\nYou cannot skip questions.');
-									return false;
-								}
-								// Confirm code submission
-								if (!confirm('Are you sure you want to submit your code?\n\nYou cannot change your answer after submitting.')) {
-									e.preventDefault();
-									return false;
-								}
-							}
-						});
-					}
-				}
-			});
-			</script>
-		{% endif %}
 
 		{# JavaScript for test preview #}
 		{% if view == 'test' %}
