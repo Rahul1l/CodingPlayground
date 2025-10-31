@@ -4684,171 +4684,164 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 				
 				function parsePlainTextQuestions(text){
 					if (!text || !text.trim()) return [];
+					// Normalize odd unicode spaces (EM/EN/NBSP) to simple space
+					const normalizeSpaces = (s) => s.replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+					const softTrim = (s) => normalizeSpaces(s || '').replace(/[\t ]+/g, ' ').trim();
 					
 					const questions = [];
-					const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+					const rawLines = text.split('\n'); // keep blanks for code blocks
 					
 					let currentQ = null;
 					let currentOptions = [];
-					let inDescription = false;
 					let descriptionLines = [];
+					let inAnswerCode = false;
 					
-					for (let i = 0; i < lines.length; i++) {
-						const line = lines[i];
+					const isQuestionStart = (line) => {
+						const l = softTrim(line);
+						return /^(?:Q(?:uestion)?\s*\d*|\d+)\s*[.:)]\s*/i.test(l);
+					};
+					const extractQuestionTitle = (line) => {
+						const l = softTrim(line);
+						const m = l.match(/^(?:Q(?:uestion)?\s*\d*|\d+)\s*[.:)]\s*(.+)$/i);
+						return m ? m[1] : l.replace(/^Q\s*[:.-]?\s*/i,'');
+					};
+					const mapLabelToIndex = (label) => {
+						if (!label) return -1;
+						const s = String(label).trim();
+						if (/^\d+$/.test(s)) return parseInt(s,10) - 1;
+						const ch = s[0].toUpperCase();
+						if (/[A-Z]/.test(ch)) return ch.charCodeAt(0) - 65;
+						return -1;
+					};
+					const parseInlineOptions = (line) => {
+						const l = softTrim(line);
+						const matches = [];
+						const re = /([A-Za-z\d])\)\s*/g; // a) b) 1) patterns
+						let m;
+						while ((m = re.exec(l)) !== null) {
+							matches.push({ label: m[1], idx: m.index });
+						}
+						if (matches.length < 2) return null; // need at least 2 to segment
+						const out = [];
+						for (let i=0;i<matches.length;i++){
+							const start = matches[i].idx + matches[i].label.length + 1; // skip 'x)'
+							const end = i+1 < matches.length ? matches[i+1].idx : l.length;
+							const textSeg = softTrim(l.slice(start, end));
+							const slot = mapLabelToIndex(matches[i].label);
+							if (slot >= 0){ out[slot] = textSeg; }
+						}
+						return out.filter(Boolean).length ? out : null;
+					};
+					
+					for (let i=0; i<rawLines.length; i++){
+						const raw = rawLines[i];
+						const line = softTrim(raw);
 						
-						// Detect question start: Q:, Q1:, Question:, Q., etc.
-						if (/^Q\d*[:\\.]?\s*(.+)/i.test(line)) {
-							// Save previous question if exists
-							if (currentQ) {
-								currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
-								if (currentOptions.length > 0) {
-									currentQ.options = currentOptions;
-								}
+						// New question starts
+						if (isQuestionStart(line)){
+							// finalize previous
+							if (currentQ){
+								currentQ.description = softTrim(descriptionLines.join(' ')) || currentQ.title;
+								if (currentOptions.length) currentQ.options = currentOptions.slice();
 								questions.push(currentQ);
 							}
-							
-							// Start new question
-							const match = line.match(/^Q\d*[:\\.]?\s*(.+)/i);
-							currentQ = {
-								type: 'mcq',
-								title: match[1],
-								description: '',
-								options: [],
-								correctOption: undefined
-							};
+							currentQ = { type: 'mcq', title: extractQuestionTitle(line), description: '', options: [], correctOption: undefined };
 							currentOptions = [];
 							descriptionLines = [];
-							inDescription = false;
+							inAnswerCode = false;
 							continue;
 						}
 						
-						// Detect options: A:, A), A., 1., etc.
-						const optionMatch = line.match(/^([A-Z\d])[:\\)\\.]\s*(.+)/i);
-						if (optionMatch && currentQ) {
-							inDescription = false;
-							const optionLetter = optionMatch[1].toUpperCase();
-							const optionText = optionMatch[2];
-							
-							// Map letter to index (A=0, B=1, C=2, D=3, 1=0, 2=1, etc.)
-							let optionIndex = -1;
-							if (/[A-Z]/.test(optionLetter)) {
-								optionIndex = optionLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
-							} else if (/\d/.test(optionLetter)) {
-								optionIndex = parseInt(optionLetter, 10) - 1; // 1=0, 2=1, etc.
+						if (!currentQ) continue; // ignore preamble
+						
+						// Inline options on a single line
+						const inlineOpts = parseInlineOptions(line);
+						if (inlineOpts){
+							for (let k=0;k<inlineOpts.length;k++){
+								if (inlineOpts[k]) currentOptions[k] = inlineOpts[k];
 							}
-							
-							if (optionIndex >= 0) {
-								if (!currentOptions[optionIndex]) {
-									currentOptions[optionIndex] = optionText;
+							continue;
+						}
+						
+						// Standard one-per-line option
+						const mOpt = line.match(/^([A-Za-z\d])[:\).]\s*(.+)$/i);
+						if (mOpt){
+							const idx = mapLabelToIndex(mOpt[1]);
+							if (idx >= 0) currentOptions[idx] = softTrim(mOpt[2]);
+							continue;
+						}
+						
+						// Answer line (either MCQ letter or coding answer start)
+						const mAns = raw.match(/^(?:Answer|Correct|Right)\s*[:\. ]\s*(.*)$/i);
+						if (mAns){
+							const rest = mAns[1] || '';
+							// Try letter/number first
+							const mLetter = rest.match(/^\s*([A-Za-z\d])\)/) || rest.match(/^\s*([A-Za-z\d])\b/);
+							if (mLetter){
+								const idx = mapLabelToIndex(mLetter[1]);
+								if (idx >= 0) currentQ.correctOption = idx;
+								else {
+									// maybe textual answer; try to match an option text
+									const txt = softTrim(rest.replace(/^\s*([A-Za-z\d])\)?\s*/, ''));
+									const found = (currentOptions || []).findIndex(o => softTrim(o).toLowerCase() === txt.toLowerCase());
+									if (found >= 0) currentQ.correctOption = found;
 								}
+								continue;
 							}
-							continue;
-						}
-						
-						// Detect correct answer: Correct:, Answer:, etc.
-						const correctMatch = line.match(/^(Correct|Answer|Right)[:\\.]?\s*([A-Z\d])/i);
-						if (correctMatch && currentQ) {
-							const answerLetter = correctMatch[2].toUpperCase();
-							let answerIndex = -1;
-							if (/[A-Z]/.test(answerLetter)) {
-								answerIndex = answerLetter.charCodeAt(0) - 65;
-							} else if (/\d/.test(answerLetter)) {
-								answerIndex = parseInt(answerLetter, 10) - 1;
-							}
-							if (answerIndex >= 0) {
-								currentQ.correctOption = answerIndex;
-							}
-							continue;
-						}
-						
-						// Detect coding question indicators
-						if (/^(Code|Coding|Write|Function|Implement|Solve)/i.test(line) && currentQ) {
+							// Treat as coding answer (multi-line)
 							currentQ.type = 'coding';
-							inDescription = true;
-						}
-						
-						// Detect description: Description:, Problem:, Task:, etc.
-						if (/^(Description|Problem|Task|Instruction)[:\\.]?\s*(.+)/i.test(line)) {
-							const descMatch = line.match(/^(Description|Problem|Task|Instruction)[:\\.]?\s*(.+)/i);
-							if (descMatch && currentQ) {
-								descriptionLines.push(descMatch[2]);
-								inDescription = true;
-							}
+							inAnswerCode = true;
+							const after = raw.split(/^(?:Answer|Correct|Right)\s*[:\. ]/i)[1] || '';
+							currentQ.answer = (currentQ.answer || '') + (after ? after + '\n' : '');
 							continue;
 						}
 						
-						// Detect answer for coding: Answer:, Solution:, etc.
-						if (/^(Answer|Solution|Expected|Correct Answer)[:\\.]?\s*(.+)/i.test(line) && currentQ && currentQ.type === 'coding') {
-							const ansMatch = line.match(/^(Answer|Solution|Expected|Correct Answer)[:\\.]?\s*(.+)/i);
-							if (ansMatch && !currentQ.answer) {
-								currentQ.answer = ansMatch[2];
-							}
+						// Keep collecting code lines when inAnswerCode
+						if (inAnswerCode){
+							currentQ.answer = (currentQ.answer || '') + raw + '\n';
 							continue;
 						}
 						
-						// Collect description lines
-						if (currentQ && (inDescription || descriptionLines.length > 0 || !currentOptions.length)) {
-							// If it's not an option pattern, treat as description
-							if (!/^[A-Z\d][:\\)\\.]/.test(line)) {
-								descriptionLines.push(line);
-								if (!inDescription && currentOptions.length === 0) {
-									// If no options yet, might be coding question
-									if (/code|function|write|implement|solve|algorithm/i.test(line)) {
-										currentQ.type = 'coding';
-									}
-								}
-							}
-						}
-						
-						// Empty line or separator - finalize current question
-						if (line === '' || line === '---' || line === '===') {
-							if (currentQ) {
-								currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
-								if (currentOptions.length > 0) {
-									currentQ.options = currentOptions.filter(o => o);
-								}
-								if (currentQ.type === 'coding' || currentOptions.length === 0) {
-									questions.push(currentQ);
-								}
-								currentQ = null;
-								currentOptions = [];
-								descriptionLines = [];
-								inDescription = false;
+						// Description fall-through
+						if (line){
+							descriptionLines.push(line);
+							// Heuristic: if no options appear at all, assume coding
+							if (!currentOptions.length && /code|function|write|implement|solve|algorithm|program|create/i.test(line)){
+								currentQ.type = 'coding';
 							}
 						}
 					}
 					
-					// Save last question
-					if (currentQ) {
-						currentQ.description = descriptionLines.join(' ').trim() || currentQ.title;
-						if (currentOptions.length > 0) {
-							currentQ.options = currentOptions.filter(o => o);
-						}
+					// finalize trailing question
+					if (currentQ){
+						currentQ.description = softTrim(descriptionLines.join(' ')) || currentQ.title;
+						if (currentOptions.length) currentQ.options = currentOptions.slice();
 						questions.push(currentQ);
 					}
 					
-					// Normalize questions
+					// Normalize output
 					return questions.map(q => {
 						const normalized = {
-							type: q.type || 'mcq',
+							type: q.type || (q.options && q.options.length ? 'mcq' : 'coding'),
 							title: q.title || 'Untitled',
 							description: q.description || q.title || '',
-							options: q.options && q.options.length > 0 ? q.options.filter(o => o) : undefined,
+							options: q.options && q.options.length > 0 ? q.options.map(softTrim).filter(Boolean) : undefined,
 							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
-							answer: q.answer || undefined,
+							answer: q.answer ? q.answer.replace(/\n+$/, '') : undefined,
 							answerRegex: q.answerRegex || undefined
 						};
-						
-						// If it's MCQ but no options, or if it's coding, remove options
-						if (normalized.type === 'coding') {
-							delete normalized.options;
-							delete normalized.correctOption;
-						} else if (!normalized.options || normalized.options.length === 0) {
-							normalized.type = 'coding';
+						// If MCQ but still no correctOption and answer text exists, match by text
+						if (normalized.type === 'mcq' && normalized.options && normalized.correctOption == null && normalized.answer){
+							const txt = softTrim(normalized.answer);
+							const found = normalized.options.findIndex(o => softTrim(o).toLowerCase() === txt.toLowerCase());
+							if (found >= 0) normalized.correctOption = found;
+							delete normalized.answer;
+						}
+						// If coding, remove MCQ fields
+						if (normalized.type === 'coding'){
 							delete normalized.options;
 							delete normalized.correctOption;
 						}
-						
 						return normalized;
 					});
 				}

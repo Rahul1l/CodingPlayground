@@ -1822,28 +1822,28 @@ def api_get_all_question_banks():
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-        banks = list(question_banks_col.find({}).sort("created_at", -1))
+		banks = list(question_banks_col.find({}).sort("created_at", -1))
 
-        grouped = {}
-        items = []
-        for bank in banks:
-            uni = bank.get("university", "Unknown")
-            if uni not in grouped:
-                grouped[uni] = []
+		grouped = {}
+		items = []
+		for bank in banks:
+			uni = bank.get("university", "Unknown")
+			if uni not in grouped:
+				grouped[uni] = []
 
-            item = {
-                "id": str(bank.get("_id")),
-                "university": uni,
-                "subject": bank.get("subject", ""),
-                "modules": bank.get("modules", {}),
-                "created_at": bank.get("created_at").isoformat() if bank.get("created_at") else None,
-                "updated_at": bank.get("updated_at").isoformat() if bank.get("updated_at") else None,
-            }
-            grouped[uni].append({k: item[k] for k in ("id", "subject", "modules", "created_at", "updated_at")})
-            items.append(item)
+			item = {
+				"id": str(bank.get("_id")),
+				"university": uni,
+				"subject": bank.get("subject", ""),
+				"modules": bank.get("modules", {}),
+				"created_at": bank.get("created_at").isoformat() if bank.get("created_at") else None,
+				"updated_at": bank.get("updated_at").isoformat() if bank.get("updated_at") else None,
+			}
+			grouped[uni].append({k: item[k] for k in ("id", "subject", "modules", "created_at", "updated_at")})
+			items.append(item)
 
-        # Do NOT return raw Mongo docs (ObjectId, datetime are not JSON serializable)
-        return jsonify({"ok": True, "grouped": grouped, "items": items})
+		# Do NOT return raw Mongo docs (ObjectId, datetime are not JSON serializable)
+		return jsonify({"ok": True, "grouped": grouped, "items": items})
 	except Exception as e:
 		return jsonify({"ok": False, "error": str(e)}), 500
 
