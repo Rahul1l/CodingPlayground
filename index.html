@@ -4866,13 +4866,21 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					if (!subject){ alert('Subject is required'); return; }
 					const moduleNames = Array.from(document.querySelectorAll('.qgModuleName')).map(i=>i.value.trim());
 					const moduleJsons = Array.from(document.querySelectorAll('.qgModuleQuestions')).map(t=>t.value.trim());
+					const modulePlainTexts = Array.from(document.querySelectorAll('.qgModulePlainText')).map(t=>t.value.trim());
 					if (moduleNames.length === 0){ alert('Add at least one module'); return; }
 					const modules = {};
 					for (let i=0;i<moduleNames.length;i++){
 						const name = moduleNames[i];
 						if (!name){ alert(`Module #${i+1} name is required`); return; }
 						let qs;
-						try { qs = JSON.parse(moduleJsons[i]||'[]'); } catch(err){ alert(`Module "${name}" has invalid JSON`); return; }
+						// Prefer JSON textarea; if empty, try parsing the plain text textarea directly
+						if (moduleJsons[i] && moduleJsons[i].length > 0) {
+							try { qs = JSON.parse(moduleJsons[i]); } catch(err){ alert(`Module "${name}" has invalid JSON`); return; }
+						} else if (modulePlainTexts[i] && modulePlainTexts[i].length > 0) {
+							qs = parsePlainTextQuestions(modulePlainTexts[i]);
+						} else {
+							qs = [];
+						}
 						if (!Array.isArray(qs)){ alert(`Module "${name}" questions must be an array`); return; }
 						const normalized = qs.map(q=>({
 							id: q.id || uid(),

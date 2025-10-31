@@ -1554,7 +1554,7 @@ def api_generate_activity_from_bank():
 		if not module_questions:
 			return jsonify({"ok": False, "error": f"Module '{module}' not found for this subject"}), 404
 		
-		# Filter and randomly select questions
+        # Filter and randomly select questions
 		import random
 		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
 		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
@@ -1568,7 +1568,25 @@ def api_generate_activity_from_bank():
 		if len(selected_questions) == 0:
 			return jsonify({"ok": False, "error": "No questions available matching the requested types"}), 400
 		
-		# Convert to format expected by activity system
+        # Helper: compute safe correct answer for MCQ
+        def _get_correct_answer(mcq: dict) -> str:
+            options = mcq.get("options") or []
+            idx = mcq.get("correctOption")
+            # Coerce string indices (e.g., "2" or "B")
+            if isinstance(idx, str):
+                s = idx.strip()
+                if s.isdigit():
+                    try:
+                        idx = int(s)
+                    except Exception:
+                        idx = None
+                elif len(s) == 1 and s.isalpha():
+                    idx = ord(s.upper()) - ord('A')
+            if isinstance(idx, int) and 0 <= idx < len(options):
+                return options[idx]
+            return ""
+
+        # Convert to format expected by activity system
 		formatted_questions = []
 		for q in selected_questions:
 			if q.get("type") == "mcq":
@@ -1577,7 +1595,7 @@ def api_generate_activity_from_bank():
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
 					"options": q.get("options", []),
-					"correct_answer": q.get("options", [])[q.get("correctOption", 0)] if q.get("options") and q.get("correctOption") is not None else "",
+                    "correct_answer": _get_correct_answer(q),
 					"difficulty": "medium"  # Default
 				})
 			else:
@@ -1664,7 +1682,7 @@ def api_generate_test_from_bank():
 		if not module_questions:
 			return jsonify({"ok": False, "error": f"Module '{module}' not found for this subject"}), 404
 		
-		# Filter and randomly select questions
+        # Filter and randomly select questions
 		import random
 		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
 		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
@@ -1678,7 +1696,24 @@ def api_generate_test_from_bank():
 		if len(selected_questions) == 0:
 			return jsonify({"ok": False, "error": "No questions available matching the requested types"}), 400
 		
-		# Convert to format expected by test system
+        # Helper: compute safe correct answer for MCQ
+        def _get_correct_answer(mcq: dict) -> str:
+            options = mcq.get("options") or []
+            idx = mcq.get("correctOption")
+            if isinstance(idx, str):
+                s = idx.strip()
+                if s.isdigit():
+                    try:
+                        idx = int(s)
+                    except Exception:
+                        idx = None
+                elif len(s) == 1 and s.isalpha():
+                    idx = ord(s.upper()) - ord('A')
+            if isinstance(idx, int) and 0 <= idx < len(options):
+                return options[idx]
+            return ""
+
+        # Convert to format expected by test system
 		formatted_questions = []
 		for q in selected_questions:
 			if q.get("type") == "mcq":
@@ -1687,7 +1722,7 @@ def api_generate_test_from_bank():
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
 					"options": q.get("options", []),
-					"correct_answer": q.get("options", [])[q.get("correctOption", 0)] if q.get("options") and q.get("correctOption") is not None else "",
+                    "correct_answer": _get_correct_answer(q),
 					"difficulty": "medium"
 				})
 			else:
