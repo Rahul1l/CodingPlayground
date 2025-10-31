@@ -729,6 +729,14 @@ def admin_submissions():
 	
 	# Get submissions
 	submissions = list(submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page))
+	# Normalize display fields to avoid template errors (e.g., strftime on non-datetime)
+	from datetime import datetime as _dt
+	for s in submissions:
+		created_at = s.get("created_at")
+		if isinstance(created_at, _dt):
+			s["created_at_str"] = created_at.strftime('%Y-%m-%d %H:%M:%S')
+		else:
+			s["created_at_str"] = created_at if created_at else "N/A"
 	total_submissions = submissions_col.count_documents(query)
 	total_pages = (total_submissions + per_page - 1) // per_page
 	

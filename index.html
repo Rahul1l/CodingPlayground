@@ -2341,7 +2341,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<tbody>
 							{% for sub in submissions %}
 							<tr>
-								<td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M:%S') if sub.created_at else 'N/A' }}</td>
+								<td>{{ sub.created_at_str }}</td>
 								<td><strong>{{ sub.username }}</strong></td>
 								<td><span class="muted">{{ sub.university if sub.university else '-' }}</span></td>
 								<td>
