@@ -489,6 +489,24 @@ def admin_classroom_activities():
 	return render_template("index.html", view="admin_classroom_activities", activities=activities)
 
 
+@app.route("/admin/question-generator")
+def admin_question_generator():
+    """Admin view for Question Generator (separate tab)"""
+    redir = require_admin()
+    if redir:
+        return redir
+    return render_template("index.html", view="admin_question_generator")
+
+
+@app.route("/admin/questionnaire-management")
+def admin_questionnaire_management():
+    """Admin view for Questionnaire Management (separate tab)"""
+    redir = require_admin()
+    if redir:
+        return redir
+    return render_template("index.html", view="admin_questionnaire_management")
+
+
 @app.route("/admin/classroom-activities/<activity_id>")
 def admin_attempt_activity(activity_id: str):
 	redir = require_admin()

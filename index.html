@@ -1723,78 +1723,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 			</section>
 
-			<!-- Local Question Bank: Question Generator -->
-			<section class="grid">
-				<div class="card">
-					<h2>🧩 Question Generator</h2>
-					<p class="muted" style="margin-bottom: 0.75rem;">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
-					<form id="localQGForm">
-						<label>University
-							<input type="text" id="qgUniversity" placeholder="e.g., MIT" required>
-						</label>
-						<label>Subject Name
-							<input type="text" id="qgSubject" placeholder="e.g., Data Structures" required>
-						</label>
-						<div id="qgModulesContainer" style="margin-top: 0.75rem;"></div>
-						<div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-							<button class="btn" id="qgAddModuleBtn">➕ Add Module</button>
-							<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
-						</div>
-						<div style="margin-top: 0.75rem;">
-							<button class="btn" id="qgSubmitBankBtn">💾 Save Subject to Question Bank</button>
-						</div>
-					</form>
-					<details style="margin-top: 0.75rem;">
-						<summary style="cursor: pointer; font-weight: 600; color: #667eea;">Show Question JSON Example</summary>
-						<pre style="background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 6px; overflow:auto; font-size: 0.85rem;">
-[
-  {
-    "type": "mcq",
-    "title": "What is the time complexity of binary search?",
-    "description": "Choose the correct answer.",
-    "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],
-    "correctOption": 1
-  },
-  {
-    "type": "coding",
-    "title": "Reverse a string",
-    "description": "Write code to reverse a string.",
-    "answer": "function reverseString(s){return s.split('').reverse().join('')}"
-  }
-]
-						</pre>
-						<p class="muted">Paste the JSON above for each module. For MCQ, set <code>correctOption</code> to the index of the correct choice (0-based). For coding, provide either <code>answer</code> (string compare after trimming) or <code>answerRegex</code> (case-insensitive).</p>
-					</details>
-				</div>
-				<div class="card">
-					<h2>📊 Local Submission Logs</h2>
-					<p class="muted" style="margin-bottom: 0.75rem;">Shows attempts generated via Local Question Bank only.</p>
-					<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-						<button class="btn" id="logsRefreshBtn">Refresh</button>
-						<button class="btn secondary" id="logsClearBtn">Clear</button>
-					</div>
-					<div class="table-container" style="max-height: 260px; overflow:auto; border: 1px solid #e5e7eb; border-radius: 6px;">
-						<table style="width:100%;">
-							<thead>
-								<tr>
-									<th style="text-align:left; padding: 0.5rem;">When</th>
-									<th style="text-align:left; padding: 0.5rem;">Mode</th>
-									<th style="text-align:left; padding: 0.5rem;">Subject</th>
-									<th style="text-align:left; padding: 0.5rem;">Module</th>
-									<th style="text-align:left; padding: 0.5rem;">Score</th>
-								</tr>
-							</thead>
-							<tbody id="logsTableBody"></tbody>
-						</table>
-					</div>
-				</div>
-				<div class="card">
-					<h2>🗂️ Questionnaire Management</h2>
-					<p class="muted" style="margin-bottom: 0.75rem;">All local activities grouped by university. View, edit, export CSV, or delete.</p>
-					<div id="qmGroups"></div>
-					<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
-				</div>
-			</section>
+			{# Question Generator moved to its own admin tab #}
 
 			{% if recent_users %}
 			<section class="card">
@@ -3307,6 +3236,49 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
 			</section>
 			{% endif %}
+		{% endif %}
+
+		{# Admin: Question Generator (separate tab) #}
+		{% if view == 'admin_question_generator' %}
+		<section class="grid">
+			<div class="card">
+				<h2>🧩 Question Generator</h2>
+				<p class="muted" style="margin-bottom: 0.75rem;">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
+				<form id="localQGForm">
+					<label>University
+						<input type="text" id="qgUniversity" placeholder="e.g., MIT" required>
+					</label>
+					<label>Subject Name
+						<input type="text" id="qgSubject" placeholder="e.g., Data Structures" required>
+					</label>
+					<div id="qgModulesContainer" style="margin-top: 0.75rem;"></div>
+					<div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+						<button class="btn" id="qgAddModuleBtn" type="button">➕ Add Module</button>
+						<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
+					</div>
+					<div style="margin-top: 0.75rem;">
+						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save Subject to Question Bank</button>
+					</div>
+				</form>
+				<details style="margin-top: 0.75rem;">
+					<summary style="cursor: pointer; font-weight: 600; color: #667eea;">Show Question JSON Example</summary>
+					<pre style="background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 6px; overflow:auto; font-size: 0.85rem;">[\n  {\n    "type": "mcq",\n    "title": "What is the time complexity of binary search?",\n    "description": "Choose the correct answer.",\n    "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],\n    "correctOption": 1\n  },\n  {\n    "type": "coding",\n    "title": "Reverse a string",\n    "description": "Write code to reverse a string.",\n    "answer": "function reverseString(s){return s.split('').reverse().join('')}"\n  }\n]</pre>
+					<p class="muted">Paste the JSON above for each module. For MCQ, set <code>correctOption</code> to the index of the correct choice (0-based). For coding, provide either <code>answer</code> (string compare after trimming) or <code>answerRegex</code> (case-insensitive).</p>
+				</details>
+			</div>
+		</section>
+		{% endif %}
+
+		{# Admin: Questionnaire Management (separate tab) #}
+		{% if view == 'admin_questionnaire_management' %}
+		<section class="grid">
+			<div class="card">
+				<h2>🗂️ Questionnaire Management</h2>
+				<p class="muted" style="margin-bottom: 0.75rem;">All activities grouped by university. View, edit, export CSV, or delete.</p>
+				<div id="qmGroups"></div>
+				<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
+			</div>
+		</section>
 		{% endif %}
 		
 		{% if view == 'test_interface' %}
@@ -5484,8 +5456,8 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const result = await response.json();
 						if (result.ok) {
 							alert('✅ Saved to Question Bank (MongoDB)');
-							renderSubjectModuleOptions();
-							renderQMGroups();
+							// Redirect to Questionnaire Management to view the stored activity
+							window.location.href = '/admin/questionnaire-management';
 						} else {
 							alert(`❌ Error: ${result.error}`);
 						}
@@ -5755,41 +5727,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					}
 				}
 
-				async function renderLogs(){
-					const body = document.getElementById('logsTableBody'); if (!body) return;
-					body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem;">Loading...</td></tr>';
-					
-					try {
-						const response = await fetch('/api/submission-logs');
-						const result = await response.json();
-						if (!result.ok) {
-							body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#dc2626;">Error loading logs</td></tr>';
-							return;
-						}
-						
-						const list = result.submissions || [];
-						body.innerHTML = '';
-						if (list.length === 0) {
-							body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#6b7280;">No submission logs found</td></tr>';
-							return;
-						}
-						
-						list.forEach(s=>{
-							const tr = document.createElement('tr');
-							tr.innerHTML = `
-								<td style='padding:0.5rem;'>${new Date(s.when).toLocaleString()}</td>
-								<td style='padding:0.5rem; text-transform: capitalize;'>${s.mode}</td>
-								<td style='padding:0.5rem;'>${s.subject}</td>
-								<td style='padding:0.5rem;'>${s.module || 'N/A'}</td>
-								<td style='padding:0.5rem;'>${s.mode==='classroom' ? `${s.correct_count}/${s.total_questions}` : '—'}</td>
-							`;
-							body.appendChild(tr);
-						});
-					} catch(err) {
-						body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#dc2626;">Error loading logs</td></tr>';
-						console.error(err);
-					}
-				}
+				// renderLogs removed from this page; view submissions/logs available in dedicated admin pages
 
 				document.addEventListener('DOMContentLoaded', function(){
 					// Wire Question Generator form
@@ -5807,24 +5745,10 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					if (testForm){ testForm.addEventListener('submit', onCreateTest); }
 
 					renderSubjectModuleOptions();
-					renderQMGroups();
-					renderLogs();
-					const btnR = document.getElementById('logsRefreshBtn'); if (btnR) btnR.addEventListener('click', renderLogs);
-					const btnC = document.getElementById('logsClearBtn'); if (btnC) btnC.addEventListener('click', async function(){ 
-						if (!confirm('Clear all submission logs? This action cannot be undone.')) return;
-						try {
-							const response = await fetch('/api/submission-logs/clear', { method: 'POST' });
-							const result = await response.json();
-							if (result.ok) {
-								alert(result.message || 'Submission logs cleared');
-								renderLogs();
-							} else {
-								alert(`Error: ${result.error}`);
-							}
-						} catch(err) {
-							alert(`Failed to clear logs: ${err.message}`);
-						}
-					});
+					// If on Questionnaire Management page, render groups
+					if (document.getElementById('qmGroups')) {
+						renderQMGroups();
+					}
 				});
 			})();
 	</script>
