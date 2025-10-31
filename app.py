@@ -1580,11 +1580,18 @@ def api_save_question_bank():
 			normalized_modules[module_name] = questions
 		
 		# Upsert question bank document
+		# Merge modules instead of overwriting entire dictionary
+		existing = question_banks_col.find_one({"university": university, "subject": subject})
+		base_modules = existing.get("modules", {}) if existing else {}
+		merged_modules = dict(base_modules)
+		# Overwrite per-module key if provided in payload; keep others intact
+		for mname, mqs in normalized_modules.items():
+			merged_modules[mname] = mqs
 		question_banks_col.update_one(
 			{"university": university, "subject": subject},
 			{
 				"$set": {
-					"modules": normalized_modules,
+					"modules": merged_modules,
 					"updated_at": datetime.now(timezone.utc)
 				},
 				"$setOnInsert": {
@@ -1631,20 +1638,22 @@ def api_get_subjects():
 
 @app.route("/api/question-bank/modules", methods=["GET"])
 def api_get_modules():
-	"""Get modules for a given subject"""
+	"""Get modules for a given university+subject (disambiguate duplicates)"""
 	redir = require_admin()
 	if redir:
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
+		university = request.args.get("university", "").strip()
 		subject = request.args.get("subject", "").strip()
 		if not subject:
 			return jsonify({"ok": False, "error": "Subject parameter is required"}), 400
-		
-		bank = question_banks_col.find_one({"subject": subject})
+		query = {"subject": subject}
+		if university:
+			query["university"] = university
+		bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": True, "modules": []})
-		
 		modules = list(bank.get("modules", {}).keys())
 		return jsonify({"ok": True, "modules": modules})
 	except Exception as e:
@@ -1660,6 +1669,7 @@ def api_generate_activity_from_bank():
 	
 	try:
 		data = request.json
+		university = data.get("university", "").strip()
 		subject = data.get("subject", "").strip()
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
@@ -1670,12 +1680,16 @@ def api_generate_activity_from_bank():
 		
 		if not subject or not module or not classroom_id:
 			return jsonify({"ok": False, "error": "Subject, module, and classroom_id are required"}), 400
+		# University is optional for backward compat but used to disambiguate
 		
 		if num_mcq < 0 or num_coding < 0 or num_hands_on < 0 or (num_mcq == 0 and num_coding == 0 and num_hands_on == 0):
 			return jsonify({"ok": False, "error": "At least one question type must be selected"}), 400
 		
-		# Get question bank
-		bank = question_banks_col.find_one({"subject": subject})
+		# Get question bank (prefer university+subject if provided)
+		query = {"subject": subject}
+		if university:
+			query["university"] = university
+		bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
 		
@@ -1805,6 +1819,7 @@ def api_generate_test_from_bank():
 	
 	try:
 		data = request.json
+		university = data.get("university", "").strip()
 		subject = data.get("subject", "").strip()
 		module = data.get("module", "").strip()
 		num_mcq = int(data.get("num_mcq", 0))
@@ -1835,8 +1850,11 @@ def api_generate_test_from_bank():
 		except Exception as e:
 			return jsonify({"ok": False, "error": f"Invalid datetime: {str(e)}"}), 400
 		
-		# Get question bank
-		bank = question_banks_col.find_one({"subject": subject})
+		# Get question bank (prefer university+subject if provided)
+		query = {"subject": subject}
+		if university:
+			query["university"] = university
+		bank = question_banks_col.find_one(query)
 		if not bank:
 			return jsonify({"ok": False, "error": "Subject not found in question bank"}), 404
 		

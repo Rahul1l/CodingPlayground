@@ -1693,6 +1693,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<h2>Create Classroom Activity</h2>
 					<p class="muted" style="margin-bottom: 0.75rem;">Generate from Local Question Bank</p>
 					<form id="createClassroomForm">
+						<label>University
+							<select id="classroomUniversity" required></select>
+						</label>
 						<label>Subject
 							<select id="classroomSubject" required></select>
 						</label>
@@ -1711,6 +1714,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<h2>Create Test</h2>
 					<p class="muted" style="margin-bottom: 0.75rem;">Generate from Local Question Bank</p>
 					<form id="createTestForm">
+						<label>University
+							<select id="testUniversity" required></select>
+						</label>
 						<label>Subject
 							<select id="testSubject" required></select>
 						</label>
@@ -4836,8 +4842,8 @@ print(f'Sum: {x + y}')"></textarea>
 
 				async function renderSubjectModuleOptions(){
 					const allSelectors = [
-						{subject: 'classroomSubject', module: 'classroomModule'},
-						{subject: 'testSubject', module: 'testModule'}
+						{university: 'classroomUniversity', subject: 'classroomSubject', module: 'classroomModule'},
+						{university: 'testUniversity', subject: 'testSubject', module: 'testModule'}
 					];
 					
 					try {
@@ -4847,46 +4853,45 @@ print(f'Sum: {x + y}')"></textarea>
 							console.error('Failed to fetch subjects:', result.error);
 							return;
 						}
-						const subjects = result.subjects || [];
-						
-						allSelectors.forEach(({subject: subjId, module: modId})=>{
+						const grouped = result.grouped || {};
+						allSelectors.forEach(({university: uniId, subject: subjId, module: modId})=>{
+							const uniSel = document.getElementById(uniId);
 							const subjSel = document.getElementById(subjId);
 							const modSel = document.getElementById(modId);
-							if (!subjSel || !modSel) return;
-							subjSel.innerHTML = '';
-							modSel.innerHTML = '';
-							if (subjects.length === 0){
-								subjSel.innerHTML = '<option value="">No subjects found</option>';
-								modSel.innerHTML = '<option value="">-</option>';
-								return;
+							if (!uniSel || !subjSel || !modSel) return;
+							// Fill universities
+							uniSel.innerHTML = '';
+							Object.keys(grouped).sort().forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; uniSel.appendChild(o); });
+							// When university changes, populate subjects
+							function updateSubjects(){
+								subjSel.innerHTML=''; modSel.innerHTML='';
+								const u = uniSel.value;
+								const subs = (grouped[u]||[]).map(x=>x.subject).filter(Boolean);
+								const uniqSubs = Array.from(new Set(subs));
+								if (uniqSubs.length === 0){ subjSel.innerHTML='<option value="">No subjects</option>'; modSel.innerHTML='<option value="">-</option>'; return; }
+								uniqSubs.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; subjSel.appendChild(o); });
+								updateModules();
 							}
-							subjects.forEach(s=>{
-								const opt = document.createElement('option');
-								opt.value = s; opt.textContent = s; subjSel.appendChild(opt);
-							});
-							updateModules(subjId, modId);
-							subjSel.onchange = () => updateModules(subjId, modId);
+							async function updateModules(){
+								modSel.innerHTML='';
+								const u = uniSel.value; const s = subjSel.value;
+								if (!u || !s){ modSel.innerHTML='<option value="">-</option>'; return; }
+								try{
+									const modResponse = await fetch(`/api/question-bank/modules?university=${encodeURIComponent(u)}&subject=${encodeURIComponent(s)}`);
+									const modResult = await modResponse.json();
+									const modules = modResult.modules || [];
+									if (modules.length === 0){ modSel.innerHTML = '<option value="">No modules</option>'; return; }
+									modules.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; modSel.appendChild(o); });
+								}catch(err){
+									console.error('Failed to fetch modules:', err);
+									modSel.innerHTML = '<option value="">Error loading modules</option>';
+								}
+							}
+							uniSel.onchange = updateSubjects;
+							subjSel.onchange = updateModules;
+							// Initialize
+							updateSubjects();
 						});
-						
-						async function updateModules(subjId, modId){
-							const subjSel = document.getElementById(subjId);
-							const modSel = document.getElementById(modId);
-							if (!subjSel || !modSel) return;
-							modSel.innerHTML='';
-							const subject = subjSel.value;
-							if (!subject) { modSel.innerHTML = '<option value="">-</option>'; return; }
-							
-							try {
-								const modResponse = await fetch(`/api/question-bank/modules?subject=${encodeURIComponent(subject)}`);
-								const modResult = await modResponse.json();
-								const modules = modResult.modules || [];
-								if (modules.length === 0){ modSel.innerHTML = '<option value="">No modules</option>'; return; }
-								modules.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; modSel.appendChild(o); });
-							} catch(err) {
-								console.error('Failed to fetch modules:', err);
-								modSel.innerHTML = '<option value="">Error loading modules</option>';
-							}
-						}
 					} catch(err) {
 						console.error('Failed to fetch subjects:', err);
 					}
@@ -5263,7 +5268,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					e.preventDefault();
 					const warning = document.getElementById('classroomWarning');
 					warning.style.display='none'; warning.textContent='';
-					
+					const university = document.getElementById('classroomUniversity')?.value;
 					const subject = document.getElementById('classroomSubject')?.value;
 					const moduleName = document.getElementById('classroomModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('classroomMcq')?.value||'0',10));
@@ -5279,7 +5284,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-activity', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-						body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, classroom_id: classroomId })
+						body: JSON.stringify({ university, subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, classroom_id: classroomId })
 						});
 						const result = await response.json();
 						if (result.ok) {
@@ -5298,7 +5303,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					e.preventDefault();
 					const warning = document.getElementById('testWarning');
 					warning.style.display='none'; warning.textContent='';
-					
+					const university = document.getElementById('testUniversity')?.value;
 					const subject = document.getElementById('testSubject')?.value;
 					const moduleName = document.getElementById('testModule')?.value;
 					const numMcq = Math.max(0, parseInt(document.getElementById('testMcq')?.value||'0',10));
@@ -5317,7 +5322,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const response = await fetch('/api/question-bank/generate-test', {
 							method: 'POST',
 							headers: {'Content-Type': 'application/json'},
-						body: JSON.stringify({ subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, test_id: testId, start_time: startTime, end_time: endTime })
+						body: JSON.stringify({ university, subject, module: moduleName, num_mcq: numMcq, num_coding: numCoding, num_hands_on: numHandsOn, test_id: testId, start_time: startTime, end_time: endTime })
 						});
 						const result = await response.json();
 						if (result.ok) {
