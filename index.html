@@ -2750,25 +2750,26 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<h3>📊 Final Test Score</h3>
 				<div style="text-align: center; margin: 2rem 0;">
 					<div style="font-size: 4rem; font-weight: 700; color: #10b981;">
-						{{ submission.final_score }}%
+						{{ submission.final_score|default(0) }}%
 					</div>
 					<p class="muted">Final Score</p>
 				</div>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
 					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
 						<p class="muted">Total Questions</p>
-						<p style="font-size: 2rem; font-weight: 700; color: #000000;">{{ submission.total_questions }}</p>
+						<p style="font-size: 2rem; font-weight: 700; color: #000000;">{{ submission.total_questions|default('N/A') }}</p>
 					</div>
 					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
 						<p class="muted">Grade</p>
 						<p style="font-size: 2rem; font-weight: 700;">
-							{% if submission.final_score >= 90 %}
+							{% set fs = submission.final_score|default(0)|int %}
+							{% if fs >= 90 %}
 								A
-							{% elif submission.final_score >= 80 %}
+							{% elif fs >= 80 %}
 								B
-							{% elif submission.final_score >= 70 %}
+							{% elif fs >= 70 %}
 								C
-							{% elif submission.final_score >= 60 %}
+							{% elif fs >= 60 %}
 								D
 							{% else %}
 								F

@@ -899,6 +899,41 @@ def admin_submission_detail(submission_id):
 		# Convert ObjectId to string for JSON serialization
 		if "_id" in submission:
 			submission["_id"] = str(submission["_id"])
+
+		# Normalize created_at for display
+		from datetime import datetime as _dt
+		ca = submission.get("created_at")
+		if isinstance(ca, _dt):
+			submission["created_at_str"] = ca.strftime('%Y-%m-%d %H:%M:%S')
+		else:
+			submission["created_at_str"] = ca if ca else "N/A"
+
+		# Guard missing fields for older records
+		ctx = submission.get("context")
+		if ctx == "test_complete":
+			# Ensure final_score and total_questions exist
+			if "final_score" not in submission:
+				# best-effort: compute from ai_grading entries if available (else 0)
+				try:
+					user = submission.get("username")
+					test_id = submission.get("test_id")
+					if user and test_id:
+						parts = list(submissions_col.find({"username": user, "context": "test", "test_id": test_id}))
+						import json as _json
+						score_sum, total = 0.0, 0
+						for p in parts:
+							try:
+								data = _json.loads(p.get("ai_grading", "{}"))
+								score_sum += float(data.get("score", 0))
+								total += 1
+							except Exception:
+								continue
+						submission["final_score"] = 0.0 if total == 0 else round((score_sum / total) * 100.0, 2)
+						submission.setdefault("total_questions", total)
+					else:
+						submission.setdefault("final_score", 0)
+				except Exception:
+					submission.setdefault("final_score", 0)
 		
 		logger.info(f"Found submission: {submission_id}, context: {submission.get('context')}")
 		return render_template("index.html", view="admin_submission_detail", submission=submission)
