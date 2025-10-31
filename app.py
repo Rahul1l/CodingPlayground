@@ -1692,10 +1692,28 @@ def api_generate_activity_from_bank():
 		mcq_pool = [q for q in module_questions if _qtype(q) == "mcq"]
 		coding_pool = [q for q in module_questions if _qtype(q) == "coding"]
 		handson_pool = [q for q in module_questions if _qtype(q) in ("hands_on","handson")]
-		
-		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
-		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
-		selected_handson = random.sample(handson_pool, min(num_hands_on, len(handson_pool)))
+
+		# Validate availability against requests
+		problems = []
+		if num_mcq > 0 and len(mcq_pool) == 0:
+			problems.append(f"No MCQ questions found in module '{module}' for subject '{subject}'")
+		elif num_mcq > len(mcq_pool):
+			problems.append(f"Requested {num_mcq} MCQ but only {len(mcq_pool)} available")
+		if num_coding > 0 and len(coding_pool) == 0:
+			problems.append(f"No coding questions found in module '{module}' for subject '{subject}'")
+		elif num_coding > len(coding_pool):
+			problems.append(f"Requested {num_coding} coding but only {len(coding_pool)} available")
+		if num_hands_on > 0 and len(handson_pool) == 0:
+			problems.append(f"No hands-on questions found in module '{module}' for subject '{subject}'")
+		elif num_hands_on > len(handson_pool):
+			problems.append(f"Requested {num_hands_on} hands-on but only {len(handson_pool)} available")
+		if problems:
+			return jsonify({"ok": False, "error": "; ".join(problems)}), 400
+
+		# Select exactly the requested counts (validated above)
+		selected_mcq = random.sample(mcq_pool, num_mcq) if num_mcq > 0 else []
+		selected_coding = random.sample(coding_pool, num_coding) if num_coding > 0 else []
+		selected_handson = random.sample(handson_pool, num_hands_on) if num_hands_on > 0 else []
 		
 		selected_questions = selected_mcq + selected_coding + selected_handson
 		random.shuffle(selected_questions)  # Randomize order
@@ -1835,11 +1853,9 @@ def api_generate_test_from_bank():
 		mcq_pool = [q for q in module_questions if _qtype(q) == "mcq"]
 		coding_pool = [q for q in module_questions if _qtype(q) == "coding"]
 		handson_pool = [q for q in module_questions if _qtype(q) in ("hands_on","handson")]
-		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
-		# num_hands_on is only present for activity if provided; handle gracefully
 		try:
 			num_hands_on = int(data.get("num_hands_on", 0))
 		except Exception:
