@@ -1702,8 +1702,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<label>Number of MCQ Questions<input type="number" id="classroomMcq" min="0" max="50" value="2" required></label>
 						<label>Number of Coding Questions<input type="number" id="classroomCoding" min="0" max="50" value="1" required></label>
 						<label>Classroom ID<input type="text" id="classroomId" required></label>
-						<button class="btn" type="submit">Generate Activity</button>
-					</form>
+					<button class="btn" type="submit">Generate Activity</button>
+				</form>
 					<div id="classroomWarning" class="muted" style="margin-top: 0.5rem; display: none; color: #dc2626;"></div>
 				</div>
 				<div class="card">
@@ -2869,8 +2869,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<!-- DEBUG: Rendering MCQ for question_num={{ question_num }}, Total options={{ question.options|length }} -->
 							<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
 								{% for option in question.options %}
-								<!-- DEBUG: Option loop.index={{ loop.index }}, parent question_num={{ question_num }}, option[0]={{ option[0] }} -->
-								<div class="mcq-option-classroom" data-option="{{ option[0] }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+							<div class="mcq-option-classroom" data-option-index="{{ loop.index0 }}" data-option-text="{{ option }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
 									{{ option }}
 								</div>
 								{% endfor %}
@@ -3086,9 +3085,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<strong>⚠️ No test scheduled</strong><br>
 							No test has been scheduled for you.
 						</div>
-				{% endif %}
+					{% endif %}
 			{% endif %}
-		{% endif %}
+					{% endif %}
 
 
 		{# Admin: Question Generator #}
@@ -3097,7 +3096,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div class="flex-between">
 					<h2>🧩 Question Generator</h2>
 					<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
-				</div>
+					</div>
 				<p class="muted">Create subjects with modules and questions. All data stored in MongoDB.</p>
 			</section>
 
@@ -3113,14 +3112,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<div style="margin-top: 1rem;">
 						<button class="btn" id="qgAddModuleBtn" type="button">➕ Add Module</button>
 						<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
-					</div>
-					<div style="margin-top: 1rem;">
+						</div>
+						<div style="margin-top: 1rem;">
 						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save to Question Bank</button>
-					</div>
+						</div>
 				</form>
 			</section>
-		{% endif %}
-
+					{% endif %}
+					
 		{# Admin: Questionnaire Management #}
 		{% if view == 'admin_questionnaire_management' %}
 			<section class="card">
@@ -3130,12 +3129,12 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 				<p class="muted">View, edit, and manage all question banks stored in MongoDB.</p>
 			</section>
-
+			
 			<section class="card">
 				<div id="qmGroups"></div>
 				<div id="qmDetailContainer" style="margin-top: 1.5rem; display:none;"></div>
 			</section>
-		{% endif %}
+			{% endif %}
 		
 
 		{# JavaScript for test preview #}
@@ -3420,11 +3419,14 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 		
 		// Get the option value FIRST (before any DOM manipulation)
-		const option = element.getAttribute('data-option');
+		const optionIdxStr = element.getAttribute('data-option-index');
+		const optionText = element.getAttribute('data-option-text') || element.textContent.trim();
 		const optionDataIdx = element.getAttribute('data-question-idx');
+		const optionIdx = optionIdxStr !== null ? parseInt(optionIdxStr, 10) : NaN;
 		
 		console.log('📋 Element Details:');
-		console.log('   - data-option:', option);
+		console.log('   - data-option-index:', optionIdxStr);
+		console.log('   - data-option-text:', optionText);
 		console.log('   - data-question-idx:', optionDataIdx);
 		console.log('   - Passed questionIdx:', questionIdx);
 		
@@ -3462,7 +3464,7 @@ print(f'Sum: {x + y}')"></textarea>
 		});
 		
 		// STEP 2: Highlight the selected option
-		console.log('✨ Highlighting selected option:', option);
+		console.log('✨ Highlighting selected option index:', optionIdx, 'text:', optionText);
 		element.style.background = '#dbeafe';
 		element.style.borderLeft = '3px solid #10b981';
 		element.style.fontWeight = '600';
@@ -3470,12 +3472,13 @@ print(f'Sum: {x + y}')"></textarea>
 		
 		// STEP 3: Store in global answers object
 		const previousAnswer = window.classroomAnswers[questionIdx];
-		window.classroomAnswers[questionIdx] = option;
+		// Prefer storing numeric index for MCQ (needed for question-bank validation)
+		window.classroomAnswers[questionIdx] = Number.isFinite(optionIdx) ? optionIdx : optionText;
 		
 		if (previousAnswer) {
-			console.log('🔄 RESELECTED: Changed from "' + previousAnswer + '" to "' + option + '" for question', questionIdx);
+			console.log('🔄 RESELECTED: Changed from', previousAnswer, 'to', Number.isFinite(optionIdx) ? optionIdx : optionText, 'for question', questionIdx);
 		} else {
-			console.log('✅ NEW SELECTION: Stored "' + option + '" for question', questionIdx);
+			console.log('✅ NEW SELECTION: Stored', Number.isFinite(optionIdx) ? optionIdx : optionText, 'for question', questionIdx);
 		}
 		
 		// STEP 4: Display current state
@@ -3492,7 +3495,7 @@ print(f'Sum: {x + y}')"></textarea>
 		// STEP 5: Update visual status indicator
 		const statusEl = document.getElementById(`mcq-status-${questionIdx}`);
 		if (statusEl) {
-			statusEl.textContent = `✓ Selected: ${option}`;
+			statusEl.textContent = `✓ Selected: ${optionText}`;
 			statusEl.style.color = '#10b981';
 			statusEl.style.fontWeight = '600';
 			console.log('✅ Status updated for question', questionIdx);
@@ -3594,14 +3597,15 @@ print(f'Sum: {x + y}')"></textarea>
 			
 			if (question.question_type === 'mcq') {
 				const selectedAnswer = window.classroomAnswers[questionIdx];
-				if (!selectedAnswer) {
+				const hasSelection = !(selectedAnswer === undefined || selectedAnswer === null || (typeof selectedAnswer === 'string' && selectedAnswer.trim() === ''));
+				if (!hasSelection) {
 					missingAnswers.push(`Question ${questionIdx} (MCQ)`);
 				}
 				answers.push({
 					question_index: questionIdx,
 					question_type: 'mcq',
 					question_data: question,
-					selected_answer: selectedAnswer || null
+					selected_answer: hasSelection ? selectedAnswer : null
 				});
 			} else if (question.question_type === 'coding') {
 				const codeTextarea = document.getElementById(`code-${questionIdx}`);
@@ -4449,42 +4453,42 @@ print(f'Sum: {x + y}')"></textarea>
 
 		// Test restrictions removed - tests now display properly without restrictions
 
-	// Auto-save form data
-	function autoSaveForm(formId) {
-		const form = document.getElementById(formId);
-		if (!form) return;
-		
-		const inputs = form.querySelectorAll('input, textarea, select');
-		
-		inputs.forEach(input => {
+		// Auto-save form data
+		function autoSaveForm(formId) {
+			const form = document.getElementById(formId);
+			if (!form) return;
+			
+			const inputs = form.querySelectorAll('input, textarea, select');
+			
+			inputs.forEach(input => {
 			// Skip file inputs (cannot be set programmatically for security reasons)
 			if (input.type === 'file') return;
 			
-			// Load saved data
-			const saved = localStorage.getItem(`form_${formId}_${input.name}`);
-			if (saved) {
-				input.value = saved;
-			}
-			
-			// Save on change
-			input.addEventListener('input', () => {
-				localStorage.setItem(`form_${formId}_${input.name}`, input.value);
+				// Load saved data
+				const saved = localStorage.getItem(`form_${formId}_${input.name}`);
+				if (saved) {
+					input.value = saved;
+				}
+				
+				// Save on change
+				input.addEventListener('input', () => {
+					localStorage.setItem(`form_${formId}_${input.name}`, input.value);
+				});
 			});
-		});
-	}
+		}
 
-	// Clear auto-saved data
-	function clearAutoSave(formId) {
-		const form = document.getElementById(formId);
-		if (!form) return;
-		
-		const inputs = form.querySelectorAll('input, textarea, select');
-		inputs.forEach(input => {
+		// Clear auto-saved data
+		function clearAutoSave(formId) {
+			const form = document.getElementById(formId);
+			if (!form) return;
+			
+			const inputs = form.querySelectorAll('input, textarea, select');
+			inputs.forEach(input => {
 			// Skip file inputs
 			if (input.type === 'file') return;
-			localStorage.removeItem(`form_${formId}_${input.name}`);
-		});
-	}
+				localStorage.removeItem(`form_${formId}_${input.name}`);
+			});
+		}
 
 		// Initialize auto-save for forms
 		document.addEventListener('DOMContentLoaded', () => {
@@ -4716,7 +4720,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const parseInlineOptions = (line) => {
 						const l = softTrim(line);
 						const matches = [];
-						const re = /([A-Za-z\d])\)\s*/g; // a) b) 1) patterns
+						const re = /([A-Za-z\d])[)\.:]\s*/g; // a) a. a: 1) 1. 1:
 						let m;
 						while ((m = re.exec(l)) !== null) {
 							matches.push({ label: m[1], idx: m.index });
@@ -4724,11 +4728,11 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						if (matches.length < 2) return null; // need at least 2 to segment
 						const out = [];
 						for (let i=0;i<matches.length;i++){
-							const start = matches[i].idx + matches[i].label.length + 1; // skip 'x)'
+							const start = matches[i].idx + matches[i].label.length + 1; // skip 'x' + separator
 							const end = i+1 < matches.length ? matches[i+1].idx : l.length;
-							const textSeg = softTrim(l.slice(start, end));
+							const text = softTrim(l.slice(start, end)).replace(/[\,\s]+$/, '');
 							const slot = mapLabelToIndex(matches[i].label);
-							if (slot >= 0){ out[slot] = textSeg; }
+							if (slot >= 0){ out[slot] = text; }
 						}
 						return out.filter(Boolean).length ? out : null;
 					};
