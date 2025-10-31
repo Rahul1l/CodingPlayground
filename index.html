@@ -2446,53 +2446,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					'classroom': 'Classroom Submission'
 				};
 
-		// Submit answers for Test view (posts to /test/submit_all) - refreshed
-		window.submitAllTestAnswers = async function(testId, questions) {
-			// Reuse the same collection logic as classroom
-			const answers = [];
-			let missingAnswers = [];
-			questions.forEach((question, index) => {
-				const questionIdx = index + 1;
-				if (question.question_type === 'mcq') {
-					const selectedAnswer = window.classroomAnswers[questionIdx];
-					const hasSelection = !(selectedAnswer === undefined || selectedAnswer === null || (typeof selectedAnswer === 'string' && selectedAnswer.trim() === ''));
-					if (!hasSelection) missingAnswers.push(`Question ${questionIdx} (MCQ)`);
-					answers.push({ question_index: questionIdx, question_type: 'mcq', question_data: question, selected_answer: hasSelection ? selectedAnswer : null });
-				} else if (question.question_type === 'coding') {
-					const codeTextarea = document.getElementById(`code-${questionIdx}`);
-					const code = codeTextarea ? codeTextarea.value.trim() : '';
-					if (!code) missingAnswers.push(`Question ${questionIdx} (Coding)`);
-					answers.push({ question_index: questionIdx, question_type: 'coding', question_data: question, user_code: code || null });
-				}
-			});
-
-			if (missingAnswers.length > 0) {
-				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) return;
-			}
-			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) return;
-
-			try {
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.style.display = 'block';
-				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
-				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
-				const response = await fetch('/test/submit_all', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ test_id: testId, answers })
-				});
-				const result = await response.json();
-				if (result.ok) {
-					displayFinalResult(result);
-				} else {
-					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
-				}
-			} catch (error) {
-				console.error('Submission error:', error);
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
-			}
-		};
+		// submitAllTestAnswers is defined in the shared activity/test script below
 				const contextName = contextNames[context] || context;
 				
 				// Confirm deletion
@@ -3743,6 +3697,53 @@ print(f'Sum: {x + y}')"></textarea>
 			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
 		}
 	};
+
+		// Ensure the same submit flow exists for the Test interface
+		window.submitAllTestAnswers = async function(testId, questions) {
+			const answers = [];
+			let missingAnswers = [];
+			questions.forEach((question, index) => {
+				const questionIdx = index + 1;
+				if (question.question_type === 'mcq') {
+					const selectedAnswer = window.classroomAnswers[questionIdx];
+					const hasSelection = !(selectedAnswer === undefined || selectedAnswer === null || (typeof selectedAnswer === 'string' && selectedAnswer.trim() === ''));
+					if (!hasSelection) missingAnswers.push(`Question ${questionIdx} (MCQ)`);
+					answers.push({ question_index: questionIdx, question_type: 'mcq', question_data: question, selected_answer: hasSelection ? selectedAnswer : null });
+				} else if (question.question_type === 'coding') {
+					const codeTextarea = document.getElementById(`code-${questionIdx}`);
+					const code = codeTextarea ? codeTextarea.value.trim() : '';
+					if (!code) missingAnswers.push(`Question ${questionIdx} (Coding)`);
+					answers.push({ question_index: questionIdx, question_type: 'coding', question_data: question, user_code: code || null });
+				}
+			});
+
+			if (missingAnswers.length > 0) {
+				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) return;
+			}
+			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) return;
+
+			try {
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.style.display = 'block';
+				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
+				document.querySelectorAll('.mcq-option-classroom, textarea, button').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
+				const response = await fetch('/test/submit_all', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ test_id: testId, answers })
+				});
+				const result = await response.json();
+				if (result.ok) {
+					displayFinalResult(result);
+				} else {
+					resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style=\"color: #dc2626; font-size: 1.2rem;\">❌ Error: ${result.error}</p></div>`;
+				}
+			} catch (error) {
+				console.error('Submission error:', error);
+				const resultDiv = document.getElementById('final-result');
+				resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
+			}
+		};
 	
 	// Display final results
 	function displayFinalResult(result) {
@@ -4796,7 +4797,9 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							const ch = l[i];
 							const next = l[i+1];
 							const prev = i === 0 ? '' : l[i-1];
-							if (/^[A-Za-z\d]$/.test(ch) && /[)\.:]/.test(next)) {
+							const afterSep = l[i+2] || '';
+							// Treat as an option label only when the separator is immediately followed by space
+							if (/^[A-Za-z\d]$/.test(ch) && /[)\.:]/.test(next) && /\s/.test(afterSep)) {
 								if (i === 0 || /[\s,;\|\-–—·•]/.test(prev)) {
 									starts.push({ label: ch, idx: i });
 								}
