@@ -4896,9 +4896,11 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						});
 						const result = await response.json();
 						if (result.ok) {
-							alert('✅ Saved to Question Bank (MongoDB)');
-							// Redirect to Questionnaire Management to view the stored activity
-							window.location.href = '/admin/questionnaire-management';
+						alert('✅ Saved to Question Bank (MongoDB)');
+						// Keep admin on the same page; refresh subject/module selects
+						try { renderSubjectModuleOptions(); } catch(_) {}
+						// Optionally clear the form so admin can add another subject quickly
+						try { clearQGForm(); addModuleField(); } catch(_) {}
 						} else {
 							alert(`❌ Error: ${result.error}`);
 						}
