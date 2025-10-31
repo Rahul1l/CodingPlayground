@@ -1,28 +1,3 @@
-@app.route("/admin/submissions/file")
-def admin_download_submission_file():
-    redir = require_admin()
-    if redir:
-        return redir
-    sub_id = request.args.get('sub_id')
-    idx = int(request.args.get('idx', '0'))
-    from bson.objectid import ObjectId
-    try:
-        obj_id = ObjectId(sub_id)
-    except Exception:
-        return abort(400)
-    sub = submissions_col.find_one({"_id": obj_id})
-    if not sub:
-        return abort(404)
-    details = sub.get('details', [])
-    if idx < 0 or idx >= len(details):
-        return abort(404)
-    d = details[idx]
-    fi = d.get('hands_on_file') or {}
-    path = fi.get('file_path')
-    name = fi.get('file_name', 'upload')
-    if not path or not os.path.exists(path):
-        return abort(404)
-    return send_file(path, as_attachment=True, download_name=name)
 import os
 import sys
 import subprocess
@@ -1025,6 +1000,33 @@ def admin_submission_detail(submission_id):
 		traceback.print_exc()
 		return render_template("index.html", view="admin_submission_detail", 
 			error=f"Error retrieving submission: {str(e)}")
+
+
+@app.route("/admin/submissions/file")
+def admin_download_submission_file():
+	redir = require_admin()
+	if redir:
+		return redir
+	sub_id = request.args.get('sub_id')
+	idx = int(request.args.get('idx', '0'))
+	from bson.objectid import ObjectId
+	try:
+		obj_id = ObjectId(sub_id)
+	except Exception:
+		return abort(400)
+	sub = submissions_col.find_one({"_id": obj_id})
+	if not sub:
+		return abort(404)
+	details = sub.get('details', [])
+	if idx < 0 or idx >= len(details):
+		return abort(404)
+	d = details[idx]
+	fi = d.get('hands_on_file') or {}
+	path = fi.get('file_path')
+	name = fi.get('file_name', 'upload')
+	if not path or not os.path.exists(path):
+		return abort(404)
+	return send_file(path, as_attachment=True, download_name=name)
 
 
 @app.route("/admin/submissions/delete/<submission_id>", methods=["POST"])
