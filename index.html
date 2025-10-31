@@ -2829,7 +2829,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% endif %}
 
 		{# Activity Detail #}
-		{% if view == 'activity' %}
+{% if view == 'activity' or view == 'test_interface' %}
 			<div class="flex-between">
 				<h2>{{ activity.subject }} Activity</h2>
 				<a class="btn secondary" href="/classroom">← Back to Activities</a>
@@ -3271,19 +3271,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</details>
 			</div>
 		</section>
-		<script>
-		// Ensure the Question Generator controls are wired when this view is active
-		document.addEventListener('DOMContentLoaded', function(){
-			const addModuleBtn = document.getElementById('qgAddModuleBtn');
-			if (addModuleBtn){ addModuleBtn.addEventListener('click', function(e){ e.preventDefault(); if (typeof addModuleField === 'function') addModuleField(); }); }
-			const clearBtn = document.getElementById('qgClearAllBtn');
-			if (clearBtn){ clearBtn.addEventListener('click', function(){ if (typeof clearQGForm === 'function') clearQGForm(); }); }
-			const saveBtn = document.getElementById('qgSubmitBankBtn');
-			if (saveBtn){ saveBtn.addEventListener('click', function(e){ if (typeof onSaveSubject === 'function') onSaveSubject(e); }); }
-			// Auto-add first module for better UX
-			if (typeof addModuleField === 'function') addModuleField();
-		});
-		</script>
 		{% endif %}
 
 		{# Admin: Questionnaire Management (separate tab) #}
@@ -3296,12 +3283,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
 			</div>
 		</section>
-		<script>
-		// Ensure groups load when this view is active
-		document.addEventListener('DOMContentLoaded', function(){
-			if (typeof renderQMGroups === 'function'){ renderQMGroups(); }
-		});
-		</script>
 		{% endif %}
 		
 {% if view == 'test_interface' %}
@@ -3429,9 +3410,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 	{% endif %}
 
 <script>
-		// Ensure shared answer state exists for test view
+		// Test interface script - runs when view == 'test_interface'
+		// Initialize shared answer state for test view (reuses classroom logic)
 		window.classroomAnswers = window.classroomAnswers || {};
 		window.classroomCode = window.classroomCode || {};
+		
 		// Test submission function - same logic as classroom activity
 		window.submitAllTestAnswers = async function(testId, questions) {
 			// Collect all answers
@@ -3555,178 +3538,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			html += '<button class="btn" onclick="window.location.href=\'/test\'">Return to Test Info</button>';
 			html += '</div>';
 			
-			resultDiv.innerHTML = html;
-		}
-		
-		// MCQ Selection Handler for Tests - use same as classroom
-		window.selectMCQOption = function(element, questionProgress) {
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('🔵 SELECT TEST MCQ - Question Progress: ' + questionProgress);
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		
-		// Validate inputs
-		if (!element) {
-			console.error('❌ ERROR: No element provided!');
-			return;
-		}
-		if (questionProgress === undefined || questionProgress === null) {
-			console.error('❌ ERROR: No question progress provided!');
-			return;
-		}
-		
-		// Get the option value and data attributes
-		const option = element.getAttribute('data-option');
-		const optionDataProgress = element.getAttribute('data-question-progress');
-		
-		console.log('📋 Element Details:');
-		console.log('   - data-option:', option);
-		console.log('   - data-question-progress:', optionDataProgress);
-		console.log('   - Passed questionProgress:', questionProgress);
-		
-		// Security check: Make sure data-question-progress matches questionProgress
-		if (optionDataProgress != questionProgress) {
-			console.error('❌ MISMATCH! Element has data-question-progress="' + optionDataProgress + '" but function received questionProgress=' + questionProgress);
-			console.error('   This indicates a template bug. All options should have the same data-question-progress.');
-			return;
-		}
-		
-		// Find all options for THIS specific question
-		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
-		const allOptionsInQuestion = document.querySelectorAll(selector);
-		console.log('🔍 Selector:', selector);
-		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
-		
-		if (allOptionsInQuestion.length === 0) {
-			console.error('❌ ERROR: No options found for question progress', questionProgress);
-			console.error('   Check that data-question-progress attributes are set correctly in HTML');
-			return;
-		}
-		
-		// Log all found options for debugging
-		allOptionsInQuestion.forEach((opt, idx) => {
-			console.log(`   Option ${idx + 1}: data-option="${opt.getAttribute('data-option')}", data-question-progress="${opt.getAttribute('data-question-progress')}"`);
-		});
-		
-		// STEP 1: Clear all selections in THIS question
-		console.log('🔄 Clearing all selections for question progress', questionProgress);
-		allOptionsInQuestion.forEach(opt => {
-			opt.style.background = '#f0f9ff';
-			opt.style.borderLeft = '3px solid #3b82f6';
-			opt.style.fontWeight = 'normal';
-			opt.style.border = '1px solid #bfdbfe';
-		});
-		
-		// STEP 2: Highlight the selected option
-		console.log('✨ Highlighting selected option:', option);
-		element.style.background = '#dbeafe';
-		element.style.borderLeft = '3px solid #10b981';
-		element.style.fontWeight = '600';
-		element.style.border = '2px solid #10b981';
-		
-		// STEP 3: Store in hidden input (for test submission)
-		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-		if (hiddenMcqAnswer) {
-			const previousValue = hiddenMcqAnswer.value;
-			hiddenMcqAnswer.value = option;
-			if (previousValue) {
-				console.log('🔄 RESELECTED: Changed from "' + previousValue + '" to "' + option + '"');
-			} else {
-				console.log('✅ NEW SELECTION: Stored "' + option + '" in hidden input');
-			}
-			console.log('📝 Hidden input value:', hiddenMcqAnswer.value);
-		} else {
-			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
-		}
-		
-		// STEP 4: Update visual status indicator
-		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
-		if (statusEl) {
-			statusEl.textContent = `✓ Selected: ${option}`;
-			statusEl.style.color = '#10b981';
-			statusEl.style.fontWeight = '600';
-			console.log('✅ Status updated for question progress', questionProgress);
-		} else {
-			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
-		}
-		
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('✅ TEST SELECTION COMPLETE - Question Progress ' + questionProgress + ' → Answer: "' + option + '"');
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-	};
+		resultDiv.innerHTML = html;
+	}
 	
-	// Clear Test MCQ Selection (Works for ANY question number)
-	window.clearTestMCQSelection = function(questionProgress) {
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('🔴 CLEAR TEST SELECTION - Question Progress: ' + questionProgress);
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		
-		// Validate input
-		if (questionProgress === undefined || questionProgress === null) {
-			console.error('❌ ERROR: No question progress provided!');
-			return;
-		}
-		
-		// Check current hidden input value
-		const hiddenMcqAnswer = document.getElementById('hidden_mcq_answer');
-		if (hiddenMcqAnswer && hiddenMcqAnswer.value) {
-			console.log('📋 Currently selected answer in hidden input:', hiddenMcqAnswer.value);
-		} else {
-			console.log('📋 No answer currently selected');
-		}
-		
-		// Find all options for THIS specific question
-		const selector = `.mcq-option[data-question-progress="${questionProgress}"]`;
-		const allOptionsInQuestion = document.querySelectorAll(selector);
-		console.log('🔍 Selector:', selector);
-		console.log('🔍 Found', allOptionsInQuestion.length, 'options for question progress', questionProgress);
-		
-		if (allOptionsInQuestion.length === 0) {
-			console.error('❌ ERROR: No options found for question progress', questionProgress);
-			console.error('   Check that data-question-progress attributes are set correctly in HTML');
-			return;
-		}
-		
-		// STEP 1: Reset all option styles to default
-		console.log('🔄 Resetting all option styles for question progress', questionProgress);
-		let clearedCount = 0;
-		allOptionsInQuestion.forEach(opt => {
-			opt.style.background = '#f0f9ff';
-			opt.style.borderLeft = '3px solid #3b82f6';
-			opt.style.fontWeight = 'normal';
-			opt.style.border = '1px solid #bfdbfe';
-			clearedCount++;
-		});
-		console.log('✅ Cleared', clearedCount, 'option elements');
-		
-		// STEP 2: Clear hidden input
-		if (hiddenMcqAnswer) {
-			const clearedValue = hiddenMcqAnswer.value;
-			hiddenMcqAnswer.value = '';
-			if (clearedValue) {
-				console.log('🗑️  Removed answer "' + clearedValue + '" from hidden input');
-			} else {
-				console.log('ℹ️  Hidden input was already empty');
-			}
-		} else {
-			console.error('❌ ERROR: Hidden MCQ answer input (#hidden_mcq_answer) not found!');
-		}
-		
-		// STEP 3: Clear visual status indicator
-		const statusEl = document.getElementById(`test-mcq-status-${questionProgress}`);
-		if (statusEl) {
-			statusEl.textContent = '';
-			console.log('✅ Status indicator cleared for question progress', questionProgress);
-		} else {
-			console.warn('⚠️  Status element #test-mcq-status-' + questionProgress + ' not found');
-		}
-		
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		console.log('✅ TEST CLEAR COMPLETE - Question Progress ' + questionProgress + ' is now unselected');
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-	};
-			
-			// Test interface compiler functionality
-			document.addEventListener('DOMContentLoaded', function() {
+	// Note: MCQ selection handlers (selectClassroomMCQ, clearClassroomMCQ) are loaded via the shared
+	// activity/test script block below, so test interface reuses classroom logic
+	
+	// Test interface compiler functionality (legacy - kept for backward compatibility)
+	document.addEventListener('DOMContentLoaded', function() {
 				const codeTextarea = document.getElementById('test-code');
 				const runButton = document.getElementById('run-test-code');
 				const clearButton = document.getElementById('clear-test-code');
@@ -4038,8 +3857,41 @@ print(f'Sum: {x + y}')"></textarea>
 	<footer class="container">
 		<small>&copy; <span id="year"></span> Coding Playground</small>
 	</footer>
-	<script src="/static/app.js"></script>
-	{% if view == 'activity' %}
+	<script>
+	// Global helpers available across all views
+	if (typeof window.toggleUserPassword !== 'function') {
+		function toggleUserPassword(username) {
+			console.log('toggleUserPassword called for:', username);
+			const passwordSpan = document.querySelector(`span[data-password="${username}"]`);
+			console.log('Password span found:', passwordSpan);
+			if (!passwordSpan) {
+				console.error('Password span not found for username:', username);
+				alert('Password element not found for user: ' + username);
+				return;
+			}
+			const button = passwordSpan.nextElementSibling;
+			console.log('Button found:', button);
+			const plainPassword = passwordSpan.getAttribute('data-plain');
+			console.log('Plain password from data-plain:', plainPassword);
+			if (passwordSpan.textContent.trim() === '••••••••') {
+				passwordSpan.textContent = plainPassword || 'N/A';
+				if (button) {
+					button.textContent = '🙈';
+					button.title = 'Click to hide password';
+				}
+				console.log('Password shown:', plainPassword);
+			} else {
+				passwordSpan.textContent = '••••••••';
+				if (button) {
+					button.textContent = '👁️';
+					button.title = 'Click to show password';
+				}
+				console.log('Password hidden');
+			}
+		}
+	}
+	</script>
+	{% if view == 'activity' or view == 'test_interface' %}
 	<script>
 	// Track selected answers for each question
 	window.classroomAnswers = {}; // Store MCQ answers
@@ -4641,46 +4493,6 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 	}
 	
-	function toggleUserPassword(username) {
-		console.log('toggleUserPassword called for:', username);
-		
-		// Find the password span using a more specific selector
-		const passwordSpan = document.querySelector(`span[data-password="${username}"]`);
-		console.log('Password span found:', passwordSpan);
-		
-		if (!passwordSpan) {
-			console.error('Password span not found for username:', username);
-			alert('Password element not found for user: ' + username);
-			return;
-		}
-		
-		// Find the button (next sibling)
-		const button = passwordSpan.nextElementSibling;
-		console.log('Button found:', button);
-		
-		// Get the plain password
-		const plainPassword = passwordSpan.getAttribute('data-plain');
-		console.log('Plain password from data-plain:', plainPassword);
-		
-		// Toggle the password visibility
-		if (passwordSpan.textContent.trim() === '••••••••') {
-			// Show password
-			passwordSpan.textContent = plainPassword || 'N/A';
-			if (button) {
-				button.textContent = '🙈';
-				button.title = 'Click to hide password';
-			}
-			console.log('Password shown:', plainPassword);
-		} else {
-			// Hide password
-			passwordSpan.textContent = '••••••••';
-			if (button) {
-				button.textContent = '👁️';
-				button.title = 'Click to show password';
-			}
-			console.log('Password hidden');
-		}
-	}
 	</script>
 	{% endif %}
 
@@ -5217,6 +5029,10 @@ print(f'Sum: {x + y}')"></textarea>
 
 			// ===== Question Bank & Activity/Test Generation (No OpenAI) =====
 			// All data (question banks, activities, tests, submissions) are stored in MongoDB only
+			
+			// Export functions to global scope so they're available everywhere
+			window.QuestionBankModule = window.QuestionBankModule || {};
+			
 			(function(){
 				function uid(){ return Math.random().toString(36).slice(2,10); }
 
@@ -5878,14 +5694,37 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 
 				// renderLogs removed from this page; view submissions/logs available in dedicated admin pages
 
-				document.addEventListener('DOMContentLoaded', function(){
+				// Export all functions to global scope for use in views
+				window.QuestionBankModule = {
+					addModuleField,
+					clearQGForm,
+					onSaveSubject,
+					renderSubjectModuleOptions,
+					onCreateClassroom,
+					onCreateTest,
+					renderQMGroups,
+					deleteActivity,
+					exportActivityCSV
+				};
+
+				// Initialize on every page load
+				function initQuestionBankUI(){
 					// Wire Question Generator form
 					const addModuleBtn = document.getElementById('qgAddModuleBtn');
-					if (addModuleBtn){ addModuleBtn.addEventListener('click', function(e){ e.preventDefault(); addModuleField(); }); }
+					if (addModuleBtn){ 
+						addModuleBtn.addEventListener('click', function(e){ 
+							e.preventDefault(); 
+							addModuleField(); 
+						}); 
+					}
 					const clearBtn = document.getElementById('qgClearAllBtn');
 					if (clearBtn){ clearBtn.addEventListener('click', function(){ clearQGForm(); }); }
 					const saveBtn = document.getElementById('qgSubmitBankBtn');
 					if (saveBtn){ saveBtn.addEventListener('click', onSaveSubject); }
+					const modulesContainer = document.getElementById('qgModulesContainer');
+					if (modulesContainer && modulesContainer.children.length === 0) {
+						addModuleField();
+					}
 
 					// Wire Create Classroom/Test forms
 					const classroomForm = document.getElementById('createClassroomForm');
@@ -5898,7 +5737,15 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					if (document.getElementById('qmGroups')) {
 						renderQMGroups();
 					}
-				});
+				}
+
+				// Run on DOMContentLoaded
+				if (document.readyState === 'loading') {
+					document.addEventListener('DOMContentLoaded', initQuestionBankUI);
+				} else {
+					// DOM already loaded (in case this script runs after page load)
+					initQuestionBankUI();
+				}
 			})();
 	</script>
 </body>
