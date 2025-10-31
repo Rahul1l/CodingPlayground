@@ -3066,10 +3066,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
 				<div style="margin-top: 1.5rem;">
 					{% if view == 'test_interface' %}
-						<button class="btn" type="button" onclick="submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-							✅ Submit All Answers
-						</button>
-						<button class="btn secondary" onclick="window.location.href='/test'" style="margin-left: 1rem;">
+						<!-- In test mode, the Submit button appears at the end only (see test navigator below) -->
+						<button class="btn secondary" type="button" onclick="window.location.href='/test'">
 							Cancel
 						</button>
 					{% else %}
@@ -3089,6 +3087,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<div>
 						<button class="btn secondary" type="button" id="btnPrev">← Previous</button>
 						<button class="btn" type="button" id="btnNext">Next →</button>
+						<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">✅ Submit All Answers</button>
 					</div>
 					<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
 				</div>
@@ -3922,11 +3921,13 @@ print(f'Sum: {x + y}')"></textarea>
 			const total = questions.length;
 			const btnPrev = document.getElementById('btnPrev');
 			const btnNext = document.getElementById('btnNext');
+			const btnSubmit = document.getElementById('btnSubmit');
 			const navError = document.getElementById('nav-error');
 			function show(idx){
 				questions.forEach((el,i)=>{ el.style.display = (i+1) === idx ? '' : 'none'; });
 				if (btnPrev) btnPrev.disabled = (idx === 1);
-				if (btnNext) btnNext.textContent = (idx === total) ? 'Finish' : 'Next →';
+				if (btnNext) btnNext.style.display = (idx === total) ? 'none' : '';
+				if (btnSubmit) btnSubmit.style.display = (idx === total) ? '' : 'none';
 				navError.textContent='';
 			}
 			function isAnswered(idx){
@@ -3947,19 +3948,26 @@ print(f'Sum: {x + y}')"></textarea>
 			if (btnNext) btnNext.addEventListener('click', ()=>{
 				if (!isAnswered(current)) { navError.textContent = `Please answer Question ${current} before proceeding.`; return; }
 				if (current < total){ current++; show(current); }
-				else { document.querySelector('#test-nav')?.scrollIntoView({behavior:'smooth'}); }
 			});
+			{% if view == 'test_interface' %}
+			if (btnSubmit) btnSubmit.addEventListener('click', ()=>{
+				if (!isAnswered(current)) { navError.textContent = `Please answer Question ${current} before proceeding.`; return; }
+				try { window.submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }}); } catch(e) {}
+			});
+			{% endif %}
 			show(current);
 			// Timer
 			try{
-				const endMs = {{ end_time_ms|tojson }};
+				const endMs = {% if view == 'test_interface' and end_time_ms is defined %}{{ end_time_ms|tojson }}{% else %}null{% endif %};
 				if (endMs){
 					const timerEl = document.getElementById('test-timer');
 					function fmt(ms){ const s=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(s/60); const ss=(s%60).toString().padStart(2,'0'); return `${m}:${ss}`; }
 					const iv = setInterval(()=>{
 						const remain = endMs - Date.now();
 						if (timerEl) timerEl.textContent = fmt(remain);
+						{% if view == 'test_interface' %}
 						if (remain <= 0){ clearInterval(iv); try{ window.submitAllTestAnswers('{{ test.test_id }}', {{ questions | tojson | forceescape }}); }catch(e){} }
+						{% endif %}
 					}, 1000);
 				}
 			}catch(e){}
@@ -4063,6 +4071,37 @@ print(f'Sum: {x + y}')"></textarea>
 			});
 		});
 	});
+
+	// Lightweight anti-cheat hooks for test interface
+	(function(){
+		if ('{{ view }}' !== 'test_interface') return;
+		async function reportViolation(type){
+			try {
+				await fetch('/test/violation', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ type })
+				});
+			} catch (e) {}
+		}
+		// Block right-click
+		document.addEventListener('contextmenu', function(e){ e.preventDefault(); reportViolation('right_click'); });
+		// Block copy/paste/cut shortcuts
+		document.addEventListener('keydown', function(e){
+			const k = (e.key || '').toLowerCase();
+			if (e.ctrlKey && (k === 'c' || k === 'v' || k === 'x' || k === 'tab')){
+				e.preventDefault();
+				reportViolation('ctrl+' + k);
+			}
+		});
+		// Also block clipboard events
+		document.addEventListener('copy', function(e){ e.preventDefault(); reportViolation('copy'); });
+		document.addEventListener('paste', function(e){ e.preventDefault(); reportViolation('paste'); });
+		document.addEventListener('cut', function(e){ e.preventDefault(); reportViolation('cut'); });
+		// Detect tab/window switch
+		document.addEventListener('visibilitychange', function(){ if (document.hidden) reportViolation('tab_switch'); });
+		window.addEventListener('blur', function(){ reportViolation('window_blur'); });
+	})();
 	</script>
 	{% endif %}
 
