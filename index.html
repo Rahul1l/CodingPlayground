@@ -2832,7 +2832,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% endif %}
 
 		{# Activity Detail #}
-{% if view == 'activity' or view == 'test_interface' %}
+		{% if view == 'activity' or view == 'test_interface' %}
 			<div class="flex-between">
 				<h2>{{ activity.subject }} Activity</h2>
 				<a class="btn secondary" href="/classroom">← Back to Activities</a>
@@ -3247,10 +3247,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 		{# Admin: Question Generator (separate tab) #}
 		{% if view == 'admin_question_generator' %}
-		<section class="grid">
-			<div class="card">
+			<section class="card">
 				<h2>🧩 Question Generator</h2>
-				<p class="muted" style="margin-bottom: 0.75rem;">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
+				<p class="muted">Create a subject with any number of modules and questions. Stored in MongoDB database.</p>
 				<form id="localQGForm">
 					<label>University
 						<input type="text" id="qgUniversity" placeholder="e.g., MIT" required>
@@ -3258,43 +3257,35 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<label>Subject Name
 						<input type="text" id="qgSubject" placeholder="e.g., Data Structures" required>
 					</label>
-					<div id="qgModulesContainer" style="margin-top: 0.75rem;"></div>
-					<div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+					<div id="qgModulesContainer"></div>
+					<div style="margin-top: 1rem;">
 						<button class="btn" id="qgAddModuleBtn" type="button">➕ Add Module</button>
 						<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
 					</div>
-					<div style="margin-top: 0.75rem;">
+					<div style="margin-top: 1rem;">
 						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save Subject to Question Bank</button>
 					</div>
 				</form>
-				<details style="margin-top: 0.75rem;">
-					<summary style="cursor: pointer; font-weight: 600; color: #667eea;">Show Question JSON Example</summary>
-					<pre style="background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 6px; overflow:auto; font-size: 0.85rem;">[\n  {\n    "type": "mcq",\n    "title": "What is the time complexity of binary search?",\n    "description": "Choose the correct answer.",\n    "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],\n    "correctOption": 1\n  },\n  {\n    "type": "coding",\n    "title": "Reverse a string",\n    "description": "Write code to reverse a string.",\n    "answer": "function reverseString(s){return s.split('').reverse().join('')}"\n  }\n]</pre>
-					<p class="muted">Paste the JSON above for each module. For MCQ, set <code>correctOption</code> to the index of the correct choice (0-based). For coding, provide either <code>answer</code> (string compare after trimming) or <code>answerRegex</code> (case-insensitive).</p>
-				</details>
-			</div>
-		</section>
+			</section>
 		{% endif %}
 
 		{# Admin: Questionnaire Management (separate tab) #}
 		{% if view == 'admin_questionnaire_management' %}
-		<section class="grid">
-			<div class="card">
+			<section class="card">
 				<h2>🗂️ Questionnaire Management</h2>
-				<p class="muted" style="margin-bottom: 0.75rem;">All activities grouped by university. View, edit, export CSV, or delete.</p>
+				<p class="muted">All activities grouped by university. View, edit, export CSV, or delete.</p>
 				<div id="qmGroups"></div>
-				<div id="qmDetailContainer" style="margin-top: 0.75rem; display:none;"></div>
-			</div>
-		</section>
+				<div id="qmDetailContainer" style="margin-top: 1rem; display:none;"></div>
+			</section>
 		{% endif %}
 		
-{% if view == 'test_interface' %}
-	<div class="flex-between">
-		<h2>{{ test.subject }} - Test</h2>
-		<a class="btn secondary" href="/test">← Back to Test Info</a>
-	</div>
+		{% if view == 'test_interface' %}
+			<div class="flex-between">
+				<h2>{{ test.subject }} - Test</h2>
+				<a class="btn secondary" href="/test">← Back to Test Info</a>
+			</div>
 
-	{% if questions %}
+			{% if questions %}
 		{% for question in questions %}
 		{% set question_num = loop.index %}
 		<section class="card question-card">
