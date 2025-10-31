@@ -1671,7 +1671,7 @@ def api_generate_activity_from_bank():
 		if not subject or not module or not classroom_id:
 			return jsonify({"ok": False, "error": "Subject, module, and classroom_id are required"}), 400
 		
-		if num_mcq < 0 or num_coding < 0 or (num_mcq == 0 and num_coding == 0):
+		if num_mcq < 0 or num_coding < 0 or num_hands_on < 0 or (num_mcq == 0 and num_coding == 0 and num_hands_on == 0):
 			return jsonify({"ok": False, "error": "At least one question type must be selected"}), 400
 		
 		# Get question bank
@@ -1685,9 +1685,13 @@ def api_generate_activity_from_bank():
 		
 		# Filter and randomly select questions
 		import random
-		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
-		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
-		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
+		def _qtype(q: dict) -> str:
+			t = (q.get("type") or q.get("question_type") or "").strip().lower()
+			t = t.replace('-', '_')
+			return t
+		mcq_pool = [q for q in module_questions if _qtype(q) == "mcq"]
+		coding_pool = [q for q in module_questions if _qtype(q) == "coding"]
+		handson_pool = [q for q in module_questions if _qtype(q) in ("hands_on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
@@ -1824,13 +1828,23 @@ def api_generate_test_from_bank():
 		
 		# Filter and randomly select questions
 		import random
-		mcq_pool = [q for q in module_questions if q.get("type") == "mcq"]
-		coding_pool = [q for q in module_questions if q.get("type") == "coding"]
+		def _qtype(q: dict) -> str:
+			t = (q.get("type") or q.get("question_type") or "").strip().lower()
+			t = t.replace('-', '_')
+			return t
+		mcq_pool = [q for q in module_questions if _qtype(q) == "mcq"]
+		coding_pool = [q for q in module_questions if _qtype(q) == "coding"]
+		handson_pool = [q for q in module_questions if _qtype(q) in ("hands_on","handson")]
 		handson_pool = [q for q in module_questions if q.get("type") in ("hands_on","hands-on","handson")]
 		
 		selected_mcq = random.sample(mcq_pool, min(num_mcq, len(mcq_pool)))
 		selected_coding = random.sample(coding_pool, min(num_coding, len(coding_pool)))
-		selected_handson = random.sample(handson_pool, min(num_hands_on, len(handson_pool)))
+		# num_hands_on is only present for activity if provided; handle gracefully
+		try:
+			num_hands_on = int(data.get("num_hands_on", 0))
+		except Exception:
+			num_hands_on = 0
+		selected_handson = random.sample(handson_pool, min(num_hands_on, len(handson_pool))) if num_hands_on > 0 else []
 		
 		selected_questions = selected_mcq + selected_coding + selected_handson
 		random.shuffle(selected_questions)
