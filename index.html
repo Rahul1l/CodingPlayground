@@ -1503,6 +1503,364 @@ button.secondary, .btn.secondary, a.btn.secondary {
 		const ADMIN_USERNAME = 'Ayushman';
 		const ADMIN_PASSWORD = 'ayushman9277';
 	</script>
+	
+	<!-- CRITICAL: Global handlers must be defined BEFORE any HTML that references them -->
+	<script>
+		// Initialize global answer storage
+		window.classroomAnswers = window.classroomAnswers || {};
+		window.classroomCode = window.classroomCode || {};
+		
+		// MCQ Selection Handler - Called from inline onclick attributes
+		window.selectClassroomMCQ = function(element, questionIdx) {
+			if (!element || !questionIdx) return;
+			
+			const optionIdxStr = element.getAttribute('data-option-index');
+			const optionText = element.getAttribute('data-option-text') || element.textContent.trim();
+			const optionDataIdx = element.getAttribute('data-question-idx');
+			const optionIdx = optionIdxStr !== null ? parseInt(optionIdxStr, 10) : NaN;
+			
+			if (optionDataIdx != questionIdx) return;
+			
+			const selector = '.mcq-option-classroom[data-question-idx="' + questionIdx + '"]';
+			const allOptions = document.querySelectorAll(selector);
+			
+			if (allOptions.length === 0) return;
+			
+			// Clear all selections
+			allOptions.forEach(function(opt) {
+				opt.style.background = '#f0f9ff';
+				opt.style.borderLeft = '3px solid #3b82f6';
+				opt.style.fontWeight = 'normal';
+				opt.style.border = '1px solid #bfdbfe';
+			});
+			
+			// Highlight selected
+			element.style.background = '#dbeafe';
+			element.style.borderLeft = '3px solid #10b981';
+			element.style.fontWeight = '600';
+			element.style.border = '2px solid #10b981';
+			
+			// Store answer
+			window.classroomAnswers[questionIdx] = Number.isFinite(optionIdx) ? optionIdx : optionText;
+			
+			// Update status
+			const statusEl = document.getElementById('mcq-status-' + questionIdx);
+			if (statusEl) {
+				statusEl.textContent = '✓ Selected: ' + optionText;
+				statusEl.style.color = '#10b981';
+				statusEl.style.fontWeight = '600';
+			}
+		};
+		
+		// Clear MCQ Selection
+		window.clearClassroomMCQ = function(questionIdx) {
+			if (!questionIdx) return;
+			
+			const selector = '.mcq-option-classroom[data-question-idx="' + questionIdx + '"]';
+			const allOptions = document.querySelectorAll(selector);
+			
+			if (allOptions.length === 0) return;
+			
+			allOptions.forEach(function(opt) {
+				opt.style.background = '#f0f9ff';
+				opt.style.borderLeft = '3px solid #3b82f6';
+				opt.style.fontWeight = 'normal';
+				opt.style.border = '1px solid #bfdbfe';
+			});
+			
+			delete window.classroomAnswers[questionIdx];
+			
+			const statusEl = document.getElementById('mcq-status-' + questionIdx);
+			if (statusEl) {
+				statusEl.textContent = '';
+			}
+		};
+		
+		// Toggle password visibility
+		window.toggleUserPassword = function(username) {
+			const passwordSpan = document.querySelector('span[data-password="' + username + '"]');
+			if (!passwordSpan) return;
+			const button = passwordSpan.nextElementSibling;
+			const plainPassword = passwordSpan.getAttribute('data-plain');
+			if (passwordSpan.textContent.trim() === '••••••••') {
+				passwordSpan.textContent = plainPassword || 'N/A';
+				if (button) {
+					button.textContent = '🙈';
+					button.title = 'Click to hide password';
+				}
+			} else {
+				passwordSpan.textContent = '••••••••';
+				if (button) {
+					button.textContent = '👁️';
+					button.title = 'Click to show password';
+				}
+			}
+		};
+		
+		// Submit Test Answers - Global function for test interface
+		window.submitAllTestAnswers = async function(testId, questions) {
+			try {
+				const answers = [];
+				let hasHandsOn = false;
+				
+				questions.forEach(function(question, index) {
+					const questionIdx = index + 1;
+					if (question.question_type === 'mcq') {
+						const selectedAnswer = window.classroomAnswers[questionIdx];
+						answers.push({
+							question_index: questionIdx,
+							question_type: 'mcq',
+							question_data: question,
+							selected_answer: selectedAnswer !== undefined ? selectedAnswer : null
+						});
+					} else if (question.question_type === 'coding') {
+						const codeTextarea = document.getElementById('code-' + questionIdx);
+						const code = codeTextarea ? codeTextarea.value.trim() : '';
+						answers.push({
+							question_index: questionIdx,
+							question_type: 'coding',
+							question_data: question,
+							user_code: code || null
+						});
+					} else if (question.question_type === 'hands_on') {
+						hasHandsOn = true;
+						const fileInput = document.getElementById('handson-file-' + questionIdx);
+						answers.push({
+							question_index: questionIdx,
+							question_type: 'hands_on',
+							question_data: question,
+							file_field: 'file_q' + questionIdx
+						});
+					}
+				});
+				
+				// Show loading
+				document.body.style.cursor = 'wait';
+				const submitBtn = document.getElementById('btnSubmit');
+				if (submitBtn) submitBtn.disabled = true;
+				
+				// Send to backend
+				let response;
+				if (hasHandsOn) {
+					const fd = new FormData();
+					fd.append('test_id', testId);
+					fd.append('answers', JSON.stringify(answers));
+					answers.forEach(function(ans) {
+						if (ans.question_type === 'hands_on') {
+							const fileEl = document.getElementById('handson-file-' + ans.question_index);
+							if (fileEl && fileEl.files && fileEl.files[0]) {
+								fd.append(ans.file_field, fileEl.files[0]);
+							}
+						}
+					});
+					response = await fetch('/test/submit_all', { method: 'POST', body: fd });
+				} else {
+					response = await fetch('/test/submit_all', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ test_id: testId, answers: answers })
+					});
+				}
+				
+				const result = await response.json();
+				
+				if (result.ok) {
+					alert('Test successfully submitted!');
+					window.location.href = '/user/home';
+				} else {
+					alert('Error: ' + (result.error || 'Failed to submit test'));
+					document.body.style.cursor = 'default';
+					if (submitBtn) submitBtn.disabled = false;
+				}
+			} catch (error) {
+				console.error('Submission error:', error);
+				alert('Failed to submit test. Please try again.');
+				document.body.style.cursor = 'default';
+				const submitBtn = document.getElementById('btnSubmit');
+				if (submitBtn) submitBtn.disabled = false;
+			}
+		};
+		
+		// Initialize test interface features when DOM is ready
+		document.addEventListener('DOMContentLoaded', function() {
+			// Check if we're on the test interface
+			const testQuestions = document.querySelectorAll('.test-question');
+			if (testQuestions.length === 0) return;
+			
+			// Get test data from hidden spans
+			const testIdEl = document.querySelector('[data-test-id]');
+			const questionsDataEl = document.querySelector('[data-questions-json]');
+			let testId = null;
+			let questionsData = [];
+			
+			if (testIdEl && questionsDataEl) {
+				testId = testIdEl.getAttribute('data-test-id');
+				try {
+					const jsonStr = questionsDataEl.getAttribute('data-questions-json');
+					questionsData = JSON.parse(jsonStr);
+				} catch(e) {
+					console.error('Failed to parse questions JSON:', e);
+				}
+			}
+			
+			// Test Navigation: One question at a time
+			let currentQuestion = 1;
+			const totalQuestions = testQuestions.length;
+			const btnPrev = document.getElementById('btnPrev');
+			const btnNext = document.getElementById('btnNext');
+			const btnSubmit = document.getElementById('btnSubmit');
+			const navError = document.getElementById('nav-error');
+			
+			function showQuestion(index) {
+				testQuestions.forEach(function(el, i) {
+					el.style.display = (i + 1) === index ? 'block' : 'none';
+				});
+				if (btnPrev) btnPrev.disabled = (index === 1);
+				if (btnNext) btnNext.style.display = (index === totalQuestions) ? 'none' : 'inline-block';
+				if (btnSubmit) btnSubmit.style.display = (index === totalQuestions) ? 'inline-block' : 'none';
+				if (navError) navError.textContent = '';
+			}
+			
+			function isQuestionAnswered(index) {
+				const questionEl = document.querySelector('.test-question[data-index="' + index + '"]');
+				if (!questionEl) return true;
+				const questionType = questionEl.getAttribute('data-type');
+				
+				if (questionType === 'mcq') {
+					return window.classroomAnswers[index] !== undefined && window.classroomAnswers[index] !== null;
+				} else if (questionType === 'coding') {
+					const codeArea = document.getElementById('code-' + index);
+					return codeArea && codeArea.value.trim().length > 0;
+				} else if (questionType === 'hands_on') {
+					const fileInput = document.getElementById('handson-file-' + index);
+					return fileInput && fileInput.files && fileInput.files.length > 0;
+				}
+				return true;
+			}
+			
+			if (btnPrev) {
+				btnPrev.addEventListener('click', function() {
+					if (currentQuestion > 1) {
+						currentQuestion--;
+						showQuestion(currentQuestion);
+					}
+				});
+			}
+			
+			if (btnNext) {
+				btnNext.addEventListener('click', function() {
+					if (!isQuestionAnswered(currentQuestion)) {
+						if (navError) navError.textContent = 'Please answer Question ' + currentQuestion + ' before proceeding.';
+						return;
+					}
+					if (currentQuestion < totalQuestions) {
+						currentQuestion++;
+						showQuestion(currentQuestion);
+					}
+				});
+			}
+			
+			if (btnSubmit && testId && questionsData.length > 0) {
+				btnSubmit.addEventListener('click', function() {
+					if (!isQuestionAnswered(currentQuestion)) {
+						if (navError) navError.textContent = 'Please answer Question ' + currentQuestion + ' before proceeding.';
+						return;
+					}
+					window.submitAllTestAnswers(testId, questionsData);
+				});
+			}
+			
+			// Initialize
+			showQuestion(currentQuestion);
+			
+			// Timer
+			const timerEl = document.getElementById('test-timer');
+			if (timerEl && timerEl.getAttribute('data-end-ms')) {
+				const endMs = parseInt(timerEl.getAttribute('data-end-ms'));
+				if (endMs && !isNaN(endMs)) {
+					function updateTimer() {
+						const now = Date.now();
+						const remaining = Math.max(0, endMs - now);
+						const seconds = Math.floor(remaining / 1000);
+						const minutes = Math.floor(seconds / 60);
+						const secs = seconds % 60;
+						timerEl.textContent = minutes + ':' + (secs < 10 ? '0' : '') + secs;
+						
+						if (remaining <= 0) {
+							clearInterval(timerInterval);
+							// Auto-submit
+							const testIdEl = document.querySelector('[data-test-id]');
+							const questionsDataEl = document.querySelector('[data-questions-json]');
+							if (testIdEl && questionsDataEl) {
+								try {
+									const testId = testIdEl.getAttribute('data-test-id');
+									const questionsJson = questionsDataEl.getAttribute('data-questions-json');
+									const questions = JSON.parse(questionsJson);
+									window.submitAllTestAnswers(testId, questions);
+								} catch(e) {
+									console.error('Auto-submit failed:', e);
+								}
+							}
+						}
+					}
+					updateTimer();
+					const timerInterval = setInterval(updateTimer, 1000);
+				}
+			}
+			
+			// Anti-cheat for test interface
+			if (testQuestions.length > 0) {
+				function reportViolation(type) {
+					fetch('/test/violation', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ type: type })
+					}).catch(function() {});
+				}
+				
+				// Block right-click
+				document.addEventListener('contextmenu', function(e) {
+					e.preventDefault();
+					reportViolation('right_click');
+				});
+				
+				// Block copy/paste/cut
+				document.addEventListener('keydown', function(e) {
+					const key = (e.key || '').toLowerCase();
+					if (e.ctrlKey && (key === 'c' || key === 'v' || key === 'x' || key === 'tab')) {
+						e.preventDefault();
+						reportViolation('ctrl+' + key);
+					}
+				});
+				
+				document.addEventListener('copy', function(e) {
+					e.preventDefault();
+					reportViolation('copy');
+				});
+				
+				document.addEventListener('paste', function(e) {
+					e.preventDefault();
+					reportViolation('paste');
+				});
+				
+				document.addEventListener('cut', function(e) {
+					e.preventDefault();
+					reportViolation('cut');
+				});
+				
+				// Detect tab switching
+				document.addEventListener('visibilitychange', function() {
+					if (document.hidden) {
+						reportViolation('tab_switch');
+					}
+				});
+				
+				window.addEventListener('blur', function() {
+					reportViolation('window_blur');
+				});
+			}
+		});
+	</script>
 	{% if view != 'login' %}
 	<header class="container flex-between">
 		<h1>Coding Playground</h1>
@@ -2927,6 +3285,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<div id="test-timer" data-end-ms="{{ end_time_ms|default('') }}" style="font-weight:700; color:#dc2626;"></div>
 						<a class="btn secondary" href="/test">← Back to Test Info</a>
 					</div>
+					<!-- Hidden data for timer auto-submit -->
+					<span data-test-id="{{ test.test_id }}" style="display:none;"></span>
+					<span data-questions-json="{{ questions|tojson|forceescape }}" style="display:none;"></span>
 				{% else %}
 				<h2>{{ activity.subject }} Activity</h2>
 				<a class="btn secondary" href="/classroom">← Back to Activities</a>
@@ -3477,13 +3838,14 @@ print(f'Sum: {x + y}')"></textarea>
 		};
 	}
 	</script>
-	{% if view == 'activity' or view == 'test_interface' %}
-	<script>
-	// Track selected answers for each question
-	window.classroomAnswers = {}; // Store MCQ answers
-	window.classroomCode = {};     // Store coding answers
 	
-	// MCQ Selection Handler for Classroom Activities and Tests
+	<script>
+	// GLOBAL: MCQ handlers must be available for both activity and test_interface views
+	// These functions are called from inline onclick attributes in the HTML
+	window.classroomAnswers = window.classroomAnswers || {};
+	window.classroomCode = window.classroomCode || {};
+	
+	// MCQ Selection Handler - ALWAYS AVAILABLE
 	window.selectClassroomMCQ = function(element, questionIdx) {
 		if (!element || !questionIdx) return;
 		
