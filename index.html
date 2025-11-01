@@ -4482,6 +4482,8 @@ print(f'Sum: {x + y}')"></textarea>
 	</script>
 	{% endif %}
 
+{# moved compiler script above within single conditional; this block was removed to avoid duplicate conditionals #}
+
 	{% if view == 'admin_users' %}
 	<script>
 	async function deleteUser(username) {
