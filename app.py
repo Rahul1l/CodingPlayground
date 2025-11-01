@@ -2737,13 +2737,16 @@ def classroom_complete():
 
 @app.route("/test")
 def test():
-	redir = require_user()
-	if redir:
-		return redir
-	user = users_col.find_one({"username": session["user_username"]})
-	if user.get("role") not in ("test", "both"):
-		abort(403)
-	test_doc = tests_col.find_one({"test_id": user.get("test_id")})
+	try:
+		redir = require_user()
+		if redir:
+			return redir
+		user = users_col.find_one({"username": session["user_username"]})
+		if not user:
+			return render_template("index.html", view="login", error="User not found. Please login again.")
+		if user.get("role") not in ("test", "both"):
+			abort(403)
+		test_doc = tests_col.find_one({"test_id": user.get("test_id")})
 	if not test_doc:
 		return render_template("index.html", view="test", error="No test assigned" )
 	
@@ -2810,10 +2813,13 @@ def test():
 	if session.get("test_progress") is None:
 		session["test_progress"] = 0
 	
-	# Always show test info, but with different UI based on test status
-	return render_template("index.html", view="test", test=test_doc, progress=session["test_progress"], 
-		test_open=test_open, test_expired=test_expired, test_status=test_status,
-		start_time=start_time_local, end_time=end_time_local, scheduled_at=scheduled_at_local, current_time=now + timezone_offset) 
+		# Always show test info, but with different UI based on test status
+		return render_template("index.html", view="test", test=test_doc, progress=session["test_progress"], 
+			test_open=test_open, test_expired=test_expired, test_status=test_status,
+			start_time=start_time_local, end_time=end_time_local, scheduled_at=scheduled_at_local, current_time=now + timezone_offset)
+	except Exception as e:
+		logger.error(f"Error in /test route: {e}", exc_info=True)
+		return render_template("index.html", view="user_dashboard", error=f"Error loading test: {str(e)}") 
 
 
 @app.route("/debug/test/<test_id>")  # Debug route to check test content
