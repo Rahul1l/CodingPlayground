@@ -1608,6 +1608,15 @@ button.secondary, .btn.secondary, a.btn.secondary {
 		};
 		
 	const APP = window.APP_CONTEXT || {};
+	window.__testSubmitted = window.__testSubmitted || false;
+	window.__testTimerInterval = window.__testTimerInterval || null;
+
+	function formatCountdownFromMs(ms){
+		const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+	}
 	
 	function collectTestAnswers(questions) {
 		const answers = [];
@@ -1653,6 +1662,10 @@ button.secondary, .btn.secondary, a.btn.secondary {
 	
 	// Submit Test Answers - Global function for test interface
 	window.submitAllTestAnswers = async function(testIdOverride, questionsOverride, options = {}) {
+		if (window.__testSubmitted) {
+			alert('This test has already been submitted.');
+			return;
+		}
 		const testId = testIdOverride || APP.testId;
 		const questions = (Array.isArray(questionsOverride) && questionsOverride.length) ? questionsOverride : (Array.isArray(APP.questions) ? APP.questions : []);
 		if (!testId || !questions.length) {
@@ -1704,17 +1717,78 @@ button.secondary, .btn.secondary, a.btn.secondary {
 			if (!result.ok) {
 				throw new Error(result.error || 'Failed to submit test');
 			}
-			const successMessage = autoSubmit ? 'Time is up! Your test was submitted automatically.' : 'Test successfully submitted!';
-			alert(successMessage);
-			window.location.href = '/user/home';
+			showTestSubmissionSuccess(result, autoSubmit);
 		} catch (error) {
 			console.error('Test submission error:', error);
 			alert(`Failed to submit test: ${error.message || error}`);
-			interactiveElements.forEach(el => { if (el.dataset.disabledBySubmit === '1') { el.disabled = false; delete el.dataset.disabledBySubmit; } });
+			interactiveElements.forEach(el => {
+				if (el.dataset.disabledBySubmit === '1') {
+					el.disabled = false;
+					delete el.dataset.disabledBySubmit;
+				}
+			});
 			if (submitBtn) submitBtn.disabled = false;
+		} finally {
 			document.body.style.cursor = 'default';
 		}
 	};
+
+	function showTestSubmissionSuccess(result, autoSubmit) {
+		window.__testSubmitted = true;
+		if (window.__testTimerInterval) {
+			clearInterval(window.__testTimerInterval);
+			window.__testTimerInterval = null;
+		}
+		const questionBlocks = document.querySelectorAll('.test-question');
+		questionBlocks.forEach(el => { el.style.display = 'none'; });
+		const nav = document.getElementById('test-nav');
+		if (nav) nav.style.display = 'none';
+	const navError = document.getElementById('nav-error');
+	if (navError) {
+		navError.style.color = '#10b981';
+		navError.textContent = autoSubmit
+			? 'Time is up! Your responses were submitted.'
+			: 'Test successfully submitted!';
+	}
+		const timerContainer = document.getElementById('test-timer');
+		if (timerContainer) timerContainer.style.display = 'none';
+	const finalResult = document.getElementById('final-result');
+	if (finalResult) finalResult.style.display = 'none';
+		const successCard = document.getElementById('test-success-message');
+		if (!successCard) {
+			window.location.href = '/home';
+			return;
+		}
+		const successText = document.getElementById('test-success-text');
+		if (successText) {
+			successText.textContent = autoSubmit
+				? 'Time is up! Your test was submitted automatically. Your instructor will review your responses.'
+				: 'Test successfully submitted! Your instructor will review your responses.';
+		}
+		const violationContainer = document.getElementById('test-success-violations');
+		const violationCountEl = document.getElementById('test-success-violation-count');
+		const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
+		if (violationContainer && violationCountEl) {
+			if (violationCount > 0) {
+				violationContainer.style.display = '';
+				violationCountEl.textContent = violationCount;
+			} else {
+				violationContainer.style.display = 'none';
+			}
+		}
+		successCard.style.display = 'block';
+		const returnBtn = document.getElementById('btnReturnHome');
+		if (returnBtn && !returnBtn.dataset.bound) {
+			returnBtn.dataset.bound = '1';
+			returnBtn.addEventListener('click', () => { window.location.href = '/home'; });
+		}
+		const logoutBtn = document.getElementById('btnLogoutAfterTest');
+		if (logoutBtn && !logoutBtn.dataset.bound) {
+			logoutBtn.dataset.bound = '1';
+			logoutBtn.addEventListener('click', () => { window.location.href = '/user/logout'; });
+		}
+		window.scrollTo({ top: successCard.offsetTop - 24, behavior: 'smooth' });
+	}
 		
 		// Initialize test interface features when DOM is ready
 		document.addEventListener('DOMContentLoaded', function() {
@@ -1814,33 +1888,30 @@ button.secondary, .btn.secondary, a.btn.secondary {
 			if (timerEl && timerEl.getAttribute('data-end-ms')) {
 				const endMs = parseInt(timerEl.getAttribute('data-end-ms'));
 				if (endMs && !isNaN(endMs)) {
-					function updateTimer() {
-						const now = Date.now();
-						const remaining = Math.max(0, endMs - now);
-						const seconds = Math.floor(remaining / 1000);
-						const minutes = Math.floor(seconds / 60);
-						const secs = seconds % 60;
-						timerEl.textContent = minutes + ':' + (secs < 10 ? '0' : '') + secs;
-						
+					const updateTimer = () => {
+						if (window.__testSubmitted) {
+							if (window.__testTimerInterval) {
+								clearInterval(window.__testTimerInterval);
+								window.__testTimerInterval = null;
+							}
+							return;
+						}
+						const remaining = endMs - Date.now();
+						timerEl.textContent = formatCountdownFromMs(remaining);
 						if (remaining <= 0) {
-							clearInterval(timerInterval);
-							// Auto-submit
-							const testIdEl = document.querySelector('[data-test-id]');
-							const questionsDataEl = document.querySelector('[data-questions-json]');
-							if (testIdEl && questionsDataEl) {
-								try {
-									const testId = testIdEl.getAttribute('data-test-id');
-									const questionsJson = questionsDataEl.getAttribute('data-questions-json');
-									const questions = JSON.parse(questionsJson);
-									window.submitAllTestAnswers(testId, questions);
-								} catch(e) {
-									console.error('Auto-submit failed:', e);
-								}
+							if (window.__testTimerInterval) {
+								clearInterval(window.__testTimerInterval);
+								window.__testTimerInterval = null;
+							}
+							try {
+								window.submitAllTestAnswers(testId, questionsData, { autoSubmit: true });
+							} catch (err) {
+								console.error('Auto-submit failed:', err);
 							}
 						}
-					}
+					};
 					updateTimer();
-					const timerInterval = setInterval(updateTimer, 1000);
+					window.__testTimerInterval = setInterval(updateTimer, 1000);
 				}
 			}
 			
@@ -2533,37 +2604,32 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div class="card">
 					<h3>📈 Total Submissions</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ stats.total_submissions }}</p>
-					<p class="muted">All submission types</p>
+					<p class="muted">Completed assessments</p>
 				</div>
 				<div class="card">
 					<h3>✅ Tests Completed</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #10b981;">{{ stats.total_test_completions }}</p>
-					<p class="muted">Final scores available</p>
+					<p class="muted">All test submissions</p>
 				</div>
 				<div class="card">
-					<h3>⚠️ Violations</h3>
+					<h3>🎓 Classroom Completions</h3>
+					<p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">{{ stats.total_classroom_completions }}</p>
+					<p class="muted">Submitted classroom activities</p>
+				</div>
+				<div class="card">
+					<h3>⚠️ Total Violations</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #dc2626;">{{ stats.total_violations }}</p>
-					<p class="muted">Anti-cheat warnings</p>
+					<p class="muted">Anti-cheat warnings captured</p>
 				</div>
 				<div class="card">
-					<h3>👥 Active Users</h3>
+					<h3>👥 Unique Users</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #f59e0b;">{{ stats.unique_users }}</p>
 					<p class="muted">Users with submissions</p>
 				</div>
 				<div class="card">
 					<h3>🏛️ Universities</h3>
-					<p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">{{ stats.unique_universities }}</p>
-					<p class="muted">Universities active</p>
-				</div>
-				<div class="card">
-					<h3>🎓 Classroom MCQ</h3>
-					<p style="font-size: 2rem; font-weight: 700; color: #06b6d4;">{{ stats.total_classroom_mcq }}</p>
-					<p class="muted">MCQ submissions</p>
-				</div>
-				<div class="card">
-					<h3>💻 Classroom Coding</h3>
-					<p style="font-size: 2rem; font-weight: 700; color: #14b8a6;">{{ stats.total_classroom_coding }}</p>
-					<p class="muted">Coding submissions</p>
+					<p style="font-size: 2rem; font-weight: 700; color: #06b6d4;">{{ stats.unique_universities }}</p>
+					<p class="muted">Campuses represented</p>
 				</div>
 			</section>
 
@@ -2642,9 +2708,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							{% for user_stat in user_violations %}
 							<tr>
 								<td><strong>{{ user_stat._id }}</strong></td>
-								<td><span class="role-badge role-test">{{ user_stat.count }} violations</span></td>
+								<td><span class="role-badge role-test">{{ user_stat.count }} warnings</span></td>
 								<td>
-									<a href="/admin/submissions?username={{ user_stat._id }}&context=test_violation" class="btn secondary small">View Details</a>
+									<a href="/admin/submissions?username={{ user_stat._id }}&context=test_complete" class="btn secondary small">View Details</a>
 								</td>
 							</tr>
 							{% endfor %}
@@ -2661,14 +2727,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<div>
 						<label>Context Type</label>
 						<select name="context">
-							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Types</option>
+							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Completed</option>
 							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Test Complete</option>
-							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>✅ Classroom Complete</option>
-							<option value="test_violation" {% if filter_context == 'test_violation' %}selected{% endif %}>⚠️ Violations</option>
-							<option value="test" {% if filter_context == 'test' %}selected{% endif %}>📝 Test Questions</option>
-							<option value="classroom_mcq" {% if filter_context == 'classroom_mcq' %}selected{% endif %}>🎓 Classroom MCQ (Legacy)</option>
-							<option value="classroom_coding" {% if filter_context == 'classroom_coding' %}selected{% endif %}>🎓 Classroom Coding (Legacy)</option>
-							<option value="classroom" {% if filter_context == 'classroom' %}selected{% endif %}>🎓 Classroom (Old)</option>
+							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>🎓 Classroom Complete</option>
 						</select>
 					</div>
 					<div>
@@ -2709,172 +2770,69 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</form>
 			</section>
 
-			{# Submissions Table #}
-			<section class="card">
-				<div class="flex-between" style="margin-bottom: 1rem;">
-					<h3>📋 Submissions List ({{ total_submissions }} total)</h3>
-					<p class="muted">Showing {{ submissions|length }} entries</p>
-				</div>
-				
-				{% if submissions %}
-				<div class="table-container">
-					<table>
-						<thead>
-							<tr>
-								<th>Date/Time</th>
-								<th>Username</th>
-								<th>University</th>
-								<th>Context</th>
-								<th>Test ID</th>
-								<th>Details</th>
-								<th style="min-width: 200px;">Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for sub in submissions %}
-							<tr>
-								<td>{{ sub.created_at_str }}</td>
-								<td><strong>{{ sub.username }}</strong></td>
-								<td><span class="muted">{{ sub.university if sub.university else '-' }}</span></td>
-								<td>
-									{% if sub.context == 'test_violation' %}
-										<span class="role-badge" style="background: #dc2626; color: white;">⚠️ Violation</span>
-									{% elif sub.context == 'test_complete' %}
-										<span class="role-badge" style="background: #10b981; color: white;">✅ Test Complete</span>
-									{% elif sub.context == 'classroom_activity_complete' %}
-										<span class="role-badge" style="background: #8b5cf6; color: white;">✅ Classroom Complete</span>
-									{% elif sub.context == 'test' %}
-										<span class="role-badge role-test">📝 Test Q</span>
-									{% elif sub.context == 'classroom' %}
-										<span class="role-badge role-classroom">🎓 Old</span>
-									{% elif sub.context == 'classroom_mcq' %}
-										<span class="role-badge" style="background: #8b5cf6; color: white;">🎓 MCQ</span>
-									{% elif sub.context == 'classroom_coding' %}
-										<span class="role-badge" style="background: #06b6d4; color: white;">🎓 Coding</span>
-									{% else %}
-										<span class="role-badge">{{ sub.context }}</span>
-									{% endif %}
-								</td>
-								<td>{{ sub.test_id if sub.test_id else '-' }}</td>
-								<td>
-									{% if sub.context == 'test_violation' %}
-										<strong style="color: #dc2626;">{{ sub.violation_type }}</strong>
-										{% if sub.warning_number %}
-										<br><small class="muted">Warning {{ sub.warning_number }}/3</small>
-										{% endif %}
-									{% elif sub.context == 'test_complete' %}
-									<strong style="color: #10b981;">Final Score: {{ sub.final_score|default(0) }}%</strong>
-									{% set fs = sub.final_score|default(0)|int %}
-										<br><small class="muted">Grade: 
-									{% if fs >= 90 %}A
-									{% elif fs >= 80 %}B
-									{% elif fs >= 70 %}C
-									{% elif fs >= 60 %}D
-										{% else %}F
-										{% endif %}
-										</small>
-									{% elif sub.context == 'classroom_activity_complete' %}
-										<strong style="color: #8b5cf6;">Score: {{ sub.score }}</strong>
-										<br><small class="muted">{{ sub.percentage }}% ({{ sub.correct_count }}/{{ sub.total_questions }} correct)</small>
-									{% elif sub.context == 'test' %}
-										Question {{ sub.question_index if sub.question_index is not none else 'N/A' }}
-										{% if sub.question_type %}
-										<br><small class="muted">Type: {{ sub.question_type }}</small>
-										{% endif %}
-									{% elif sub.context == 'classroom_mcq' %}
-										<strong>{{ sub.question_title if sub.question_title else 'MCQ Question' }}</strong>
-										<br><small class="muted">
-										{% if sub.is_correct %}
-											<span style="color: #10b981;">✓ Correct</span>
-										{% else %}
-											<span style="color: #dc2626;">✗ Incorrect</span>
-										{% endif %}
-										</small>
-									{% elif sub.context == 'classroom_coding' %}
-										<strong>{{ sub.question_title if sub.question_title else 'Coding Question' }}</strong>
-										<br><small class="muted">Code submitted</small>
-									{% else %}
-										-
-									{% endif %}
-								</td>
-								<td>
-									<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-										<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small" target="_blank">View Details</a>
-										<button class="btn danger small" onclick="deleteSubmission('{{ sub._id }}', '{{ sub.username }}', '{{ sub.context }}')">🗑️ Delete</button>
-									</div>
-								</td>
-							</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-
-				{# Pagination #}
-				{% if total_pages > 1 %}
-				<div class="pagination" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center; justify-content: center;">
-					{% if page > 1 %}
-						<a href="?page={{ page - 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">← Previous</a>
-					{% endif %}
-					<span class="muted">Page {{ page }} of {{ total_pages }}</span>
-					{% if page < total_pages %}
-						<a href="?page={{ page + 1 }}&context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">Next →</a>
-					{% endif %}
-				</div>
-				{% endif %}
-
-				{% else %}
-				<p class="muted">No submissions found matching the current filters.</p>
-				{% endif %}
-			</section>
-
-			{# Grouped by University → Subject #}
-			<section class="card" style="margin-top: 1.5rem;">
-				<h3>🏛️ Grouped by University → Subject</h3>
-				{% if grouped_submissions %}
-					{% for uni, subj_map in grouped_submissions.items() %}
-						<div style="margin-top: 1rem;">
-							<h4 style="margin: 0 0 0.5rem 0;">{{ uni }}</h4>
-							{% for subj, items in subj_map.items() %}
-								<div style="padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 6px; margin: 0.5rem 0;">
-									<div class="flex-between" style="align-items: center;">
-										<strong>📚 {{ subj }}</strong>
-										<a class="btn secondary small" href="/admin/submissions/export?university={{ uni|urlencode }}&subject={{ subj|urlencode }}">Export Subject CSV</a>
-									</div>
-									<div class="table-container" style="margin-top: 0.5rem;">
-										<table>
-											<thead>
-												<tr>
-													<th>Date/Time</th>
-													<th>Username</th>
-													<th>Context</th>
-													<th>Test ID</th>
-													<th style="min-width: 160px;">Actions</th>
+		{# Grouped Submissions by University → Subject #}
+		<section class="card">
+			<div class="flex-between" style="margin-bottom: 1rem;">
+				<h3>📋 Submissions (Grouped by University → Subject)</h3>
+				<p class="muted">Total: {{ total_submissions }}</p>
+			</div>
+			{% if grouped_submissions %}
+				{% for uni, subjects in grouped_submissions.items() %}
+					<div class="card" style="margin-bottom: 1rem;">
+						<h3 style="margin:0 0 0.5rem 0;">🏛️ {{ uni }}</h3>
+						{% for subj, subs in subjects.items() %}
+							<div class="card" style="margin:0.5rem 0;">
+								<div class="flex-between">
+									<h4 style="margin:0;">Subject: {{ subj }}</h4>
+									<a href="/admin/submissions/export?university={{ uni }}&subject={{ subj }}&context={{ filter_context }}" class="btn secondary small">📥 Export CSV</a>
+								</div>
+								<div class="table-container" style="margin-top:0.75rem;">
+									<table>
+										<thead>
+											<tr>
+												<th>Date/Time</th>
+												<th>User</th>
+												<th>Context</th>
+												<th>Violations</th>
+												<th>Score</th>
+												<th>Actions</th>
 											</tr>
 										</thead>
 										<tbody>
-											{% for sub in items %}
+											{% for sub in subs %}
 											<tr>
 												<td>{{ sub.created_at_str }}</td>
 												<td>{{ sub.username }}</td>
-												<td>{{ sub.context }}</td>
-												<td>{{ sub.test_id if sub.test_id else '-' }}</td>
 												<td>
-													<a href="/admin/submissions/{{ sub._id }}" class="btn secondary small">Details</a>
+													{% if sub.context == 'test_complete' %}
+														<span class="role-badge" style="background:#10b981; color:#ffffff;">Test Completed</span>
+													{% elif sub.context == 'classroom_activity_complete' %}
+														<span class="role-badge" style="background:#8b5cf6; color:#ffffff;">Classroom Completed</span>
+													{% else %}
+														<span class="role-badge">{{ sub.context_label }}</span>
+													{% endif %}
+												</td>
+												<td>{% if sub.violations_total > 0 %}<span class="role-badge" style="background:#dc2626; color:#ffffff;">{{ sub.violations_total }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+												<td>{% if sub.score_display and sub.score_display != '-' %}{{ sub.score_display }}{% else %}-{% endif %}</td>
+												<td>
+													<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+														<a href="/admin/submissions/{{ sub._id_str }}" class="btn secondary small" target="_blank">View Details</a>
+														<button class="btn danger small" onclick="deleteSubmission('{{ sub._id_str }}', '{{ sub.username }}', '{{ sub.context }}')">🗑️ Delete</button>
+													</div>
 												</td>
 											</tr>
 											{% endfor %}
 										</tbody>
-										</table>
-									</div>
+									</table>
 								</div>
-							{% endfor %}
-						</div>
-					{% endfor %}
-				{% else %}
-					<p class="muted">No submissions found to group.</p>
-				{% endif %}
-			</section>
-			</div>
+							</div>
+						{% endfor %}
+					</div>
+				{% endfor %}
+			{% else %}
+				<p class="muted">No submissions found.</p>
+			{% endif %}
+		</section>
 			
 			<script>
 			// Delete submission function with confirmation
@@ -3246,7 +3204,66 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<pre class="scroll" style="max-height: 500px;">{{ submission | tojson(indent=2) }}</pre>
 				</details>
 			</section>
-			{% endif %}
+		{% endif %}
+	{% endif %}
+
+		{# Test Submitted Home View #}
+		{% if view == 'test_submitted_home' %}
+		<section class="container narrow">
+			<h2>✅ Test Submitted</h2>
+			<p class="muted">Great job, {{ user.username }}. Your responses have been recorded and will be reviewed by an administrator.</p>
+			<div class="card" style="margin-top: 1.5rem;">
+				<h3>Submission Summary</h3>
+				<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+					<div>
+						<p class="muted">Test ID</p>
+						<p><strong>{{ test.test_id if test else 'N/A' }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Subject</p>
+						<p><strong>{{ test.subject if test and test.subject else 'N/A' }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Module</p>
+						<p><strong>{{ test.module if test and test.module else 'N/A' }}</strong></p>
+					</div>
+				</div>
+				<div style="margin-top: 1.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1rem;">
+					<p style="margin:0; color:#1f2937;">You can close this window or continue exploring the platform. Any anti-cheat notices will be reviewed automatically.</p>
+				</div>
+				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.75rem;">
+					<a class="btn" href="/test">Back to Test Overview</a>
+					<a class="btn secondary" href="/user/logout">Logout</a>
+				</div>
+			</div>
+		</section>
+		{% endif %}
+
+		{% if view == 'test_submitted_home' %}
+		<section class="container narrow">
+			<h2>✅ Test Submitted</h2>
+			<p class="muted">Your test responses have been recorded. An administrator will review them. You may return to the test overview or logout.</p>
+			<div class="card" style="margin-top:1rem;">
+				<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+					<div>
+						<p class="muted">Test ID</p>
+						<p><strong>{{ test.test_id if test else 'N/A' }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Subject</p>
+						<p><strong>{{ test.subject if test and test.subject else 'N/A' }}</strong></p>
+					</div>
+					<div>
+						<p class="muted">Module</p>
+						<p><strong>{{ test.module if test and test.module else 'N/A' }}</strong></p>
+					</div>
+				</div>
+				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
+					<a class="btn" href="/test">Back to Test Overview</a>
+					<a class="btn secondary" href="/user/logout">Logout</a>
+				</div>
+			</div>
+		</section>
 		{% endif %}
 
 
@@ -3272,7 +3289,35 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<a class="btn" href="/compiler">Open Compiler</a>
 					</div>
 				</div>
-			</section>
+			{% if submission.violation_count %}
+			<div style="margin-top: 2rem;">
+				<h4>⚠️ Anti-cheat Summary</h4>
+				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
+				{% if submission.violations %}
+				<div class="table-container" style="margin-top: 1rem;">
+					<table>
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Violation</th>
+								<th>When</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for v in submission.violations %}
+							<tr>
+								<td>{{ loop.index }}</td>
+								<td>{{ v.type|default('unknown') }}</td>
+								<td>{{ v.timestamp|default('N/A') }}</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				{% endif %}
+			</div>
+			{% endif %}
+		</section>
 		{% endif %}
 
 		{# Classroom List #}
@@ -3483,6 +3528,18 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">✅ Submit All Answers</button>
 					</div>
 					<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
+				</div>
+			</section>
+			<section class="card" id="test-success-message" style="display:none; margin-top: 1.5rem; border-left: 4px solid #10b981;">
+				<h3>✅ Test Submitted</h3>
+				<p id="test-success-text" style="margin: 1rem 0;">Thank you. Your responses have been recorded.</p>
+				<div id="test-success-violations" style="display:none; margin: 1rem 0; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">
+					<strong style="color: #92400e;">⚠️ Anti-cheat notices captured</strong>
+					<p style="margin: 0.5rem 0 0 0; color: #92400e;">Warnings triggered: <span id="test-success-violation-count">0</span>. An administrator will review these events.</p>
+				</div>
+				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
+					<button class="btn" id="btnReturnHome">Return to Home</button>
+					<button class="btn secondary" id="btnLogoutAfterTest">Logout</button>
 				</div>
 			</section>
 			{% endif %}
@@ -4048,93 +4105,46 @@ print(f'Sum: {x + y}')"></textarea>
 		}
 	};
 
-		// Ensure the same submit flow exists for the Test interface
-		window.submitAllTestAnswers = async function(testId, questions) {
-			const answers = [];
-			let missingAnswers = [];
-			let hasHandsOn = false;
-			questions.forEach((question, index) => {
-				const questionIdx = index + 1;
-				if (question.question_type === 'mcq') {
-					const selectedAnswer = window.classroomAnswers[questionIdx];
-					const hasSelection = !(selectedAnswer === undefined || selectedAnswer === null || (typeof selectedAnswer === 'string' && selectedAnswer.trim() === ''));
-					if (!hasSelection) missingAnswers.push(`Question ${questionIdx} (MCQ)`);
-					answers.push({ question_index: questionIdx, question_type: 'mcq', question_data: question, selected_answer: hasSelection ? selectedAnswer : null });
-				} else if (question.question_type === 'coding') {
-					const codeTextarea = document.getElementById(`code-${questionIdx}`);
-					const code = codeTextarea ? codeTextarea.value.trim() : '';
-					if (!code) missingAnswers.push(`Question ${questionIdx} (Coding)`);
-					answers.push({ question_index: questionIdx, question_type: 'coding', question_data: question, user_code: code || null });
-				} else if (question.question_type === 'hands_on') {
-					hasHandsOn = true;
-					const fileInput = document.getElementById(`handson-file-${questionIdx}`);
-					const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-					if (!file) missingAnswers.push(`Question ${questionIdx} (Hands-on)`);
-					answers.push({ question_index: questionIdx, question_type: 'hands_on', question_data: question, file_field: `file_q${questionIdx}` });
-				}
-			});
-
-			if (missingAnswers.length > 0) {
-				if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) return;
-			}
-			if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) return;
-
-			try {
-				const resultDiv = document.getElementById('final-result');
-				resultDiv.style.display = 'block';
-				resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
-				document.querySelectorAll('.mcq-option-classroom, textarea, button, input[type=file]').forEach(el => { el.disabled = true; el.style.opacity = '0.6'; el.style.cursor = 'not-allowed'; });
-				let response;
-				if (hasHandsOn) {
-					const fd = new FormData();
-					fd.append('test_id', testId);
-					fd.append('answers', JSON.stringify(answers));
-					answers.forEach(ans => {
-						if (ans.question_type === 'hands_on'){
-							const qi = ans.question_index;
-							const fileEl = document.getElementById(`handson-file-${qi}`);
-							if (fileEl && fileEl.files && fileEl.files[0]){
-								fd.append(ans.file_field, fileEl.files[0]);
-							}
-						}
-					});
-					response = await fetch('/test/submit_all', { method: 'POST', body: fd });
-				} else {
-					response = await fetch('/test/submit_all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ test_id: testId, answers }) });
-				}
-				const result = await response.json();
-				if (result.ok) {
-					displayFinalResult(result);
-				} else {
-					resultDiv.innerHTML = `<div style=\"padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;\"><p style=\"color: #dc2626; font-size: 1.2rem;\">❌ Error: ${result.error}</p></div>`;
-			}
-		} catch (error) {
-			console.error('Submission error:', error);
-			const resultDiv = document.getElementById('final-result');
-			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
-		}
-	};
-	
 	// Display final results
 	function displayFinalResult(result) {
 		const resultDiv = document.getElementById('final-result');
-		
+		if (!resultDiv) return;
+		const isTestView = (window.APP_CONTEXT && window.APP_CONTEXT.view === 'test_interface');
+		if (isTestView) {
+			const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
+			let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px; color: #ffffff; text-align: center;">';
+			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">✅ Test Submitted</h2>';
+			html += '<p style="margin: 0 0 1rem 0; font-size: 1.1rem;">Your responses have been recorded. An administrator will review them shortly.</p>';
+			if (violationCount > 0) {
+				html += `<div style="margin: 1.5rem auto 0 auto; max-width: 420px; background: rgba(254, 243, 199, 0.25); border: 1px solid rgba(234, 179, 8, 0.5); border-radius: 10px; padding: 1rem; color: #fef3c7;">`;
+				html += `<strong style="display:block; margin-bottom:0.35rem;">⚠️ Anti-cheat notices recorded</strong>`;
+				html += `<span>Warnings captured: ${violationCount}</span>`;
+				html += '</div>';
+			}
+			html += '<div style="margin-top: 1.75rem; display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">';
+			html += '<button class="btn" onclick="window.location.href=\'/home\'">Return to Home</button>';
+			html += '<button class="btn secondary" onclick="window.location.href=\'/user/logout\'">Logout</button>';
+			html += '</div>';
+			html += '</div>';
+			resultDiv.style.display = 'block';
+			resultDiv.innerHTML = html;
+			return;
+		}
 		let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center;">';
 		html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">🎉 Submission Complete!</h2>';
 		html += `<div style="font-size: 3rem; font-weight: 700; margin: 1rem 0;">${result.correct_count}/${result.total_questions}</div>`;
 		html += `<div style="font-size: 1.5rem; margin: 0.5rem 0;">${result.percentage}%</div>`;
 		html += `<p style="margin: 1rem 0 0 0; opacity: 0.9;">You answered ${result.correct_count} out of ${result.total_questions} questions correctly.</p>`;
 		html += '</div>';
-		
 		if (result.details && result.details.length > 0) {
 			html += '<div style="margin-top: 2rem;">';
 			html += '<h3>📊 Detailed Breakdown</h3>';
-			result.details.forEach((detail) => {
+		result.details.forEach((detail) => {
 				html += '<div style="padding: 1rem; margin: 1rem 0; background: #f9fafb; border-radius: 8px; border-left: 4px solid ';
 				html += detail.is_correct ? '#10b981' : '#dc2626';
 				html += ';">';
 				html += `<h4 style="margin: 0 0 0.5rem 0; color: #000000;">Question ${detail.question_index}</h4>`;
-				html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : detail.question_type === 'coding' ? 'Coding' : 'Hands-on'}</p>`;
+			html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : detail.question_type === 'coding' ? 'Coding' : 'Hands-on'}</p>`;
 				html += `<p style="margin: 0.5rem 0 0 0; font-weight: 600; color: ${detail.is_correct ? '#10b981' : '#dc2626'};">`;
 				html += detail.is_correct ? '✅ Correct' : '❌ Incorrect';
 				html += '</p>';
@@ -4142,11 +4152,9 @@ print(f'Sum: {x + y}')"></textarea>
 			});
 			html += '</div>';
 		}
-		
 		html += '<div style="margin-top: 2rem; text-align: center;">';
 		html += '<button class="btn" onclick="window.location.href=\'/classroom\'">Return to Classroom</button>';
 		html += '</div>';
-		
 		resultDiv.innerHTML = html;
 	}
 	

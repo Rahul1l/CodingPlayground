@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from io import BytesIO, StringIO
+from collections import defaultdict
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort, send_file
 from flask_cors import CORS
@@ -772,19 +773,18 @@ def admin_submissions():
 	redir = require_admin()
 	if redir:
 		return redir
-	
-	# Get filter parameters
-	filter_context = request.args.get('context', 'all')  # all, test, test_violation, classroom, classroom_mcq, classroom_coding
+	filter_context = request.args.get('context', 'all')
 	filter_test = request.args.get('test_id', 'all')
 	filter_user = request.args.get('username', 'all')
 	filter_university = request.args.get('university', 'all')
 	page = int(request.args.get('page', 1))
 	per_page = 50
 	skip = (page - 1) * per_page
-	
-	# Build query
+	base_contexts = ['test_complete', 'classroom_activity_complete']
 	query = {}
-	if filter_context != 'all':
+	if filter_context == 'all':
+		query['context'] = {'$in': base_contexts}
+	else:
 		query['context'] = filter_context
 	if filter_test != 'all':
 		query['test_id'] = filter_test
@@ -792,93 +792,119 @@ def admin_submissions():
 		query['username'] = filter_user
 	if filter_university != 'all':
 		query['university'] = filter_university
-	
-	# Get submissions
-	submissions = list(submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page))
-	# Normalize display fields to avoid template errors (e.g., strftime on non-datetime) and add subject
+	submissions_cursor = submissions_col.find(query).sort("created_at", -1).skip(skip).limit(per_page)
+	submissions = []
 	from datetime import datetime as _dt
-	for s in submissions:
+	for s in submissions_cursor:
+		s["_id_str"] = str(s.get("_id"))
 		created_at = s.get("created_at")
 		if isinstance(created_at, _dt):
 			s["created_at_str"] = created_at.strftime('%Y-%m-%d %H:%M:%S')
 		else:
 			s["created_at_str"] = created_at if created_at else "N/A"
-		# Infer subject where missing for grouping/export
 		subject_name = s.get("subject")
 		if not subject_name:
 			try:
 				if s.get("test_id"):
-					_test = tests_col.find_one({"test_id": s["test_id"]}, {"subject": 1})
-					if _test and _test.get("subject"):
-						subject_name = _test.get("subject")
+					test_doc = tests_col.find_one({"test_id": s["test_id"]}, {"subject": 1})
+					if test_doc and test_doc.get("subject"):
+						subject_name = test_doc.get("subject")
 				elif s.get("activity_id"):
-					_act = activities_col.find_one({"activity_id": s["activity_id"]}, {"subject": 1})
-					if _act and _act.get("subject"):
-						subject_name = _act.get("subject")
+					activity_doc = activities_col.find_one({"activity_id": s["activity_id"]}, {"subject": 1})
+					if activity_doc and activity_doc.get("subject"):
+						subject_name = activity_doc.get("subject")
 			except Exception:
 				pass
 		s["subject_name"] = subject_name or "Unknown"
-	total_submissions = submissions_col.count_documents(query)
-	total_pages = (total_submissions + per_page - 1) // per_page
-	
-	# Get unique values for filters
-	all_tests = submissions_col.distinct("test_id")
-	all_users = submissions_col.distinct("username")
-	all_universities = submissions_col.distinct("university")
-	
-	# Build grouped structure: university -> subject -> [submissions]
-	grouped_submissions = {}
+		context = s.get("context")
+		if context == "test_complete":
+			correct = s.get("correct_count", 0)
+			total = s.get("total_questions", 0)
+			s["score_display"] = f"{correct}/{total}" if total else str(correct)
+			percent = s.get("percentage")
+			if percent is None and total:
+				try:
+					percent = round((correct / total) * 100, 2)
+				except Exception:
+					percent = None
+			s["score_percent"] = percent
+			s["violations_total"] = s.get("violation_count", 0) or 0
+			s["assessment_label"] = s.get("test_id") or "-"
+			s["context_label"] = "Test Completed"
+		elif context == "classroom_activity_complete":
+			score_text = s.get("score")
+			if not score_text:
+				correct = s.get("correct_count", 0)
+				total = s.get("total_questions", 0)
+				score_text = f"{correct}/{total}" if total else str(correct)
+			s["score_display"] = score_text
+			s["score_percent"] = s.get("percentage")
+			s["violations_total"] = 0
+			s["assessment_label"] = s.get("activity_id") or "-"
+			s["context_label"] = "Classroom Completed"
+		else:
+			s["score_display"] = "-"
+			s["score_percent"] = None
+			s["violations_total"] = s.get("violation_count", 0) or 0
+			s["assessment_label"] = s.get("test_id") or s.get("activity_id") or "-"
+			s["context_label"] = s.get("context", "-")
+		submissions.append(s)
+
+	# Group submissions by University -> Subject for simplified UI
+	grouped = {}
 	for s in submissions:
 		uni = s.get("university") or "Unknown"
 		subj = s.get("subject_name") or "Unknown"
-		grouped_submissions.setdefault(uni, {})
-		grouped_submissions[uni].setdefault(subj, []).append(s)
-	
-	# Get statistics
-	stats = {
-		'total_submissions': submissions_col.count_documents({}),
-		'total_violations': submissions_col.count_documents({'context': 'test_violation'}),
-		'total_test_submissions': submissions_col.count_documents({'context': 'test'}),
-		'total_test_completions': submissions_col.count_documents({'context': 'test_complete'}),
-		'total_classroom_submissions': submissions_col.count_documents({'context': 'classroom'}),
-		'total_classroom_mcq': submissions_col.count_documents({'context': 'classroom_mcq'}),
-		'total_classroom_coding': submissions_col.count_documents({'context': 'classroom_coding'}),
-		'unique_users': len(all_users),
-		'unique_tests': len([t for t in all_tests if t]),
-		'unique_universities': len([u for u in all_universities if u and u != 'Unknown'])
-	}
-	
-	# Get university breakdown
-	university_pipeline = [
-		{"$match": {"university": {"$exists": True, "$ne": None, "$ne": "Unknown"}}},
-		{"$group": {"_id": "$university", "count": {"$sum": 1}}},
+		if uni not in grouped:
+			grouped[uni] = {}
+		if subj not in grouped[uni]:
+			grouped[uni][subj] = []
+		grouped[uni][subj].append(s)
+	total_submissions = submissions_col.count_documents(query)
+	total_pages = (total_submissions + per_page - 1) // per_page
+	all_tests = sorted(t for t in submissions_col.distinct("test_id", {'context': 'test_complete'}) if t)
+	all_users = sorted(u for u in submissions_col.distinct("username", {'context': {'$in': base_contexts}}) if u)
+	all_universities = sorted(u for u in submissions_col.distinct("university", {'context': {'$in': base_contexts}}) if u)
+	violation_stats = list(submissions_col.aggregate([
+		{"$match": {"context": "test_complete", "violations": {"$exists": True, "$ne": []}}},
+		{"$unwind": "$violations"},
+		{"$group": {"_id": "$violations.type", "count": {"$sum": 1}}},
 		{"$sort": {"count": -1}}
-	]
-	university_stats = list(submissions_col.aggregate(university_pipeline))
-	
-	# Get violation breakdown
-	violation_pipeline = [
-		{"$match": {"context": "test_violation"}},
-		{"$group": {"_id": "$violation_type", "count": {"$sum": 1}}},
-		{"$sort": {"count": -1}}
-	]
-	violation_stats = list(submissions_col.aggregate(violation_pipeline))
-	
-	# Get users with most violations
-	user_violation_pipeline = [
-		{"$match": {"context": "test_violation"}},
-		{"$group": {"_id": "$username", "count": {"$sum": 1}}},
+	]))
+	total_violations = sum(item.get("count", 0) for item in violation_stats)
+	user_violations = list(submissions_col.aggregate([
+		{"$match": {"context": "test_complete", "violation_count": {"$gt": 0}}},
+		{"$group": {"_id": "$username", "count": {"$sum": "$violation_count"}}},
 		{"$sort": {"count": -1}},
 		{"$limit": 10}
-	]
-	user_violations = list(submissions_col.aggregate(user_violation_pipeline))
-	
-	return render_template("index.html", view="admin_submissions", 
-		submissions=submissions, page=page, total_pages=total_pages, total_submissions=total_submissions,
-		filter_context=filter_context, filter_test=filter_test, filter_user=filter_user, filter_university=filter_university,
-		all_tests=all_tests, all_users=all_users, all_universities=all_universities, stats=stats, 
-		university_stats=university_stats, violation_stats=violation_stats, user_violations=user_violations,
-		grouped_submissions=grouped_submissions)
+	]))
+	stats = {
+		"total_submissions": submissions_col.count_documents({'context': {'$in': base_contexts}}),
+		"total_test_completions": submissions_col.count_documents({'context': 'test_complete'}),
+		"total_classroom_completions": submissions_col.count_documents({'context': 'classroom_activity_complete'}),
+		"total_violations": total_violations,
+		"unique_users": len(all_users),
+		"unique_universities": len([u for u in all_universities if u and u != 'Unknown'])
+	}
+	return render_template(
+		"index.html",
+		view="admin_submissions",
+		submissions=submissions,
+		grouped_submissions=grouped,
+		page=page,
+		total_pages=total_pages,
+		total_submissions=total_submissions,
+		filter_context=filter_context,
+		filter_test=filter_test,
+		filter_user=filter_user,
+		filter_university=filter_university,
+		all_tests=all_tests,
+		all_users=all_users,
+		all_universities=all_universities,
+		stats=stats,
+		violation_stats=violation_stats,
+		user_violations=user_violations
+	)
 
 
 @app.route("/admin/submissions/export")
@@ -922,7 +948,7 @@ def admin_export_submissions():
 				query = {'$and': [query, {'$or': or_clauses}]}
 			else:
 				query = {'$or': or_clauses}
-
+	
 	try:
 		# Get all submissions matching filters
 		submissions = list(submissions_col.find(query).sort("created_at", -1))
@@ -958,7 +984,7 @@ def admin_export_submissions():
 						subject_csv = (_a or {}).get('subject', '')
 				except Exception:
 					subject_csv = subject_csv or ''
-
+			
 			writer.writerow([
 				sub.get('username', ''),
 				sub.get('university', 'Unknown'),
@@ -2199,6 +2225,10 @@ def user_home():
 	if role == "classroom":
 		return redirect(url_for("classroom"))
 	elif role == "test":
+		test_id = user.get("test_id")
+		if test_id and session.get("test_completed") == test_id:
+			test_doc = tests_col.find_one({"test_id": test_id}) or {}
+			return render_template("index.html", view="test_submitted_home", user=user, test=test_doc)
 		return redirect(url_for("test"))
 	elif role == "both":
 		return render_template("index.html", view="user_selection", user=user)
@@ -2496,11 +2526,11 @@ def classroom_submit_all():
 	redir = require_user()
 	if redir:
 		return jsonify({"ok": False, "error": "Not authenticated"}), 401
-
+	
 	user = users_col.find_one({"username": session["user_username"]})
 	if user.get("role") not in ("classroom", "both"):
 		return jsonify({"ok": False, "error": "Not authorized"}), 403
-
+	
 	is_multipart = request.content_type and 'multipart/form-data' in request.content_type
 	answers = []
 	activity_id = None
@@ -2518,7 +2548,7 @@ def classroom_submit_all():
 
 	if not activity_id or not isinstance(answers, list) or len(answers) == 0:
 		return jsonify({"ok": False, "error": "Missing required fields"}), 400
-
+	
 	activity = activities_col.find_one({"activity_id": activity_id})
 	if not activity:
 		return jsonify({"ok": False, "error": "Activity not found"}), 404
@@ -2542,13 +2572,13 @@ def classroom_submit_all():
 	results = []
 	correct_count = 0
 	total_questions = len(answers)
-
+	
 	for answer in answers:
 		question_index = answer.get("question_index")
 		question_type = answer.get("question_type")
 		question_data = answer.get("question_data", {})
 		lookup_key = _question_lookup_key(question_data)
-
+		
 		if question_type == "mcq":
 			selected_answer = answer.get("selected_answer")
 			options = question_data.get("options", [])
@@ -2577,10 +2607,10 @@ def classroom_submit_all():
 				is_correct = selected_index == correct_index
 			elif correct_text and selected_text:
 				is_correct = selected_text.strip().lower() == correct_text.strip().lower()
-
+			
 			if is_correct:
 				correct_count += 1
-
+			
 			results.append({
 				"question_index": question_index,
 				"question_type": "mcq",
@@ -2592,7 +2622,7 @@ def classroom_submit_all():
 				"is_correct": is_correct,
 				"explanation": question_data.get("explanation", "")
 			})
-
+			
 		elif question_type == "coding":
 			user_code = answer.get("user_code")
 			is_correct = False
@@ -2618,18 +2648,18 @@ def classroom_submit_all():
 				try:
 					trainer_role = """You are a Patient and Encouraging Coding Mentor focused on helping students learn.
 
-	Your approach:
-	- **Student-Centered**: Provide constructive feedback
-	- **Growth Mindset**: Mistakes are learning opportunities
-	- **Supportive**: Build confidence while identifying areas for growth
-	- **Clear**: Explain concepts simply
+Your approach:
+- **Student-Centered**: Provide constructive feedback
+- **Growth Mindset**: Mistakes are learning opportunities
+- **Supportive**: Build confidence while identifying areas for growth
+- **Clear**: Explain concepts simply
 
-	Return a JSON with:
-	{
-	  "score": 0.0 to 1.0,
-	  "is_correct": true/false,
-	  "feedback": "Your evaluation"
-	}"""
+Return a JSON with:
+{
+  "score": 0.0 to 1.0,
+  "is_correct": true/false,
+  "feedback": "Your evaluation"
+}"""
 
 					stored_answer_text = ""
 					if bank_q and bank_q.get("answer"):
@@ -2678,10 +2708,10 @@ def classroom_submit_all():
 				if not is_from_bank:
 					is_correct = True
 					score = 0.7
-
+			
 			if is_correct:
 				correct_count += 1
-
+			
 			results.append({
 				"question_index": question_index,
 				"question_type": "coding",
@@ -2717,7 +2747,7 @@ def classroom_submit_all():
 			})
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
-
+	
 	submission_doc = {
 		"username": user["username"],
 		"university": user.get("university", "Unknown"),
@@ -2732,9 +2762,9 @@ def classroom_submit_all():
 		"bank_id": resolved_bank_id,
 		"created_at": datetime.now(timezone.utc)
 	}
-
+	
 	insert_result = submissions_col.insert_one(submission_doc)
-
+	
 	return jsonify({
 		"ok": True,
 		"message": "Classroom activity submitted successfully",
@@ -2757,108 +2787,77 @@ def classroom_complete():
 
 @app.route("/test")
 def test():
-    try:
-        redir = require_user()
-        if redir:
-            return redir
-
-        user = users_col.find_one({"username": session["user_username"]})
-        if not user:
-            return render_template("index.html", view="login", error="User not found. Please login again.")
-        if user.get("role") not in ("test", "both"):
-            abort(403)
-
-        assigned_test_id = user.get("test_id")
-        if session.get("test_completed") == assigned_test_id:
-            return render_template(
-                "index.html",
-                view="test",
-                error="You have already completed this test. You cannot attempt it again.",
-                already_completed=True,
-            )
-
-        test_doc = tests_col.find_one({"test_id": assigned_test_id})
-        if not test_doc:
-            return render_template("index.html", view="test", error="No test assigned")
-
-        # Prevent multiple attempts
-        test_id = assigned_test_id
-        already_completed = submissions_col.find_one({
-            "username": user["username"],
-            "context": "test_complete",
-            "test_id": test_id,
-        })
-        if already_completed:
-            return render_template(
-                "index.html",
-                view="test",
-                error="You have already completed this test. You cannot attempt it again.",
-                test=test_doc,
-                already_completed=True,
-                completion_time=already_completed.get("created_at"),
-            )
-
-        now = datetime.now(timezone.utc)
-        start_time = test_doc.get("start_time")
-        end_time = test_doc.get("end_time")
-        scheduled_at = test_doc.get("scheduled_at")
-
-        # Ensure timezone awareness
-        if start_time and start_time.tzinfo is None:
-            start_time = start_time.replace(tzinfo=timezone.utc)
-        if end_time and end_time.tzinfo is None:
-            end_time = end_time.replace(tzinfo=timezone.utc)
-        if scheduled_at and scheduled_at.tzinfo is None:
-            scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
-
-        tz_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
-        start_time_local = start_time + tz_offset if start_time else None
-        end_time_local = end_time + tz_offset if end_time else None
-        scheduled_at_local = scheduled_at + tz_offset if scheduled_at else None
-
-        test_status = "not_scheduled"
-        test_open = False
-        test_expired = False
-
-        if start_time and end_time:
-            if now < start_time:
-                test_status = "not_started"
-            elif start_time <= now <= end_time:
-                test_status = "open"
-                test_open = True
-            else:
-                test_status = "expired"
-                test_expired = True
-        elif scheduled_at:
-            if now >= scheduled_at:
-                test_status = "open"
-                test_open = True
-            else:
-                test_status = "not_started"
-
-        if session.get("test_progress") is None:
-            session["test_progress"] = 0
-
-        return render_template(
-            "index.html",
-            view="test",
-            test=test_doc,
-            progress=session["test_progress"],
-            test_open=test_open,
-            test_expired=test_expired,
-            test_status=test_status,
-            start_time=start_time_local,
-            end_time=end_time_local,
-            scheduled_at=scheduled_at_local,
-            current_time=now + tz_offset,
-        )
-    except Exception as exc:
-        logger.error("Error in /test route", exc_info=True)
-        return render_template(
-            "index.html",
-            view="user_dashboard",
-            error=f"Error loading test: {exc}",
-        )
+	redir = require_user()
+	if redir:
+		return redir
+	user = users_col.find_one({"username": session["user_username"]})
+	if not user:
+		return render_template("index.html", view="login", error="User not found. Please login again.")
+	if user.get("role") not in ("test", "both"):
+		abort(403)
+	assigned_test_id = user.get("test_id")
+	if session.get("test_completed") == assigned_test_id:
+		return render_template("index.html", view="test", error="You have already completed this test. You cannot attempt it again.", already_completed=True)
+	test_doc = tests_col.find_one({"test_id": assigned_test_id})
+	if not test_doc:
+		return render_template("index.html", view="test", error="No test assigned")
+	# Prevent multiple attempts
+	test_id = assigned_test_id
+	already_completed = submissions_col.find_one({
+		"username": user["username"],
+		"context": "test_complete",
+		"test_id": test_id,
+	})
+	if already_completed:
+		return render_template("index.html", view="test", error="You have already completed this test. You cannot attempt it again.", test=test_doc, already_completed=True, completion_time=already_completed.get("created_at"))
+	# Times and status
+	now = datetime.now(timezone.utc)
+	start_time = test_doc.get("start_time")
+	end_time = test_doc.get("end_time")
+	scheduled_at = test_doc.get("scheduled_at")
+	if start_time and start_time.tzinfo is None:
+		start_time = start_time.replace(tzinfo=timezone.utc)
+	if end_time and end_time.tzinfo is None:
+		end_time = end_time.replace(tzinfo=timezone.utc)
+	if scheduled_at and scheduled_at.tzinfo is None:
+		scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+	tz_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
+	start_time_local = start_time + tz_offset if start_time else None
+	end_time_local = end_time + tz_offset if end_time else None
+	scheduled_at_local = scheduled_at + tz_offset if scheduled_at else None
+	test_status = "not_scheduled"
+	test_open = False
+	test_expired = False
+	if start_time and end_time:
+		if now < start_time:
+			test_status = "not_started"
+		elif start_time <= now <= end_time:
+			test_status = "open"
+			test_open = True
+		else:
+			test_status = "expired"
+			test_expired = True
+	elif scheduled_at:
+		if now >= scheduled_at:
+			test_status = "open"
+			test_open = True
+		else:
+			test_status = "not_started"
+	if session.get("test_progress") is None:
+		session["test_progress"] = 0
+	return render_template(
+		"index.html",
+		view="test",
+		test=test_doc,
+		progress=session["test_progress"],
+		test_open=test_open,
+		test_expired=test_expired,
+		test_status=test_status,
+		start_time=start_time_local,
+		end_time=end_time_local,
+		scheduled_at=scheduled_at_local,
+		current_time=now + tz_offset,
+	)
 
 
 @app.route("/debug/test/<test_id>")  # Debug route to check test content
@@ -3049,16 +3048,13 @@ def test_start():
 		questions = []
 	
 	# Show all questions at once (same as classroom activity interface)
-	# Provide end time millis for client timer (local timezone)
+	# Provide end time millis for client timer (UTC timestamp)
 	end_time_ms = None
-	try:
-		if end_time:
-			from datetime import timedelta
-			timezone_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
-			end_local = end_time + timezone_offset
-			end_time_ms = int(end_local.timestamp() * 1000)
-	except Exception:
-		end_time_ms = None
+	if end_time:
+		try:
+			end_time_ms = int(end_time.timestamp() * 1000)
+		except Exception:
+			end_time_ms = None
 	return render_template("index.html", view="test_interface", test=test_doc, questions=questions, end_time_ms=end_time_ms)
 
 
@@ -3095,17 +3091,16 @@ def test_violation():
 	session["test_violations"].append(violation_record)
 	session.modified = True
 	
-	# Log violation to database for audit
-	test_id = user.get("test_id")
-	submissions_col.insert_one({
-		"username": user["username"],
-		"context": "test_violation",
-		"test_id": test_id,
-		"violation_type": violation_type,
-		"warning_number": warning_count,
-		"created_at": timestamp
-	})
-	
+	logger.info(
+		"Test violation recorded",
+		extra={
+			"username": user.get("username"),
+			"test_id": user.get("test_id"),
+			"violation_type": violation_type,
+			"warning_count": warning_count
+		}
+	)
+
 	# Check if test should be auto-closed
 	auto_close = warning_count >= 3
 	
@@ -3406,7 +3401,9 @@ def test_submit_all():
 		"correct_count": correct_count,
 		"score": f"{correct_count}/{total_questions}",
 		"percentage": percentage,
-		"details": results
+		"details": results,
+		"violation_count": warning_count,
+		"violations": violation_log
 	})
 
 
