@@ -3211,7 +3211,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'test_submitted_home' %}
 		<section class="container narrow">
 			<h2>✅ Test Submitted</h2>
-			<p class="muted">Great job, {{ user.username }}. Your responses have been recorded and will be reviewed by an administrator.</p>
+			<p class="muted">Test submitted successfully. Your responses have been recorded and will be reviewed by an administrator.</p>
 			<div class="card" style="margin-top: 1.5rem;">
 				<h3>Submission Summary</h3>
 				<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
@@ -3232,9 +3232,49 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<p style="margin:0; color:#1f2937;">You can close this window or continue exploring the platform. Any anti-cheat notices will be reviewed automatically.</p>
 				</div>
 				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.75rem;">
-					<a class="btn" href="/test">Back to Test Overview</a>
+					<a class="btn" href="/home">Go to Home</a>
 					<a class="btn secondary" href="/user/logout">Logout</a>
 				</div>
+			</div>
+		</section>
+		{% endif %}
+
+		{# User Home - Test Status View #}
+		{% if view == 'user_home_test_status' %}
+		<section class="container narrow">
+			<h2>Welcome, {{ user.username }}</h2>
+			<div class="card" style="margin-top: 1rem;">
+				<h3>Test Status</h3>
+				{% if not test %}
+					<p class="muted">No test assigned.</p>
+				{% else %}
+					{% if status == 'submitted' %}
+						<p class="muted">✅ Test submitted successfully.</p>
+					{% elif status == 'open' %}
+						<p class="muted">🟢 Test is open{% if start_time %} (since {{ start_time.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% if end_time %}, ends {{ end_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
+						<div style="margin-top: 1rem;">
+							<a class="btn" href="/test">Attempt Test</a>
+						</div>
+					{% elif status == 'not_started' %}
+						<p class="muted">🕒 Test scheduled{% if start_time %} for {{ start_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
+					{% elif status == 'expired' %}
+						<p class="muted">⛔ Test expired{% if end_time %} at {{ end_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
+					{% endif %}
+					<div style="margin-top: 1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+						<div>
+							<p class="muted">Test ID</p>
+							<p><strong>{{ test.test_id }}</strong></p>
+						</div>
+						<div>
+							<p class="muted">Subject</p>
+							<p><strong>{{ test.subject }}</strong></p>
+						</div>
+						<div>
+							<p class="muted">Module</p>
+							<p><strong>{{ test.module }}</strong></p>
+						</div>
+					</div>
+				{% endif %}
 			</div>
 		</section>
 		{% endif %}
@@ -3498,24 +3538,17 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</section>
 			{% endif %}
 			
-			{% if questions %}
+			{% if questions and view != 'test_interface' %}
 			<section class="card" style="border-left: 4px solid #10b981;">
 				<h3>📝 Submit Your Answers</h3>
 				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
 				<div style="margin-top: 1.5rem;">
-					{% if view == 'test_interface' %}
-						<!-- In test mode, the Submit button appears at the end only (see test navigator below) -->
-						<button class="btn secondary" type="button" onclick="window.location.href='/test'">
-							Cancel
-						</button>
-					{% else %}
-						<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+					<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
 						✅ Submit All Answers
 					</button>
 					<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
 						Cancel
 					</button>
-					{% endif %}
 				</div>
 				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
 			</section>
