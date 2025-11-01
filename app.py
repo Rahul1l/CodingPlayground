@@ -196,6 +196,10 @@ def health_check():
 	})
 
 # All CSS and JavaScript are now embedded in index.html
+@app.route('/favicon.ico')
+def favicon():
+	# Avoid 404 noise for missing favicon
+	return ("", 204)
 
 @app.route("/test-mongodb")
 def test_mongodb():
@@ -2226,9 +2230,21 @@ def user_home():
 		return redirect(url_for("classroom"))
 	elif role == "test":
 		test_id = user.get("test_id")
+		# If a new test was assigned, clear any old completion flag
+		if test_id and session.get("test_completed") and session.get("test_completed") != test_id:
+			session.pop("test_completed", None)
+		# Only show submitted view if the CURRENT assigned test is completed in DB
 		if test_id and session.get("test_completed") == test_id:
-			test_doc = tests_col.find_one({"test_id": test_id}) or {}
-			return render_template("index.html", view="test_submitted_home", user=user, test=test_doc)
+			completed = submissions_col.find_one({
+				"username": user.get("username"),
+				"context": "test_complete",
+				"test_id": test_id
+			})
+			if completed:
+				test_doc = tests_col.find_one({"test_id": test_id}) or {}
+				return render_template("index.html", view="test_submitted_home", user=user, test=test_doc)
+			# flag exists but no DB record; clear it
+			session.pop("test_completed", None)
 		return redirect(url_for("test"))
 	elif role == "both":
 		return render_template("index.html", view="user_selection", user=user)

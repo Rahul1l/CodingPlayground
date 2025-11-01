@@ -5747,7 +5747,11 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const testForm = document.getElementById('createTestForm');
 					if (testForm){ testForm.addEventListener('submit', onCreateTest); }
 
-					renderSubjectModuleOptions();
+					// Only load subject/module options on admin pages where these forms exist
+					const needsQBData = document.getElementById('qgModulesContainer') || document.getElementById('createClassroomForm') || document.getElementById('createTestForm') || document.getElementById('qmGroups');
+					if (needsQBData) {
+						renderSubjectModuleOptions();
+					}
 					// If on Questionnaire Management page, render groups
 					if (document.getElementById('qmGroups')) {
 						renderQMGroups();
