@@ -5255,21 +5255,35 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						questions.push(currentQ);
 					}
 					
-				// Normalize output
-				return questions.map(q => {
-					// Auto-detect hands-on questions based on keywords in title or description
-					const fullText = `${q.title || ''} ${q.description || ''}`.toLowerCase();
-					const isHandsOn = /^case\s+(title|study)|upload|file\s+upload|deliverable|submit.*file|\.zip|\.csv|\.pdf|\.docx|project\s+file|attach.*file|expected\s+deliverable/i.test(fullText);
-					
-					const normalized = {
-						type: isHandsOn ? 'hands_on' : (q.type || (q.options && q.options.length ? 'mcq' : 'coding')),
-						title: q.title || 'Untitled',
-						description: q.description || q.title || '',
-						options: q.options && q.options.length > 0 ? q.options.map(softTrim).filter(Boolean) : undefined,
-						correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
-						answer: q.answer ? q.answer.replace(/\n+$/, '') : undefined,
-						answerRegex: q.answerRegex || undefined
-					};
+			// Normalize output
+			return questions.map(q => {
+				// Auto-detect hands-on questions based on keywords in title or description
+				const fullText = `${q.title || ''} ${q.description || ''}`.toLowerCase();
+				const isHandsOn = /^case\s+(title|study)|upload|file\s+upload|deliverable|submit.*file|\.zip|\.csv|\.pdf|\.docx|project\s+file|attach.*file|expected\s+deliverable/i.test(fullText);
+				
+				// Determine type: preserve explicit hands_on, or auto-detect, or use existing type, or infer from structure
+				let finalType;
+				if (q.type === 'hands_on' || q.type === 'handson') {
+					finalType = 'hands_on';
+				} else if (isHandsOn) {
+					finalType = 'hands_on';
+				} else if (q.type) {
+					finalType = q.type;
+				} else if (q.options && q.options.length) {
+					finalType = 'mcq';
+				} else {
+					finalType = 'coding';
+				}
+				
+				const normalized = {
+					type: finalType,
+					title: q.title || 'Untitled',
+					description: q.description || q.title || '',
+					options: q.options && q.options.length > 0 ? q.options.map(softTrim).filter(Boolean) : undefined,
+					correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
+					answer: q.answer ? q.answer.replace(/\n+$/, '') : undefined,
+					answerRegex: q.answerRegex || undefined
+				};
 					// If MCQ but still no correctOption and answer text exists, match by text
 					if (normalized.type === 'mcq' && normalized.options && normalized.correctOption == null && normalized.answer){
 						const txt = softTrim(normalized.answer);
@@ -5319,17 +5333,25 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						} else {
 							qs = [];
 						}
-						if (!Array.isArray(qs)){ alert(`Module "${name}" questions must be an array`); return; }
-						const normalized = qs.map(q=>({
+					if (!Array.isArray(qs)){ alert(`Module "${name}" questions must be an array`); return; }
+					const normalized = qs.map(q=>{
+						// Preserve the original type if it's valid, otherwise default to coding
+						let qType = q.type || 'coding';
+						if (qType === 'hands_on' || qType === 'handson') qType = 'hands_on';
+						else if (qType === 'mcq') qType = 'mcq';
+						else qType = 'coding';
+						
+						return {
 							id: q.id || uid(),
-							type: q.type === 'mcq' ? 'mcq' : 'coding',
+							type: qType,
 							title: q.title || 'Untitled',
 							description: q.description || '',
 							options: Array.isArray(q.options) ? q.options : undefined,
 							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
 							answer: typeof q.answer === 'string' ? q.answer : undefined,
 							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined
-						}));
+						};
+					});
 						modules[name] = normalized;
 					}
 					
