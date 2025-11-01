@@ -3361,11 +3361,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<a class="btn" href="/compiler">Open Compiler</a>
 					</div>
 				</div>
-			{% if submission.violation_count %}
+			{% if submission and submission.violation_count %}
 			<div style="margin-top: 2rem;">
 				<h4>⚠️ Anti-cheat Summary</h4>
 				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
-				{% if submission.violations %}
+				{% if submission and submission.violations %}
 				<div class="table-container" style="margin-top: 1rem;">
 					<table>
 						<thead>
