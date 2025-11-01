@@ -4689,86 +4689,66 @@ print(f'Sum: {x + y}')"></textarea>
 	</script>
 	{% endif %}
 
-	{% if view == 'compiler' %}
-	<script>
-	document.addEventListener('DOMContentLoaded', function() {
-		const codeTextarea = document.getElementById('python-code');
-		const runButton = document.getElementById('run-code');
-		const clearButton = document.getElementById('clear-code');
-		const outputDiv = document.getElementById('compiler-output');
-		
-		// Run code function
-		async function runCode() {
-			const code = codeTextarea.value.trim();
-			if (!code) {
-				outputDiv.innerHTML = '<p class="muted">Please enter some Python code to run.</p>';
-				return;
-			}
-			
-			// Show loading state
-			runButton.disabled = true;
-			runButton.textContent = '⏳ Running...';
-			outputDiv.innerHTML = '<p class="muted">Executing code...</p>';
-			
-			try {
-				const formData = new FormData();
-				formData.append('code', code);
-				
-				const response = await fetch('/compiler/execute', {
-					method: 'POST',
-					body: formData
-				});
-				
-				const result = await response.json();
-				
-				// Display results
-				if (result.success) {
-					outputDiv.className = 'output-box output-success';
-					let output = '';
-					if (result.output) {
-						output += result.output;
-					}
-					if (result.error) {
-						output += '\n--- Errors ---\n' + result.error;
-					}
-					outputDiv.textContent = output || 'Code executed successfully (no output)';
-				} else {
-					outputDiv.className = 'output-box output-error';
-					outputDiv.textContent = `Error: ${result.error}`;
-				}
-			} catch (error) {
-				outputDiv.className = 'output-box output-error';
-				outputDiv.textContent = `Network error: ${error.message}`;
-			} finally {
-				// Reset button state
-				runButton.disabled = false;
-				runButton.textContent = '▶️ Run Code';
-			}
-		}
-		
-		// Clear code function
-		function clearCode() {
-			codeTextarea.value = '';
-			outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
-			outputDiv.className = 'output-box';
-		}
-		
-		// Event listeners
-		runButton.addEventListener('click', runCode);
-		clearButton.addEventListener('click', clearCode);
-		
-		// Keyboard shortcut: Ctrl+Enter to run code
-		codeTextarea.addEventListener('keydown', function(e) {
-			if (e.ctrlKey && e.key === 'Enter') {
-				e.preventDefault();
-				runCode();
-			}
-		});
-	});
-	</script>
-	{% endif %}
 	<script>
 		// Coding Playground - Client-side JavaScript
+
+		document.addEventListener('DOMContentLoaded', function() {
+			const codeTextarea = document.getElementById('python-code');
+			const runButton = document.getElementById('run-code');
+			const clearButton = document.getElementById('clear-code');
+			const outputDiv = document.getElementById('compiler-output');
+			if (!codeTextarea || !runButton || !clearButton || !outputDiv) {
+				return;
+			}
+			async function runCode() {
+				const code = codeTextarea.value.trim();
+				if (!code) {
+					outputDiv.innerHTML = '<p class="muted">Please enter some Python code to run.</p>';
+					return;
+				}
+				runButton.disabled = true;
+				runButton.textContent = '⏳ Running...';
+				outputDiv.innerHTML = '<p class="muted">Executing code...</p>';
+				try {
+					const formData = new FormData();
+					formData.append('code', code);
+					const response = await fetch('/compiler/execute', {
+						method: 'POST',
+						body: formData
+					});
+					const result = await response.json();
+					if (result.success) {
+						outputDiv.className = 'output-box output-success';
+						let output = '';
+						if (result.output) output += result.output;
+						if (result.error) output += '\n--- Errors ---\n' + result.error;
+						outputDiv.textContent = output || 'Code executed successfully (no output)';
+					} else {
+						outputDiv.className = 'output-box output-error';
+						outputDiv.textContent = `Error: ${result.error}`;
+					}
+				} catch (error) {
+					outputDiv.className = 'output-box output-error';
+					outputDiv.textContent = `Network error: ${error.message}`;
+				} finally {
+					runButton.disabled = false;
+					runButton.textContent = '▶️ Run Code';
+				}
+			}
+			function clearCode() {
+				codeTextarea.value = '';
+				outputDiv.innerHTML = '<p class="muted">Click "Run Code" to see the output here...</p>';
+				outputDiv.className = 'output-box';
+			}
+			runButton.addEventListener('click', runCode);
+			clearButton.addEventListener('click', clearCode);
+			codeTextarea.addEventListener('keydown', function(e) {
+				if (e.ctrlKey && e.key === 'Enter') {
+					e.preventDefault();
+					runCode();
+				}
+			});
+		});
 
 		// Set current year
 		document.getElementById('year') && (document.getElementById('year').textContent = new Date().getFullYear());
