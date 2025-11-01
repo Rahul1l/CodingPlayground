@@ -2844,8 +2844,6 @@ def test():
 	if user.get("role") not in ("test", "both"):
 		abort(403)
 	assigned_test_id = user.get("test_id")
-	if session.get("test_completed") == assigned_test_id:
-		return render_template("index.html", view="test", error="You have already completed this test. You cannot attempt it again.", already_completed=True)
 	test_doc = tests_col.find_one({"test_id": assigned_test_id})
 	if not test_doc:
 		return render_template("index.html", view="test", error="No test assigned")

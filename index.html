@@ -3161,39 +3161,96 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'test_complete' %}
 			<section class="card" style="border-left: 4px solid #10b981;">
-				<h3>📊 Final Test Score</h3>
-				<div style="text-align: center; margin: 2rem 0;">
-					<div style="font-size: 4rem; font-weight: 700; color: #10b981;">
-						{{ submission.final_score|default(0) }}%
+				<h3>📊 Final Test Result</h3>
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+						<p class="muted">Score</p>
+						<p style="font-size: 2rem; font-weight: 700; color: #10b981;">{{ submission.percentage|default(0) }}%</p>
 					</div>
-					<p class="muted">Final Score</p>
+					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+						<p class="muted">Correct</p>
+						<p style="font-size: 2rem; font-weight: 700; color: #000000;">{{ submission.correct_count }}/{{ submission.total_questions }}</p>
+					</div>
+					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+						<p class="muted">Warnings</p>
+						<p style="font-size: 2rem; font-weight: 700; color: #dc2626;">{{ submission.violation_count|default(0) }}</p>
+					</div>
 				</div>
-				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
-					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
-						<p class="muted">Total Questions</p>
-						<p style="font-size: 2rem; font-weight: 700; color: #000000;">{{ submission.total_questions|default('N/A') }}</p>
-					</div>
-					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
-						<p class="muted">Grade</p>
-						<p style="font-size: 2rem; font-weight: 700;">
-							{% set fs = submission.final_score|default(0)|int %}
-							{% if fs >= 90 %}
-								A
-							{% elif fs >= 80 %}
-								B
-							{% elif fs >= 70 %}
-								C
-							{% elif fs >= 60 %}
-								D
-							{% else %}
-								F
+			</section>
+
+			<section class="card">
+				<h3>📋 Question-by-Question Breakdown</h3>
+				{% if submission.details %}
+				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
+					{% for detail in submission.details %}
+					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
+							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}</span>
+						</div>
+						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else (detail.question_type|title) }}</p>
+						{% if detail.question_type == 'mcq' %}
+							<p style="margin: 0.25rem 0; color: #000000;"><strong>Student's Answer:</strong> {{ detail.selected_answer or 'No answer' }}</p>
+							<p style="margin: 0.25rem 0; color: #10b981;"><strong>Correct Answer:</strong> {{ detail.correct_answer }}</p>
+							{% if detail.explanation %}
+							<div style="margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">
+								<p style="margin: 0; color: #000000;"><strong>Explanation:</strong> {{ detail.explanation }}</p>
+							</div>
 							{% endif %}
-						</p>
+						{% elif detail.question_type == 'coding' %}
+							{% if detail.user_code %}
+							<details>
+								<summary style="cursor: pointer; color: #3b82f6; font-weight: 600;">View Student Code</summary>
+								<pre class="scroll" style="max-height: 400px; background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto; margin-top: 0.5rem;">{{ detail.user_code }}</pre>
+							</details>
+							{% endif %}
+							{% if detail.ai_feedback %}
+							<div style="margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">
+								<p style="margin: 0; color: #000000;"><strong>AI Evaluation:</strong></p>
+								<pre style="white-space: pre-wrap; margin: 0.5rem 0 0 0; color: #000000;">{{ detail.ai_feedback }}</pre>
+							</div>
+							{% endif %}
+						{% elif detail.question_type == 'hands_on' %}
+							{% if detail.hands_on_file and detail.hands_on_file.saved %}
+							<p><a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a></p>
+							{% else %}
+							<p class="muted">No file uploaded.</p>
+							{% endif %}
+						{% endif %}
 					</div>
+					{% endfor %}
 				</div>
-				<div style="margin-top: 2rem;">
-					<a href="/admin/submissions?username={{ submission.username }}&test_id={{ submission.test_id }}&context=test" class="btn">View All Answers</a>
+				{% else %}
+				<p class="muted">No detailed answers available.</p>
+				{% endif %}
+			</section>
+
+			{% if submission.violation_count %}
+			<section class="card" style="border-left: 4px solid #f59e0b;">
+				<h3>⚠️ Anti-cheat Notices</h3>
+				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
+				{% if submission.violations %}
+				<div class="table-container" style="margin-top: 0.75rem;">
+					<table>
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Violation</th>
+								<th>Timestamp</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for v in submission.violations %}
+							<tr>
+								<td>{{ loop.index }}</td>
+								<td>{{ v.type|default('unknown') }}</td>
+								<td>{{ v.timestamp|default('N/A') }}</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
 				</div>
+				{% endif %}
 			</section>
 			{% endif %}
 
