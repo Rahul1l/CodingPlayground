@@ -5390,9 +5390,9 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const numHandsOn = Math.max(0, parseInt(document.getElementById('classroomHandsOn')?.value||'0',10));
 					const classroomId = (document.getElementById('classroomId')?.value||'').trim();
 					
-					if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
-					if (numMcq === 0 && numCoding === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
-					if (!classroomId){ warning.style.display=''; warning.textContent='Classroom ID is required.'; return; }
+				if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
+				if (numMcq === 0 && numCoding === 0 && numHandsOn === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
+				if (!classroomId){ warning.style.display=''; warning.textContent='Classroom ID is required.'; return; }
 					
 					try {
 						const response = await fetch('/api/question-bank/generate-activity', {
@@ -5428,9 +5428,9 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const startTime = document.getElementById('testStart')?.value;
 					const endTime = document.getElementById('testEnd')?.value;
 					
-					if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
-					if (numMcq === 0 && numCoding === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
-					if (!testId){ warning.style.display=''; warning.textContent='Test ID is required.'; return; }
+				if (!subject || !moduleName){ warning.style.display=''; warning.textContent='Please choose a subject and module.'; return; }
+				if (numMcq === 0 && numCoding === 0 && numHandsOn === 0){ warning.style.display=''; warning.textContent='At least one question type must be selected.'; return; }
+				if (!testId){ warning.style.display=''; warning.textContent='Test ID is required.'; return; }
 					if (!startTime || !endTime){ warning.style.display=''; warning.textContent='Start and end times are required.'; return; }
 					
 					try {
