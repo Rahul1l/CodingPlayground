@@ -3336,32 +3336,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		</section>
 		{% endif %}
 
-		{% if view == 'test_submitted_home' %}
-		<section class="container narrow">
-			<h2>✅ Test Submitted</h2>
-			<p class="muted">Your test responses have been recorded. An administrator will review them. You may return to the test overview or logout.</p>
-			<div class="card" style="margin-top:1rem;">
-				<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
-					<div>
-						<p class="muted">Test ID</p>
-						<p><strong>{{ test.test_id if test else 'N/A' }}</strong></p>
-					</div>
-					<div>
-						<p class="muted">Subject</p>
-						<p><strong>{{ test.subject if test and test.subject else 'N/A' }}</strong></p>
-					</div>
-					<div>
-						<p class="muted">Module</p>
-						<p><strong>{{ test.module if test and test.module else 'N/A' }}</strong></p>
-					</div>
-				</div>
-				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
-					<a class="btn" href="/test">Back to Test Overview</a>
-					<a class="btn secondary" href="/user/logout">Logout</a>
-				</div>
-			</div>
-		</section>
-		{% endif %}
+
 
 
 		{# User Selection (for "both" role) #}
