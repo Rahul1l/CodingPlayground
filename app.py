@@ -2230,54 +2230,8 @@ def user_home():
 	if role == "classroom":
 		return redirect(url_for("classroom"))
 	elif role == "test":
-		test_id = user.get("test_id")
-		# Reset stale completion if a different test is currently assigned
-		if test_id and session.get("test_completed") and session.get("test_completed") != test_id:
-			session.pop("test_completed", None)
-		# Load assigned test
-		test_doc = tests_col.find_one({"test_id": test_id}) if test_id else None
-		now = datetime.now(timezone.utc)
-		start_time = test_doc.get("start_time") if test_doc else None
-		end_time = test_doc.get("end_time") if test_doc else None
-		scheduled_at = test_doc.get("scheduled_at") if test_doc else None
-		if start_time and start_time.tzinfo is None:
-			start_time = start_time.replace(tzinfo=timezone.utc)
-		if end_time and end_time.tzinfo is None:
-			end_time = end_time.replace(tzinfo=timezone.utc)
-		if scheduled_at and scheduled_at.tzinfo is None:
-			scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
-		status = "no_test"
-		test_open = False
-		test_expired = False
-		submitted = False
-		if test_doc:
-			# Submitted?
-			submitted = bool(submissions_col.find_one({
-				"username": user.get("username"),
-				"context": "test_complete",
-				"test_id": test_id
-			}))
-			if submitted:
-				status = "submitted"
-			else:
-				if start_time and end_time:
-					if now < start_time:
-						status = "not_started"
-					elif start_time <= now <= end_time:
-						status = "open"; test_open = True
-					else:
-						status = "expired"; test_expired = True
-				elif scheduled_at:
-					status = "open" if now >= scheduled_at else "not_started"
-					test_open = (now >= scheduled_at)
-		# Local time for display
-		tz_offset = timedelta(hours=Config.TIMEZONE_OFFSET_HOURS, minutes=Config.TIMEZONE_OFFSET_MINUTES)
-		start_time_local = start_time + tz_offset if start_time else None
-		end_time_local = end_time + tz_offset if end_time else None
-		scheduled_at_local = scheduled_at + tz_offset if scheduled_at else None
-		return render_template("index.html", view="user_home_test_status", user=user, test=test_doc,
-			status=status, test_open=test_open, test_expired=test_expired, submitted=submitted,
-			start_time=start_time_local, end_time=end_time_local, scheduled_at=scheduled_at_local)
+		# Redirect test users directly to the /test page
+		return redirect(url_for("test"))
 	elif role == "both":
 		return render_template("index.html", view="user_selection", user=user)
 	return redirect(url_for("index"))

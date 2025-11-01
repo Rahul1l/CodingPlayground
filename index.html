@@ -1754,33 +1754,33 @@ button.secondary, .btn.secondary, a.btn.secondary {
 		if (timerContainer) timerContainer.style.display = 'none';
 	const finalResult = document.getElementById('final-result');
 	if (finalResult) finalResult.style.display = 'none';
-		const successCard = document.getElementById('test-success-message');
-		if (!successCard) {
-			window.location.href = '/home';
-			return;
+	const successCard = document.getElementById('test-success-message');
+	if (!successCard) {
+		window.location.href = '/test';
+		return;
+	}
+	const successText = document.getElementById('test-success-text');
+	if (successText) {
+		successText.textContent = autoSubmit
+			? 'Time is up! Your test was submitted automatically. Your instructor will review your responses.'
+			: 'Test successfully submitted! Your instructor will review your responses.';
+	}
+	const violationContainer = document.getElementById('test-success-violations');
+	const violationCountEl = document.getElementById('test-success-violation-count');
+	const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
+	if (violationContainer && violationCountEl) {
+		if (violationCount > 0) {
+			violationContainer.style.display = '';
+			violationCountEl.textContent = violationCount;
+		} else {
+			violationContainer.style.display = 'none';
 		}
-		const successText = document.getElementById('test-success-text');
-		if (successText) {
-			successText.textContent = autoSubmit
-				? 'Time is up! Your test was submitted automatically. Your instructor will review your responses.'
-				: 'Test successfully submitted! Your instructor will review your responses.';
-		}
-		const violationContainer = document.getElementById('test-success-violations');
-		const violationCountEl = document.getElementById('test-success-violation-count');
-		const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
-		if (violationContainer && violationCountEl) {
-			if (violationCount > 0) {
-				violationContainer.style.display = '';
-				violationCountEl.textContent = violationCount;
-			} else {
-				violationContainer.style.display = 'none';
-			}
-		}
-		successCard.style.display = 'block';
-		const returnBtn = document.getElementById('btnReturnHome');
-		if (returnBtn && !returnBtn.dataset.bound) {
-			returnBtn.dataset.bound = '1';
-			returnBtn.addEventListener('click', () => { window.location.href = '/home'; });
+	}
+	successCard.style.display = 'block';
+	const returnBtn = document.getElementById('btnReturnHome');
+	if (returnBtn && !returnBtn.dataset.bound) {
+		returnBtn.dataset.bound = '1';
+		returnBtn.addEventListener('click', () => { window.location.href = '/test'; });
 		}
 		const logoutBtn = document.getElementById('btnLogoutAfterTest');
 		if (logoutBtn && !logoutBtn.dataset.bound) {
@@ -3336,48 +3336,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% endif %}
 
 		{# User Home - Test Status View #}
-		{% if view == 'user_home_test_status' %}
-		<section class="container narrow">
-			<h2>Welcome, {{ user.username }}</h2>
-			<div class="card" style="margin-top: 1rem;">
-				<h3>Test Status</h3>
-				{% if not test %}
-					<p class="muted">No test assigned.</p>
-				{% else %}
-					{% if status == 'submitted' %}
-						<p class="muted">✅ Test submitted successfully.</p>
-					{% elif status == 'open' %}
-						<p class="muted">🟢 Test is open{% if start_time %} (since {{ start_time.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% if end_time %}, ends {{ end_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
-						<div style="margin-top: 1rem;">
-							<a class="btn" href="/test">Attempt Test</a>
-						</div>
-					{% elif status == 'not_started' %}
-						<p class="muted">🕒 Test scheduled{% if start_time %} for {{ start_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
-					{% elif status == 'expired' %}
-						<p class="muted">⛔ Test expired{% if end_time %} at {{ end_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}.</p>
-					{% endif %}
-					<div style="margin-top: 1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
-						<div>
-							<p class="muted">Test ID</p>
-							<p><strong>{{ test.test_id }}</strong></p>
-						</div>
-						<div>
-							<p class="muted">Subject</p>
-							<p><strong>{{ test.subject }}</strong></p>
-						</div>
-						<div>
-							<p class="muted">Module</p>
-							<p><strong>{{ test.module }}</strong></p>
-						</div>
-					</div>
-				{% endif %}
-			</div>
-		</section>
-		{% endif %}
-
-
-
-
 		{# User Selection (for "both" role) #}
 		{% if view == 'user_selection' %}
 			<section class="container narrow">
@@ -3607,53 +3565,59 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<pre class="scroll">{{ activity.generated }}</pre>
 					</details>
 				</section>
-			{% endif %}
-			
-			{% if questions and view != 'test_interface' %}
-			<section class="card" style="border-left: 4px solid #10b981;">
-				<h3>📝 Submit Your Answers</h3>
-				<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
-				<div style="margin-top: 1.5rem;">
-					<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-						✅ Submit All Answers
-					</button>
-					<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
-						Cancel
-					</button>
+		{% endif %}
+		
+		{# Classroom Activity Submission Buttons #}
+		{% if questions and view == 'activity' %}
+		<section class="card" style="border-left: 4px solid #10b981;">
+			<h3>📝 Submit Your Answers</h3>
+			<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
+			<div style="margin-top: 1.5rem;">
+				<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
+					✅ Submit All Answers
+				</button>
+				<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
+					Cancel
+				</button>
+			</div>
+			<div id="final-result" style="margin-top: 2rem; display: none;"></div>
+		</section>
+		{% endif %}
+		
+		{# Test Interface Navigation Buttons #}
+		{% if view == 'test_interface' %}
+		<section class="card" id="test-nav" style="margin-top:1rem;">
+			<div class="flex-between">
+				<div>
+					<button class="btn secondary" type="button" id="btnPrev">← Previous</button>
+					<button class="btn" type="button" id="btnNext">Next →</button>
+					<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">✅ Submit Test</button>
 				</div>
-				<div id="final-result" style="margin-top: 2rem; display: none;"></div>
-			</section>
-			{% if view == 'test_interface' %}
-			<section class="card" id="test-nav" style="margin-top:1rem;">
-				<div class="flex-between">
-					<div>
-						<button class="btn secondary" type="button" id="btnPrev">← Previous</button>
-						<button class="btn" type="button" id="btnNext">Next →</button>
-						<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">✅ Submit All Answers</button>
-					</div>
-					<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
-				</div>
-			</section>
-			<section class="card" id="test-success-message" style="display:none; margin-top: 1.5rem; border-left: 4px solid #10b981;">
-				<h3>✅ Test Submitted</h3>
-				<p id="test-success-text" style="margin: 1rem 0;">Thank you. Your responses have been recorded.</p>
-				<div id="test-success-violations" style="display:none; margin: 1rem 0; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">
-					<strong style="color: #92400e;">⚠️ Anti-cheat notices captured</strong>
-					<p style="margin: 0.5rem 0 0 0; color: #92400e;">Warnings triggered: <span id="test-success-violation-count">0</span>. An administrator will review these events.</p>
-				</div>
-				<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
-					<button class="btn" id="btnReturnHome">Return to Home</button>
-					<button class="btn secondary" id="btnLogoutAfterTest">Logout</button>
-				</div>
-			</section>
-			{% endif %}
-			{% else %}
-			<section class="card">
-				<form method="post" action="/classroom/complete">
-					<button class="btn secondary" type="submit">Complete Activity</button>
-				</form>
-			</section>
-			{% endif %}
+				<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
+			</div>
+		</section>
+		<section class="card" id="test-success-message" style="display:none; margin-top: 1.5rem; border-left: 4px solid #10b981;">
+			<h3>✅ Test Submitted Successfully</h3>
+			<p id="test-success-text" style="margin: 1rem 0;">Thank you. Your test responses have been recorded and submitted for evaluation.</p>
+			<div id="test-success-violations" style="display:none; margin: 1rem 0; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">
+				<strong style="color: #92400e;">⚠️ Anti-cheat notices captured</strong>
+				<p style="margin: 0.5rem 0 0 0; color: #92400e;">Warnings triggered: <span id="test-success-violation-count">0</span>. An administrator will review these events.</p>
+			</div>
+			<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
+				<button class="btn" onclick="window.location.href='/test'">Return to Test Page</button>
+				<button class="btn secondary" onclick="window.location.href='/user/logout'">Logout</button>
+			</div>
+		</section>
+		{% endif %}
+		
+		{# Fallback for activities without questions #}
+		{% if view == 'activity' and not questions %}
+		<section class="card">
+			<form method="post" action="/classroom/complete">
+				<button class="btn secondary" type="submit">Complete Activity</button>
+			</form>
+		</section>
+		{% endif %}
 		{% endif %}
 
 		{# Test View #}
