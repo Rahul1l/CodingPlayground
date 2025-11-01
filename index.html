@@ -4348,142 +4348,6 @@ print(f'Sum: {x + y}')"></textarea>
 	})();
 	</script>
 
-	{% if view == 'admin_dashboard' %}
-	<script>
-	// Handle CSV bulk upload from dashboard
-	document.getElementById('dashboardBulkUploadForm').addEventListener('submit', async function(e) {
-		e.preventDefault();
-		
-		const fileInput = document.getElementById('dashboardCsvFile');
-		const file = fileInput.files[0];
-		
-		if (!file) {
-			alert('Please select a CSV file');
-			return;
-		}
-		
-		// Show loading state
-		document.getElementById('dashboardUploadBtnText').style.display = 'none';
-		document.getElementById('dashboardUploadBtnLoading').style.display = 'inline';
-		document.getElementById('dashboardUploadResults').style.display = 'none';
-		
-		const formData = new FormData();
-		formData.append('csv_file', file);
-		
-		try {
-			const response = await fetch('/admin/bulk_create_users', {
-				method: 'POST',
-				body: formData
-			});
-			
-			const data = await response.json();
-			
-			// Hide loading state
-			document.getElementById('dashboardUploadBtnText').style.display = 'inline';
-			document.getElementById('dashboardUploadBtnLoading').style.display = 'none';
-			
-			// Display results
-			displayDashboardUploadResults(data);
-			
-			// Reset form
-			fileInput.value = '';
-			
-			// Reload page after 3 seconds if users were created
-			if (data.created > 0) {
-				setTimeout(() => {
-					location.reload();
-				}, 3000);
-			}
-			
-		} catch (error) {
-			document.getElementById('dashboardUploadBtnText').style.display = 'inline';
-			document.getElementById('dashboardUploadBtnLoading').style.display = 'none';
-			alert('Error uploading file: ' + error.message);
-		}
-	});
-	
-	function displayDashboardUploadResults(data) {
-		const resultsDiv = document.getElementById('dashboardUploadResults');
-		
-		if (!data.ok) {
-			resultsDiv.innerHTML = `
-				<div style="background: #fecaca; padding: 1rem; border-radius: 8px; border: 2px solid #dc2626;">
-					<h4 style="color: #dc2626; margin: 0 0 0.5rem 0;">❌ Upload Failed</h4>
-					<p style="color: #000000; margin: 0;">${data.error}</p>
-				</div>
-			`;
-			resultsDiv.style.display = 'block';
-			return;
-		}
-		
-		let html = `
-			<div style="background: #d1fae5; padding: 1rem; border-radius: 8px; border: 2px solid #10b981; margin-bottom: 1rem;">
-				<h4 style="color: #065f46; margin: 0 0 0.5rem 0;">✅ Upload Complete!</h4>
-				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
-					<div style="text-align: center;">
-						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #10b981;">${data.created}</p>
-						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Created</p>
-					</div>
-					<div style="text-align: center;">
-						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #f59e0b;">${data.skipped}</p>
-						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Skipped</p>
-					</div>
-					<div style="text-align: center;">
-						<p style="font-size: 2rem; font-weight: 700; margin: 0; color: #dc2626;">${data.errors}</p>
-						<p style="margin: 0; color: #000000; font-size: 0.9rem;">Errors</p>
-					</div>
-				</div>
-			</div>
-		`;
-		
-		// Show created users
-		if (data.details.created_users && data.details.created_users.length > 0) {
-			html += `
-				<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
-					<h5 style="color: #1e40af; margin: 0 0 0.5rem 0;">✅ Created Users (${data.details.created_users.length}):</h5>
-					<div style="max-height: 150px; overflow-y: auto; color: #000000;">
-						${data.details.created_users.map(user => `<p style="margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">• ${user}</p>`).join('')}
-					</div>
-				</div>
-			`;
-		}
-		
-		// Show skipped users
-		if (data.details.skipped_users && data.details.skipped_users.length > 0) {
-			html += `
-				<div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #fbbf24;">
-					<h5 style="color: #92400e; margin: 0 0 0.5rem 0;">⚠️ Skipped Users (${data.details.skipped_users.length}):</h5>
-					<div style="max-height: 150px; overflow-y: auto; color: #000000;">
-						${data.details.skipped_users.map(user => `<p style="margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">• ${user}</p>`).join('')}
-					</div>
-				</div>
-			`;
-		}
-		
-		// Show errors
-		if (data.details.errors && data.details.errors.length > 0) {
-			html += `
-				<div style="background: #fecaca; padding: 1rem; border-radius: 8px; border: 1px solid #dc2626;">
-					<h5 style="color: #dc2626; margin: 0 0 0.5rem 0;">❌ Errors (${data.details.errors.length}):</h5>
-					<div style="max-height: 200px; overflow-y: auto; color: #000000;">
-						${data.details.errors.map(error => `<p style="margin: 0.25rem 0; font-size: 0.9rem;">• ${error}</p>`).join('')}
-					</div>
-				</div>
-			`;
-		}
-		
-		if (data.created > 0) {
-			html += `<p style="margin-top: 1rem; color: #059669; font-weight: 600;">🔄 Page will reload in 3 seconds...</p>`;
-		}
-		
-		resultsDiv.innerHTML = html;
-		resultsDiv.style.display = 'block';
-	}
-	</script>
-	{% endif %}
-
-{# moved compiler script above within single conditional; this block was removed to avoid duplicate conditionals #}
-
 	{% if view == 'admin_users' %}
 	<script>
 	async function deleteUser(username) {
@@ -4659,41 +4523,49 @@ print(f'Sum: {x + y}')"></textarea>
 	</script>
 	{% endif %}
 
-	{% if view == 'admin_tests' %}
-	<script>
-	async function deleteTest(testId) {
-		if (!confirm(`Are you sure you want to delete test "${testId}"?`)) {
-			return;
-		}
-		
-		try {
-			const response = await fetch(`/admin/tests/delete/${testId}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				}
-			});
-			
-			const data = await response.json();
-			
-			if (data.ok) {
-				alert(data.message);
-				location.reload();
-			} else {
-				alert(data.message || 'Error deleting test');
-			}
-		} catch (error) {
-			alert('Error deleting test: ' + error.message);
-		}
-	}
-	</script>
-	{% endif %}
-
 	<script>
 		// Coding Playground - Client-side JavaScript
 
 		document.addEventListener('DOMContentLoaded', function() {
-			const codeTextarea = document.getElementById('python-code');
+		const bulkForm = document.getElementById('dashboardBulkUploadForm');
+		if (bulkForm) {
+			bulkForm.addEventListener('submit', async function(e) {
+				e.preventDefault();
+				const fileInput = document.getElementById('dashboardCsvFile');
+				const file = fileInput?.files?.[0];
+				if (!file) {
+					showAlert('Please select a CSV file', 'danger');
+					return;
+				}
+				document.getElementById('dashboardUploadBtnText')?.style?.setProperty('display','none');
+				document.getElementById('dashboardUploadBtnLoading')?.style?.setProperty('display','inline');
+				const resultsDiv = document.getElementById('dashboardUploadResults');
+				if (resultsDiv) resultsDiv.style.display = 'none';
+				const formData = new FormData();
+				formData.append('csv_file', file);
+				try {
+					const response = await fetch('/admin/bulk_create_users', { method: 'POST', body: formData });
+					const data = await response.json();
+					document.getElementById('dashboardUploadBtnText')?.style?.setProperty('display','inline');
+					document.getElementById('dashboardUploadBtnLoading')?.style?.setProperty('display','none');
+					if (resultsDiv) {
+						resultsDiv.innerHTML = data.ok
+							? `<div style="background:#d1fae5;padding:1rem;border-radius:8px;border:2px solid #10b981;">✅ Created ${data.created} user(s). Errors: ${data.errors}</div>`
+							: `<div style="background:#fecaca;padding:1rem;border-radius:8px;border:2px solid #dc2626;">❌ ${data.error || 'Upload failed'}</div>`;
+						resultsDiv.style.display = 'block';
+					}
+					fileInput.value = '';
+					if (data.created > 0) {
+						setTimeout(() => location.reload(), 3000);
+					}
+				} catch (error) {
+					document.getElementById('dashboardUploadBtnText')?.style?.setProperty('display','inline');
+					document.getElementById('dashboardUploadBtnLoading')?.style?.setProperty('display','none');
+					showAlert('Upload failed: ' + error.message, 'danger');
+				}
+			});
+		}
+		const codeTextarea = document.getElementById('python-code');
 			const runButton = document.getElementById('run-code');
 			const clearButton = document.getElementById('clear-code');
 			const outputDiv = document.getElementById('compiler-output');
