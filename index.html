@@ -2582,6 +2582,45 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				</div>
 				{% endif %}
 			</section>
+			
+			<script>
+			// Delete test function with confirmation
+			async function deleteTest(testId) {
+				// Confirm deletion
+				const confirmed = confirm(
+					`⚠️ DELETE TEST?\n\n` +
+					`Test ID: ${testId}\n\n` +
+					`This will delete the test and all associated submissions.\n` +
+					`This action cannot be undone. Continue?`
+				);
+				
+				if (!confirmed) {
+					return;
+				}
+				
+				try {
+					const response = await fetch(`/admin/tests/delete/${testId}`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						}
+					});
+					
+					const result = await response.json();
+					
+					if (result.ok) {
+						alert('✅ Test deleted successfully!');
+						// Reload the page to refresh the list
+						window.location.reload();
+					} else {
+						alert(`❌ Error: ${result.message}`);
+					}
+				} catch (error) {
+					console.error('Delete error:', error);
+					alert(`❌ Failed to delete test: ${error.message}`);
+				}
+			}
+			</script>
 			</div>
 		{% endif %}
 
