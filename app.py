@@ -598,17 +598,19 @@ def admin_attempt_activity(activity_id: str):
 		generated_data = json.loads(activity.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
 		
-		# Filter questions by type according to num_mcq and num_coding
+		# Filter questions by type according to num_mcq, num_coding, and num_hands_on
 		num_mcq = activity.get("num_mcq", 0)
 		num_coding = activity.get("num_coding", 0)
+		num_hands_on = activity.get("num_hands_on", 0)
 		
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		handson_questions = [q for q in all_questions if q.get("question_type") == "hands_on"]
 		
 		# Take exactly the requested number of each type
-		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding] + handson_questions[:num_hands_on]
 		
-		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
+		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding, {num_hands_on} hands-on. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding, {len([q for q in questions if q.get('question_type') == 'hands_on'])} hands-on")
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -2385,17 +2387,19 @@ def activity(activity_id: str):
 		generated_data = json.loads(act.get("generated", "{}"))
 		all_questions = generated_data.get("questions", [])
 		
-		# Filter questions by type according to num_mcq and num_coding
+		# Filter questions by type according to num_mcq, num_coding, and num_hands_on
 		num_mcq = act.get("num_mcq", 0)
 		num_coding = act.get("num_coding", 0)
+		num_hands_on = act.get("num_hands_on", 0)
 		
 		mcq_questions = [q for q in all_questions if q.get("question_type") == "mcq"]
 		coding_questions = [q for q in all_questions if q.get("question_type") == "coding"]
+		handson_questions = [q for q in all_questions if q.get("question_type") == "hands_on"]
 		
 		# Take exactly the requested number of each type
-		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding]
+		questions = mcq_questions[:num_mcq] + coding_questions[:num_coding] + handson_questions[:num_hands_on]
 		
-		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding")
+		print(f"Activity {activity_id}: Requested {num_mcq} MCQ, {num_coding} coding, {num_hands_on} hands-on. Showing {len([q for q in questions if q.get('question_type') == 'mcq'])} MCQ, {len([q for q in questions if q.get('question_type') == 'coding'])} coding, {len([q for q in questions if q.get('question_type') == 'hands_on'])} hands-on")
 	except Exception as e:
 		print(f"Error parsing activity JSON: {e}")
 		questions = []
@@ -3156,7 +3160,12 @@ def test_start():
 		# Preserve stored order and include hands-on if present
 		valid_types = {"mcq", "coding", "hands_on"}
 		questions = [q for q in all_questions if q.get("question_type") in valid_types]
-		print(f"Test {test_doc.get('test_id')}: Loaded {len(questions)} questions (MCQ={sum(1 for q in questions if q.get('question_type')=='mcq')}, Coding={sum(1 for q in questions if q.get('question_type')=='coding')}, Hands-on={sum(1 for q in questions if q.get('question_type')=='hands_on')})")
+		# Debug: Check for admin_file in hands-on questions
+		hands_on_with_files = [q for q in questions if q.get("question_type") == "hands_on" and q.get("admin_file")]
+		print(f"Test {test_doc.get('test_id')}: Loaded {len(questions)} questions (MCQ={sum(1 for q in questions if q.get('question_type')=='mcq')}, Coding={sum(1 for q in questions if q.get('question_type')=='coding')}, Hands-on={sum(1 for q in questions if q.get('question_type')=='hands_on')}, Hands-on with files={len(hands_on_with_files)})")
+		if hands_on_with_files:
+			for q in hands_on_with_files:
+				print(f"  - Hands-on question '{q.get('title')}' has admin_file: {q.get('admin_file')}")
 	except Exception as e:
 		print(f"Error parsing test JSON: {e}")
 		import traceback

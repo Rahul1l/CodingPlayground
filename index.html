@@ -5131,8 +5131,10 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 								statusDiv.innerHTML = `<span style="color: #10b981;">✅ Converted ${parsed.length} question(s) successfully!</span>`;
 								// Switch to JSON tab to show result
 								wrap.querySelector('.qgTabBtn[data-tab="json"]').click();
-								// Update hands-on file uploads list
-								updateHandsOnFilesList(module);
+								// Wait a bit for tab to switch, then update hands-on file uploads list
+								setTimeout(() => {
+									updateHandsOnFilesList(module);
+								}, 100);
 							} catch(err) {
 								statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
 							}
@@ -5211,17 +5213,38 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const filesList = document.querySelector(`.qgHandsOnFilesList[data-module="${moduleId}"]`);
 					if (!filesList) return;
 					
-					// Update question ID inputs with suggestions
+					// Update question ID inputs with suggestions and show available IDs
 					const handsOnQuestions = questions.filter(q => {
-						const qType = (q.type || '').toLowerCase();
+						const qType = (q.type || q.question_type || '').toLowerCase();
 						return qType === 'hands_on' || qType === 'handson';
 					});
+					
+					// Show a summary of available hands-on questions with their IDs
+					const summaryEl = filesList.querySelector('.qgHandsOnQuestionsSummary');
+					if (summaryEl) summaryEl.remove();
+					
+					if (handsOnQuestions.length > 0) {
+						const summary = document.createElement('div');
+						summary.className = 'qgHandsOnQuestionsSummary';
+						summary.style.marginBottom = '1rem';
+						summary.style.padding = '0.75rem';
+						summary.style.background = '#f0fdf4';
+						summary.style.border = '1px solid #86efac';
+						summary.style.borderRadius = '6px';
+						summary.style.fontSize = '0.85rem';
+						summary.innerHTML = `<strong>📋 Available Hands-on Questions:</strong><ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">${handsOnQuestions.map((q, idx) => {
+							const qId = q.id || `(no ID - use: ${q.title || `Question ${idx+1}`})`;
+							const qTitle = q.title || 'Untitled';
+							return `<li><strong>ID: ${qId}</strong> - ${qTitle}</li>`;
+						}).join('')}</ul>`;
+						filesList.insertBefore(summary, filesList.firstChild);
+					}
 					
 					const fileItems = filesList.querySelectorAll('.qgHandsOnFileItem');
 					fileItems.forEach(item => {
 						const questionIdInput = item.querySelector('.qgHandsOnQuestionId');
 						if (questionIdInput && !questionIdInput.value && handsOnQuestions.length > 0) {
-							// Add placeholder with first hands-on question title
+							// Add placeholder with first hands-on question ID
 							const firstQ = handsOnQuestions[0];
 							const suggestedId = firstQ.id || firstQ.title || '';
 							if (suggestedId && !questionIdInput.placeholder.includes('e.g.')) {
@@ -5404,6 +5427,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 				}
 				
 				const normalized = {
+					id: q.id || uid(),  // Generate ID if not present
 					type: finalType,
 					title: q.title || 'Untitled',
 					description: q.description || q.title || '',
