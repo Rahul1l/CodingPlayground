@@ -1720,7 +1720,9 @@ def api_save_question_bank():
 				if not isinstance(questions, list):
 					continue
 				for q in questions:
-					if q.get("type") == "hands_on":
+					# Check if this is a hands-on question (support both 'type' and 'question_type')
+					q_type = (q.get("type") or q.get("question_type") or "").strip().lower()
+					if q_type in ("hands_on", "handson"):
 						# Try to match by ID first, then by title
 						q_id = str(q.get("id", "")).strip()
 						q_title = str(q.get("title", "")).strip()
@@ -1735,6 +1737,7 @@ def api_save_question_bank():
 								"saved": True
 							}
 							matched = True
+							print(f"Matched file '{file_info['file_name']}' to question ID '{q_id}'")
 						# Check for title match if no ID match
 						elif q_title:
 							for question_id, file_info in file_mappings.items():
@@ -1747,7 +1750,10 @@ def api_save_question_bank():
 										"saved": True
 									}
 									matched = True
+									print(f"Matched file '{file_info['file_name']}' to question title '{q_title}'")
 									break
+						if not matched:
+							print(f"Warning: No file match found for hands-on question ID '{q_id}' or title '{q_title}'")
 		else:
 			# JSON request (backward compatibility)
 			data = request.json
@@ -1940,12 +1946,16 @@ def api_generate_activity_from_bank():
 					"_local_answer_regex": q.get("answerRegex", "")
 				})
 			else:
-				formatted_questions.append({
+				formatted_q = {
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
 					"difficulty": "medium"
-				})
+				}
+				# Preserve admin_file if it exists
+				if q.get("admin_file"):
+					formatted_q["admin_file"] = q.get("admin_file")
+				formatted_questions.append(formatted_q)
 		
 		# Create activity
 		activity_id = str(uuid4())
@@ -2089,12 +2099,16 @@ def api_generate_test_from_bank():
 					"_local_answer_regex": q.get("answerRegex", "")
 				})
 			else:
-				formatted_questions.append({
+				formatted_q = {
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
 					"difficulty": "medium"
-				})
+				}
+				# Preserve admin_file if it exists
+				if q.get("admin_file"):
+					formatted_q["admin_file"] = q.get("admin_file")
+				formatted_questions.append(formatted_q)
 		
 		# Create or update test
 		test_doc = {
