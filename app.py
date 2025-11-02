@@ -36,103 +36,6 @@ app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 # Enable CORS for all routes (allow credentials for session cookies)
 CORS(app, supports_credentials=True)
 
-# Template filter to format hands-on question descriptions
-@app.template_filter('format_handson_description')
-def format_handson_description(text):
-	"""Format hands-on question descriptions with proper line breaks for keywords."""
-	if not text or not isinstance(text, str):
-		return text
-	
-	import re
-	
-	# Keywords to detect (case-insensitive) - order matters
-	keywords = ['Case Study', 'Tasks', 'Expected outcome', 'Expected Outcome']
-	
-	# Check if any keyword exists in the text (case-insensitive)
-	text_lower = text.lower()
-	has_keywords = any(kw.lower() in text_lower for kw in keywords)
-	
-	if not has_keywords:
-		return text
-	
-	# Split text by keywords to identify sections
-	result_parts = []
-	text_remaining = text
-	
-	# Find all keyword positions
-	keyword_positions = []
-	for keyword in keywords:
-		# Find all occurrences (case-insensitive)
-		for match in re.finditer(re.escape(keyword), text_remaining, re.IGNORECASE):
-			keyword_positions.append((match.start(), match.end(), match.group()))
-	
-	# Sort by position
-	keyword_positions.sort(key=lambda x: x[0])
-	
-	if not keyword_positions:
-		return text
-	
-	# Process text section by section
-	current_pos = 0
-	for i, (start, end, kw_found) in enumerate(keyword_positions):
-		# Add text before keyword
-		if start > current_pos:
-			before_text = text_remaining[current_pos:start].strip()
-			if before_text:
-				result_parts.append(before_text)
-		
-		# Extract keyword and content
-		# Look for colon after keyword
-		after_keyword = text_remaining[end:]
-		colon_match = re.match(r'\s*:?\s*', after_keyword)
-		if colon_match:
-			content_start = end + colon_match.end()
-		else:
-			content_start = end
-		
-		# Find where this section ends (next keyword or end of text)
-		next_start = len(text_remaining)
-		if i + 1 < len(keyword_positions):
-			next_start = keyword_positions[i + 1][0]
-		
-		content = text_remaining[content_start:next_start].strip()
-		
-		# Add formatted keyword section
-		result_parts.append(f"{kw_found}:")
-		
-		# Format content
-		if content:
-			# Check if content has numbered items (1. 2. etc.) or bullets
-			if re.search(r'\d+[.)]\s+', content) or re.search(r'[-*•]\s+', content):
-				# Split by numbered items or bullets
-				parts = re.split(r'(\d+[.)]\s+|[-*•]\s+)', content)
-				current_item = ""
-				for part in parts:
-					if re.match(r'^\d+[.)]\s+$', part) or re.match(r'^[-*•]\s+$', part):
-						if current_item.strip():
-							result_parts.append(f"  {current_item.strip()}")
-						current_item = part
-					else:
-						current_item += part
-				if current_item.strip():
-					result_parts.append(f"  {current_item.strip()}")
-			else:
-				# Regular content - just indent
-				result_parts.append(f"  {content}")
-		
-		current_pos = next_start
-	
-	# Add any remaining text
-	if current_pos < len(text_remaining):
-		remaining = text_remaining[current_pos:].strip()
-		if remaining:
-			result_parts.append(remaining)
-	
-	# Join with newlines
-	result = '\n'.join(result_parts)
-	
-	return result
-
 # MongoDB Setup - Following working Feedback-App-V2 pattern
 try:
     print("Connecting to MongoDB...")
@@ -1222,28 +1125,6 @@ def admin_download_submission_file():
 	return send_file(path, as_attachment=True, download_name=name)
 
 
-@app.route("/question/csv/<csv_file>")
-def download_question_csv(csv_file):
-	"""Download CSV file for hands-on questions"""
-	redir = require_user()
-	if redir:
-		return redir
-	
-	import os
-	from werkzeug.utils import secure_filename
-	
-	# Validate filename to prevent path traversal
-	csv_file = secure_filename(csv_file)
-	csv_files_dir = os.path.join(os.getcwd(), 'question_csvs')
-	file_path = os.path.join(csv_files_dir, csv_file)
-	
-	# Check if file exists and is within the allowed directory
-	if not os.path.exists(file_path) or not file_path.startswith(csv_files_dir):
-		return abort(404)
-	
-	return send_file(file_path, as_attachment=True, download_name=csv_file)
-
-
 @app.route("/admin/submissions/delete/<submission_id>", methods=["POST"])
 def admin_delete_submission(submission_id):
 	redir = require_admin()
@@ -1769,29 +1650,10 @@ def api_save_question_bank():
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-		# Handle both JSON and FormData (for CSV uploads)
-		if request.is_json:
-			data = request.json
-			university = data.get("university", "").strip()
-			subject = data.get("subject", "").strip()
-			modules = data.get("modules", {})
-			csv_files = {}
-		else:
-			# FormData
-			university = request.form.get("university", "").strip()
-			subject = request.form.get("subject", "").strip()
-			modules_json = request.form.get("modules", "{}")
-			try:
-				modules = json.loads(modules_json)
-			except json.JSONDecodeError:
-				return jsonify({"ok": False, "error": "Invalid modules JSON"}), 400
-			
-			# Collect CSV files from request
-			csv_files = {}
-			for key in request.files:
-				if key.startswith("csv_"):
-					module_index = key.replace("csv_", "")
-					csv_files[module_index] = request.files[key]
+		data = request.json
+		university = data.get("university", "").strip()
+		subject = data.get("subject", "").strip()
+		modules = data.get("modules", {})
 		
 		if not university or not subject:
 			return jsonify({"ok": False, "error": "University and subject are required"}), 400
@@ -1799,51 +1661,12 @@ def api_save_question_bank():
 		if not modules or not isinstance(modules, dict):
 			return jsonify({"ok": False, "error": "Modules must be a non-empty object"}), 400
 		
-		# Process CSV files and associate them with hands-on questions
-		import os
-		from werkzeug.utils import secure_filename
-		
-		csv_files_dir = os.path.join(os.getcwd(), 'question_csvs')
-		os.makedirs(csv_files_dir, exist_ok=True)
-		
-		# Normalize modules and associate CSV files with hands-on questions
+		# Normalize modules (ensure proper structure)
 		normalized_modules = {}
-		module_names_list = list(modules.keys())
-		
-		for module_idx, (module_name, questions) in enumerate(modules.items()):
+		for module_name, questions in modules.items():
 			if not isinstance(questions, list):
 				return jsonify({"ok": False, "error": f"Module '{module_name}' must contain an array of questions"}), 400
-			
-			# Check if there's a CSV file for this module
-			csv_file = csv_files.get(str(module_idx))
-			csv_file_path = None
-			csv_file_name = None
-			
-			if csv_file and csv_file.filename:
-				# Validate CSV file
-				if not csv_file.filename.lower().endswith('.csv'):
-					return jsonify({"ok": False, "error": f"CSV file for module '{module_name}' must be a .csv file"}), 400
-				
-				# Save CSV file
-				fname = secure_filename(csv_file.filename)
-				# Create unique filename: university_subject_module_timestamp_filename
-				unique_name = f"{university}_{subject}_{module_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{fname}"
-				save_path = os.path.join(csv_files_dir, unique_name)
-				csv_file.save(save_path)
-				csv_file_path = unique_name  # Store relative path
-				csv_file_name = fname
-			
-			# Update hands-on questions with CSV file info
-			updated_questions = []
-			for q in questions:
-				updated_q = q.copy()
-				# If this is a hands-on question and we have a CSV file, add CSV info
-				if updated_q.get("type") == "hands_on" and csv_file_path:
-					updated_q["csv_file"] = csv_file_path
-					updated_q["csv_file_name"] = csv_file_name
-				updated_questions.append(updated_q)
-			
-			normalized_modules[module_name] = updated_questions
+			normalized_modules[module_name] = questions
 		
 		# Upsert question bank document
 		# Create a new question bank document every time (no merging/overwriting)
@@ -1857,9 +1680,6 @@ def api_save_question_bank():
 		
 		return jsonify({"ok": True, "message": "Question bank saved successfully"})
 	except Exception as e:
-		logger.error(f"Error saving question bank: {e}")
-		import traceback
-		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -2022,9 +1842,7 @@ def api_generate_activity_from_bank():
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
-					"difficulty": "medium",
-					"csv_file": q.get("csv_file"),  # Include CSV file path if available
-					"csv_file_name": q.get("csv_file_name")  # Include CSV file name if available
+					"difficulty": "medium"
 				})
 		
 		# Create activity
@@ -2173,9 +1991,7 @@ def api_generate_test_from_bank():
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
-					"difficulty": "medium",
-					"csv_file": q.get("csv_file"),  # Include CSV file path if available
-					"csv_file_name": q.get("csv_file_name")  # Include CSV file name if available
+					"difficulty": "medium"
 				})
 		
 		# Create or update test
@@ -2929,9 +2745,7 @@ Return a JSON with:
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info,
-				"csv_file": question_data.get("csv_file"),  # Include CSV file info from question
-				"csv_file_name": question_data.get("csv_file_name")
+				"hands_on_file": upload_info
 			})
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
@@ -3226,10 +3040,6 @@ def test_start():
 		# Preserve stored order and include hands-on if present
 		valid_types = {"mcq", "coding", "hands_on"}
 		questions = [q for q in all_questions if q.get("question_type") in valid_types]
-		# Debug: Log CSV file info for hands-on questions
-		for q in questions:
-			if q.get("question_type") == "hands_on":
-				logger.info(f"Hands-on question '{q.get('title')}': csv_file={q.get('csv_file')}, csv_file_name={q.get('csv_file_name')}")
 		print(f"Test {test_doc.get('test_id')}: Loaded {len(questions)} questions (MCQ={sum(1 for q in questions if q.get('question_type')=='mcq')}, Coding={sum(1 for q in questions if q.get('question_type')=='coding')}, Hands-on={sum(1 for q in questions if q.get('question_type')=='hands_on')})")
 	except Exception as e:
 		print(f"Error parsing test JSON: {e}")
@@ -3562,9 +3372,7 @@ def test_submit_all():
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info,
-				"csv_file": question_data.get("csv_file"),  # Include CSV file info from question
-				"csv_file_name": question_data.get("csv_file_name")
+				"hands_on_file": upload_info
 			})
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
