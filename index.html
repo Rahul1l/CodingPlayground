@@ -1595,13 +1595,13 @@ button.secondary, .btn.secondary, a.btn.secondary {
 			if (passwordSpan.textContent.trim() === '••••••••') {
 				passwordSpan.textContent = plainPassword || 'N/A';
 				if (button) {
-					button.textContent = '🙈';
+					button.textContent = 'Hide';
 					button.title = 'Click to hide password';
 				}
 			} else {
 				passwordSpan.textContent = '••••••••';
 				if (button) {
-					button.textContent = '👁️';
+					button.textContent = 'Show';
 					button.title = 'Click to show password';
 				}
 			}
@@ -1675,13 +1675,13 @@ button.secondary, .btn.secondary, a.btn.secondary {
 		const autoSubmit = !!options.autoSubmit;
 		const { answers, missing, hasHandsOn } = collectTestAnswers(questions);
 		if (!autoSubmit && missing.length > 0) {
-			const proceed = confirm(`⚠️ The following questions have no answers:\n\n${missing.join('\n')}\n\nDo you want to submit anyway?`);
+			const proceed = confirm(`The following questions have no answers:\n\n${missing.join('\n')}\n\nDo you want to submit anyway?`);
 			if (!proceed) {
 				return;
 			}
 		}
 		if (!autoSubmit) {
-			const confirmSubmit = confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`);
+			const confirmSubmit = confirm(`Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`);
 			if (!confirmSubmit) {
 				return;
 			}
@@ -2080,38 +2080,38 @@ button.secondary, .btn.secondary, a.btn.secondary {
 						<a href="/admin/tests" class="btn">Manage Tests</a>
 					</div>
 					<div class="mt">
-						<a href="/admin/submissions" class="btn">📊 View Submissions & Logs</a>
-						<a href="/admin/classroom-activities" class="btn secondary">🎯 Try Activities</a>
+						<a href="/admin/submissions" class="btn">View Submissions & Logs</a>
+						<a href="/admin/classroom-activities" class="btn secondary">Try Activities</a>
 					</div>
 					<div class="mt">
-						<a href="/admin/question-generator" class="btn">🧩 Question Generator</a>
-						<a href="/admin/questionnaire-management" class="btn secondary">🗂️ Questionnaire Management</a>
+						<a href="/admin/question-generator" class="btn">Question Generator</a>
+						<a href="/admin/questionnaire-management" class="btn secondary">Questionnaire Management</a>
 					</div>
 				</div>
 				<div class="card">
-					<h2>📂 Create Users via CSV Upload</h2>
+					<h2>Create Users via CSV Upload</h2>
 					<p class="muted" style="margin-bottom: 1rem;">Upload a CSV file to create multiple users at once</p>
 					
 					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
-						<p style="margin: 0 0 0.5rem 0; font-weight: 600;">📋 CSV Format Requirements:</p>
+						<p style="margin: 0 0 0.5rem 0; font-weight: 600;">CSV Format Requirements:</p>
 						<p style="color: #000000; margin: 0.25rem 0; font-family: monospace; font-size: 0.9rem;">
 							<strong>Required:</strong> username, password, university<br>
 							<strong>Optional:</strong> role, classroom_id, test_id
 						</p>
 						<p style="color: #dc2626; margin: 0.75rem 0 0 0; font-size: 0.9rem; font-weight: 600;">
-							⚠️ <strong>Important:</strong> Usernames can duplicate, but passwords must be unique!
+							<strong>Important:</strong> Usernames can duplicate, but passwords must be unique!
 						</p>
 					</div>
 					
 					<details style="margin-bottom: 1rem;">
-						<summary style="cursor: pointer; font-weight: 600; color: #667eea; padding: 0.5rem 0;">📝 Show CSV Example</summary>
+						<summary style="cursor: pointer; font-weight: 600; color: #667eea; padding: 0.5rem 0;">Show CSV Example</summary>
 						<div style="background: #fef3c7; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; border: 1px solid #fbbf24;">
 							<pre style="background: #ffffff; padding: 0.75rem; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 0.85rem; border: 1px solid #e2e8f0;">username,password,university,role,classroom_id,test_id
 student1,unique001,MIT,,act001,
 student1,unique002,MIT,,,test001
 student2,unique003,Stanford,both,act002,test002</pre>
 							<p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.85rem;">
-								💡 Role auto-detected from IDs if not specified
+								Role auto-detected from IDs if not specified
 							</p>
 						</div>
 					</details>
@@ -2122,8 +2122,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<input type="file" id="dashboardCsvFile" name="csv_file" accept=".csv" required style="cursor: pointer;">
 					</label>
 						<button type="submit" class="btn" style="width: 100%;">
-							<span id="dashboardUploadBtnText">📤 Upload & Create Users</span>
-							<span id="dashboardUploadBtnLoading" style="display: none;">⏳ Processing...</span>
+							<span id="dashboardUploadBtnText">Upload & Create Users</span>
+							<span id="dashboardUploadBtnLoading" style="display: none;">Processing...</span>
 						</button>
 					</form>
 					
@@ -2131,7 +2131,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 					<div style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 6px; border-left: 3px solid #3b82f6;">
 						<p style="margin: 0; font-size: 0.9rem; color: #000000;">
-							📥 <a href="/user_upload_template.csv" download style="color: #3b82f6; font-weight: 600;">Download CSV Template</a>
+							<a href="/user_upload_template.csv" download style="color: #3b82f6; font-weight: 600;">Download CSV Template</a>
 						</p>
 					</div>
 				</div>
@@ -2228,7 +2228,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
-					<h2>🎯 Try Classroom Activities</h2>
+					<h2>Try Classroom Activities</h2>
 					<div>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 					</div>
@@ -2246,7 +2246,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<p class="muted">Created: {{ activity.created_at.strftime('%Y-%m-%d %H:%M') if activity.created_at else 'Unknown' }}</p>
 						</div>
 						<div>
-							<a href="/admin/classroom-activities/{{ activity.activity_id }}" class="btn">🎯 Try Activity</a>
+							<a href="/admin/classroom-activities/{{ activity.activity_id }}" class="btn">Try Activity</a>
 						</div>
 					</div>
 				</section>
@@ -2263,7 +2263,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{# Admin Attempt Activity View #}
 		{% if view == 'admin_attempt_activity' %}
 			<div class="flex-between">
-				<h2>🎯 {{ activity.subject }} - Admin Preview</h2>
+				<h2>{{ activity.subject }} - Admin Preview</h2>
 				<div>
 					<a href="/admin/classroom-activities" class="btn secondary">← Back to Activities</a>
 				<a href="/admin/dashboard" class="btn secondary">Dashboard</a>
@@ -2275,7 +2275,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% if questions|length > 1 %}
 			<section class="card">
 				<div class="question-navigation">
-					<h4>📋 Question Navigation:</h4>
+					<h4>Question Navigation:</h4>
 				<div class="nav-buttons">
 					{% for question in questions %}
 					{% set nav_question_num = loop.index %}
@@ -2360,7 +2360,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{# Only show code editor for coding questions #}
 			{% if question.question_type == 'coding' or not question.question_type %}
 			<div class="compiler-section">
-				<h4>🐍 Code Editor (Admin Preview)</h4>
+				<h4>Code Editor (Admin Preview)</h4>
 					<div class="compiler-container">
 						<div class="code-section">
 							<textarea id="admin-code-{{ admin_question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
@@ -2368,8 +2368,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
 							<div class="compiler-controls">
-								<button class="btn run-admin-question-code" data-question="{{ admin_question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
-								<button class="btn secondary clear-admin-question-code" data-question="{{ admin_question_num }}">🗑️ Clear</button>
+								<button class="btn run-admin-question-code" data-question="{{ admin_question_num }}" data-question-text="{{ question.description|e }}">Run Code</button>
+								<button class="btn secondary clear-admin-question-code" data-question="{{ admin_question_num }}">Clear</button>
 							</div>
 						</div>
 						
@@ -2420,9 +2420,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% for university, users in universities.items() %}
 			<section class="card">
 				<div class="flex-between">
-					<h3>🏫 {{ university }} ({{ users|length }} users)</h3>
+					<h3>{{ university }} ({{ users|length }} users)</h3>
 					<div>
-						<a href="/admin/users/export/{{ university|urlencode }}" class="btn secondary small">📥 Export {{ university }} CSV</a>
+						<a href="/admin/users/export/{{ university|urlencode }}" class="btn secondary small">Export {{ university }} CSV</a>
 					</div>
 				</div>
 				
@@ -2445,14 +2445,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<td><strong>{{ user.username }}</strong></td>
 								<td>
 									<span class="password-display" data-password="{{ user.username }}" data-plain="{{ user.password_plain or 'N/A' }}">••••••••</span>
-									<button class="btn secondary tiny" onclick="toggleUserPassword('{{ user.username }}')">👁️</button>
+									<button class="btn secondary tiny" onclick="toggleUserPassword('{{ user.username }}')">Show</button>
 								</td>
 								<td><span class="role-badge role-{{ user.role }}">{{ user.role|title }}</span></td>
 								<td>{{ user.classroom_id or '-' }}</td>
 								<td>{{ user.test_id or '-' }}</td>
 								<td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
 								<td>
-									<button class="btn secondary small" onclick="deleteUser('{{ user.username }}')">🗑️ Delete</button>
+									<button class="btn secondary small" onclick="deleteUser('{{ user.username }}')">Delete</button>
 								</td>
 							</tr>
 							{% endfor %}
@@ -2561,8 +2561,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								</td>
 								<td>{{ test.created_at.strftime('%Y-%m-%d %H:%M') if test.created_at else '-' }}</td>
 								<td>
-									<a href="/debug/test/{{ test.test_id }}" class="btn secondary small" target="_blank">🔍 Debug</a>
-									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">🗑️ Delete</button>
+									<a href="/debug/test/{{ test.test_id }}" class="btn secondary small" target="_blank">Debug</a>
+									<button class="btn secondary small" onclick="deleteTest('{{ test.test_id }}')">Delete</button>
 								</td>
 							</tr>
 							{% endfor %}
@@ -2588,7 +2588,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			async function deleteTest(testId) {
 				// Confirm deletion
 				const confirmed = confirm(
-					`⚠️ DELETE TEST?\n\n` +
+					`DELETE TEST?\n\n` +
 					`Test ID: ${testId}\n\n` +
 					`This will delete the test and all associated submissions.\n` +
 					`This action cannot be undone. Continue?`
@@ -2609,15 +2609,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					const result = await response.json();
 					
 					if (result.ok) {
-						alert('✅ Test deleted successfully!');
+						alert('Test deleted successfully!');
 						// Reload the page to refresh the list
 						window.location.reload();
 					} else {
-						alert(`❌ Error: ${result.message}`);
+						alert(`Error: ${result.message}`);
 					}
 				} catch (error) {
 					console.error('Delete error:', error);
-					alert(`❌ Failed to delete test: ${error.message}`);
+					alert(`Failed to delete test: ${error.message}`);
 				}
 			}
 			</script>
@@ -2629,9 +2629,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			<div class="manage-page">
 			<section class="card">
 				<div class="flex-between">
-					<h2>📊 Submissions & Violation Logs</h2>
+					<h2>Submissions & Violation Logs</h2>
 					<div>
-						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">📥 Export CSV</a>
+						<a href="/admin/submissions/export?context={{ filter_context }}&test_id={{ filter_test }}&username={{ filter_user }}&university={{ filter_university }}" class="btn secondary">Export CSV</a>
 						<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 					</div>
 				</div>
@@ -2640,32 +2640,32 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{# Statistics Cards #}
 			<section class="grid">
 				<div class="card">
-					<h3>📈 Total Submissions</h3>
+					<h3>Total Submissions</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ stats.total_submissions }}</p>
 					<p class="muted">Completed assessments</p>
 				</div>
 				<div class="card">
-					<h3>✅ Tests Completed</h3>
+					<h3>Tests Completed</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #10b981;">{{ stats.total_test_completions }}</p>
 					<p class="muted">All test submissions</p>
 				</div>
 				<div class="card">
-					<h3>🎓 Classroom Completions</h3>
+					<h3>Classroom Completions</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">{{ stats.total_classroom_completions }}</p>
 					<p class="muted">Submitted classroom activities</p>
 				</div>
 				<div class="card">
-					<h3>⚠️ Total Violations</h3>
+					<h3>Total Violations</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #dc2626;">{{ stats.total_violations }}</p>
 					<p class="muted">Anti-cheat warnings captured</p>
 				</div>
 				<div class="card">
-					<h3>👥 Unique Users</h3>
+					<h3>Unique Users</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #f59e0b;">{{ stats.unique_users }}</p>
 					<p class="muted">Users with submissions</p>
 				</div>
 				<div class="card">
-					<h3>🏛️ Universities</h3>
+					<h3>Universities</h3>
 					<p style="font-size: 2rem; font-weight: 700; color: #06b6d4;">{{ stats.unique_universities }}</p>
 					<p class="muted">Campuses represented</p>
 				</div>
@@ -2674,7 +2674,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{# University Statistics #}
 			{% if university_stats %}
 			<section class="card">
-				<h3>🏛️ Submissions by University</h3>
+				<h3>Submissions by University</h3>
 				<div class="table-container">
 					<table>
 						<thead>
@@ -2705,7 +2705,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{# Violation Statistics #}
 			{% if violation_stats %}
 			<section class="card">
-				<h3>🔍 Violation Breakdown</h3>
+				<h3>Violation Breakdown</h3>
 				<div class="table-container">
 					<table>
 						<thead>
@@ -2732,7 +2732,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{# Top Violators #}
 			{% if user_violations %}
 			<section class="card">
-				<h3>⚠️ Users with Most Violations (Top 10)</h3>
+				<h3>Users with Most Violations (Top 10)</h3>
 				<div class="table-container">
 					<table>
 						<thead>
@@ -2766,8 +2766,8 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<label>Context Type</label>
 						<select name="context">
 							<option value="all" {% if filter_context == 'all' %}selected{% endif %}>All Completed</option>
-							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>✅ Test Complete</option>
-							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>🎓 Classroom Complete</option>
+							<option value="test_complete" {% if filter_context == 'test_complete' %}selected{% endif %}>Test Complete</option>
+							<option value="classroom_activity_complete" {% if filter_context == 'classroom_activity_complete' %}selected{% endif %}>Classroom Complete</option>
 						</select>
 					</div>
 					<div>
@@ -2811,18 +2811,18 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{# Grouped Submissions by University → Subject #}
 		<section class="card">
 			<div class="flex-between" style="margin-bottom: 1rem;">
-				<h3>📋 Submissions (Grouped by University → Subject)</h3>
+				<h3>Submissions (Grouped by University → Subject)</h3>
 				<p class="muted">Total: {{ total_submissions }}</p>
 			</div>
 			{% if grouped_submissions %}
 				{% for uni, subjects in grouped_submissions.items() %}
 					<div class="card" style="margin-bottom: 1rem;">
-						<h3 style="margin:0 0 0.5rem 0;">🏛️ {{ uni }}</h3>
+						<h3 style="margin:0 0 0.5rem 0;">{{ uni }}</h3>
 						{% for subj, subs in subjects.items() %}
 							<div class="card" style="margin:0.5rem 0;">
 								<div class="flex-between">
 									<h4 style="margin:0;">Subject: {{ subj }}</h4>
-									<a href="/admin/submissions/export?university={{ uni }}&subject={{ subj }}&context={{ filter_context }}" class="btn secondary small">📥 Export CSV</a>
+									<a href="/admin/submissions/export?university={{ uni }}&subject={{ subj }}&context={{ filter_context }}" class="btn secondary small">Export CSV</a>
 								</div>
 								<div class="table-container" style="margin-top:0.75rem;">
 									<table>
@@ -2855,7 +2855,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 												<td>
 													<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
 														<a href="/admin/submissions/{{ sub._id_str }}" class="btn secondary small" target="_blank">View Details</a>
-														<button class="btn danger small" onclick="deleteSubmission('{{ sub._id_str }}', '{{ sub.username }}', '{{ sub.context }}')">🗑️ Delete</button>
+														<button class="btn danger small" onclick="deleteSubmission('{{ sub._id_str }}', '{{ sub.username }}', '{{ sub.context }}')">Delete</button>
 													</div>
 												</td>
 											</tr>
@@ -2888,7 +2888,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				
 				// Confirm deletion
 				const confirmed = confirm(
-					`⚠️ DELETE SUBMISSION?\n\n` +
+					`DELETE SUBMISSION?\n\n` +
 					`User: ${username}\n` +
 					`Type: ${contextName}\n` +
 					`ID: ${submissionId}\n\n` +
@@ -2910,15 +2910,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					const result = await response.json();
 					
 					if (result.ok) {
-						alert('✅ Submission deleted successfully!');
+						alert('Submission deleted successfully!');
 						// Reload the page to refresh the list
 						window.location.reload();
 					} else {
-						alert(`❌ Error: ${result.message}`);
+						alert(`Error: ${result.message}`);
 					}
 				} catch (error) {
 					console.error('Delete error:', error);
-					alert(`❌ Failed to delete submission: ${error.message}`);
+					alert(`Failed to delete submission: ${error.message}`);
 				}
 			}
 			</script>
@@ -2936,7 +2936,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% if error %}
 			<section class="card" style="border-left: 4px solid #dc2626;">
 				<div class="alert">
-					<strong>⚠️ Error Loading Submission</strong><br>
+					<strong>Error Loading Submission</strong><br>
 					{{ error }}
 				</div>
 				<p class="muted">Please check the submission ID and try again.</p>
@@ -2966,7 +2966,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'test_violation' %}
 			<section class="card" style="border-left: 4px solid #dc2626;">
-				<h3>⚠️ Violation Details</h3>
+				<h3>Violation Details</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
 					<div>
 						<p class="muted">Violation Type</p>
@@ -2982,7 +2982,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'test' %}
 			<section class="card">
-				<h3>📝 Test Submission Details</h3>
+				<h3>Test Submission Details</h3>
 				<div style="margin-bottom: 1rem;">
 					<p class="muted">Question Index</p>
 					<p><strong>{{ submission.question_index if submission.question_index is not none else 'N/A' }}</strong></p>
@@ -3006,7 +3006,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'classroom' %}
 			<section class="card">
-				<h3>🎓 Classroom Submission Details</h3>
+				<h3>Classroom Submission Details</h3>
 				
 				{% if submission.question_text %}
 				<div style="margin-bottom: 1rem;">
@@ -3033,7 +3033,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 				{% if submission.details %}
 				<section class="card">
-					<h3>📎 Uploaded Files</h3>
+					<h3>Uploaded Files</h3>
 					<ul>
 					{% for d in submission.details %}
 						{% if d.question_type == 'hands_on' and d.hands_on_file and d.hands_on_file.saved %}
@@ -3049,7 +3049,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'classroom_mcq' %}
 			<section class="card">
-				<h3>🎓 Classroom MCQ Submission</h3>
+				<h3>Classroom MCQ Submission</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
 					<div>
 						<p class="muted">Activity ID</p>
@@ -3095,7 +3095,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'classroom_coding' %}
 			<section class="card">
-				<h3>🎓 Classroom Coding Submission</h3>
+				<h3>Classroom Coding Submission</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
 					<div>
 						<p class="muted">Activity ID</p>
@@ -3129,7 +3129,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'classroom_activity_complete' %}
 			<section class="card" style="border-left: 4px solid #8b5cf6;">
-				<h3>🎓 Classroom Activity - Final Submission</h3>
+				<h3>Classroom Activity - Final Submission</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
 					<div>
 						<p class="muted">Activity ID</p>
@@ -3149,7 +3149,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					</div>
 				</div>
 				
-				<h4>📊 Question-by-Question Breakdown</h4>
+				<h4>Question-by-Question Breakdown</h4>
 				{% if submission.details %}
 				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
 					{% for detail in submission.details %}
@@ -3158,11 +3158,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
 							{% if detail.question_type == 'hands_on' %}
 							<span style="font-weight: 600; color: #f59e0b;">
-								⏳ ADMIN WILL REVIEW
+								ADMIN WILL REVIEW
 							</span>
 							{% else %}
 							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
-								{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}
+								{% if detail.is_correct %}Correct{% else %}Incorrect{% endif %}
 							</span>
 							{% endif %}
 						</div>
@@ -3203,7 +3203,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<p style="margin: 0.25rem 0; color: #dc2626;"><strong>No file uploaded.</strong></p>
 							{% endif %}
 							<div style="margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border-radius: 4px; border: 1px solid #fbbf24;">
-								<p style="margin: 0; color: #92400e; font-weight: 600;">⏳ This submission will be reviewed by an administrator.</p>
+								<p style="margin: 0; color: #92400e; font-weight: 600;">This submission will be reviewed by an administrator.</p>
 							</div>
 						</div>
 						{% endif %}
@@ -3218,7 +3218,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission.context == 'test_complete' %}
 			<section class="card" style="border-left: 4px solid #10b981;">
-				<h3>📊 Final Test Result</h3>
+				<h3>Final Test Result</h3>
 				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
 					<div style="text-align: center; padding: 1rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bfdbfe;">
 						<p class="muted">Score</p>
@@ -3236,7 +3236,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</section>
 
 			<section class="card">
-				<h3>📋 Question-by-Question Breakdown</h3>
+				<h3>Question-by-Question Breakdown</h3>
 				{% if submission.details %}
 				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
 					{% for detail in submission.details %}
@@ -3245,11 +3245,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
 							{% if detail.question_type == 'hands_on' %}
 							<span style="font-weight: 600; color: #f59e0b;">
-								⏳ ADMIN WILL REVIEW
+								ADMIN WILL REVIEW
 							</span>
 							{% else %}
 							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
-								{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}
+								{% if detail.is_correct %}Correct{% else %}Incorrect{% endif %}
 							</span>
 							{% endif %}
 						</div>
@@ -3278,7 +3278,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<p style="margin: 0 0 0.5rem 0; color: #000000; font-weight: 600;"><strong>AI Validation:</strong></p>
 								{% set feedback_lower = detail.ai_feedback.lower() %}
 								{% if 'submitted successfully' in feedback_lower and feedback_lower.strip() == 'your code has been submitted successfully.' %}
-								<p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ No AI validation was performed. The code was submitted but could not be evaluated.</p>
+								<p style="margin: 0; color: #dc2626; font-weight: 600;">No AI validation was performed. The code was submitted but could not be evaluated.</p>
 								{% else %}
 								<pre style="white-space: pre-wrap; margin: 0; color: #000000; font-size: 0.95rem; line-height: 1.6;">{{ detail.ai_feedback }}</pre>
 								{% endif %}
@@ -3288,7 +3288,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							</div>
 							{% else %}
 							<div style="margin-top: 1rem; padding: 1rem; background: #fee2e2; border-radius: 8px; border-left: 4px solid #dc2626;">
-								<p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ No AI validation available for this submission.</p>
+								<p style="margin: 0; color: #dc2626; font-weight: 600;">No AI validation available for this submission.</p>
 							</div>
 							{% endif %}
 						{% elif detail.question_type == 'hands_on' %}
@@ -3301,7 +3301,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<p style="margin: 0.25rem 0; color: #dc2626;"><strong>No file uploaded.</strong></p>
 								{% endif %}
 								<div style="margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border-radius: 4px; border: 1px solid #fbbf24;">
-									<p style="margin: 0; color: #92400e; font-weight: 600;">⏳ This submission will be reviewed by an administrator.</p>
+									<p style="margin: 0; color: #92400e; font-weight: 600;">This submission will be reviewed by an administrator.</p>
 								</div>
 							</div>
 						{% endif %}
@@ -3315,7 +3315,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 			{% if submission and submission.violation_count %}
 			<section class="card" style="border-left: 4px solid #f59e0b;">
-				<h3>⚠️ Anti-cheat Notices</h3>
+				<h3>Anti-cheat Notices</h3>
 				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
 				{% if submission and submission.violations %}
 				<div class="table-container" style="margin-top: 0.75rem;">
@@ -3343,7 +3343,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% endif %}
 
 			<section class="card">
-				<h3>🔍 Raw Data (JSON)</h3>
+				<h3>Raw Data (JSON)</h3>
 				<details>
 					<summary>Click to view full submission document</summary>
 					<pre class="scroll" style="max-height: 500px;">{{ submission | tojson(indent=2) }}</pre>
@@ -3356,7 +3356,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{# Test Submitted Home View #}
 		{% if view == 'test_submitted_home' %}
 		<section class="container narrow">
-			<h2>✅ Test Submitted</h2>
+			<h2>Test Submitted</h2>
 			<p class="muted">Test submitted successfully. Your responses have been recorded and will be reviewed by an administrator.</p>
 			<div class="card" style="margin-top: 1.5rem;">
 				<h3>Submission Summary</h3>
@@ -3403,14 +3403,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<a class="btn" href="/test">Go to Test</a>
 					</div>
 					<div class="card">
-						<h3>🐍 Python Compiler</h3>
+						<h3>Python Compiler</h3>
 						<p>Write and run Python code directly in your browser.</p>
 						<a class="btn" href="/compiler">Open Compiler</a>
 					</div>
 				</div>
 			{% if submission and submission.violation_count %}
 			<div style="margin-top: 2rem;">
-				<h4>⚠️ Anti-cheat Summary</h4>
+				<h4>Anti-cheat Summary</h4>
 				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
 				{% if submission and submission.violations %}
 				<div class="table-container" style="margin-top: 1rem;">
@@ -3443,7 +3443,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'classroom' %}
 			<div class="flex-between">
 				<h2>Classroom ID: {{ classroom_id }}</h2>
-				<a class="btn secondary" href="/compiler">🐍 Python Compiler</a>
+				<a class="btn secondary" href="/compiler">Python Compiler</a>
 			</div>
 			{% if activities|length == 0 %}
 				<p class="muted">No activities yet.</p>
@@ -3494,9 +3494,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								{% endif %}
 							</span>
 							{% if question.question_type == 'mcq' %}
-							<span class="role-badge role-classroom">📝 MCQ</span>
+							<span class="role-badge role-classroom">MCQ</span>
 							{% elif question.question_type == 'coding' %}
-							<span class="role-badge role-test">💻 Coding</span>
+							<span class="role-badge role-test">Coding</span>
 							{% endif %}
 						</div>
 					</div>
@@ -3529,7 +3529,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							
 							{% if question.hints %}
 							<details style="margin-top: 1rem;">
-								<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">💡 Show Hints</summary>
+								<summary style="cursor: pointer; color: #2563eb; font-weight: 600;">Show Hints</summary>
 								<div style="margin-top: 0.5rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; color: #000000;">
 									{% for hint in question.hints %}
 									<p>• {{ hint }}</p>
@@ -3572,7 +3572,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{# Only show code editor for coding questions #}
 					{% if question.question_type == 'coding' or not question.question_type %}
 					<div class="compiler-section" id="coding-question-{{ question_num }}">
-						<h4>🐍 Code Editor</h4>
+						<h4>Code Editor</h4>
 						<div class="compiler-container">
 							<div class="code-section">
 								<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
@@ -3581,9 +3581,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
 								<div class="compiler-controls">
 									{% if view != 'test_interface' %}
-									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">Run Code</button>
 									{% endif %}
-									<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
+									<button class="btn secondary clear-question-code" data-question="{{ question_num }}">Clear</button>
 								</div>
 							</div>
 							
@@ -3608,9 +3608,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem;">
 						{% if question.admin_file and question.admin_file.saved %}
 						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
-							<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>📎 Download Required File:</strong></p>
+							<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>Download Required File:</strong></p>
 							<a href="/api/question-file/{{ question.admin_file.unique_name }}" class="btn secondary" download style="display: inline-flex; align-items: center; gap: 0.5rem;">
-								⬇️ Download {{ question.admin_file.file_name }}
+								Download {{ question.admin_file.file_name }}
 							</a>
 							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Please download this file before submitting your solution.</p>
 						</div>
@@ -3638,11 +3638,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{# Classroom Activity Submission Buttons #}
 		{% if questions and view == 'activity' %}
 		<section class="card" style="border-left: 4px solid #10b981;">
-			<h3>📝 Submit Your Answers</h3>
+			<h3>Submit Your Answers</h3>
 			<p class="muted">Review all your answers above and click Submit when ready. You can still change your answers before submitting.</p>
 			<div style="margin-top: 1.5rem;">
 				<button class="btn" type="button" onclick="submitAllClassroomAnswers('{{ activity.activity_id }}', {{ questions | tojson | forceescape }})" style="font-size: 1.1rem; padding: 1rem 2rem;">
-					✅ Submit All Answers
+					Submit All Answers
 				</button>
 				<button class="btn secondary" onclick="window.location.href='/classroom'" style="margin-left: 1rem;">
 					Cancel
@@ -3659,16 +3659,16 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<div>
 					<button class="btn secondary" type="button" id="btnPrev">← Previous</button>
 					<button class="btn" type="button" id="btnNext">Next →</button>
-					<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">✅ Submit Test</button>
+					<button class="btn" type="button" id="btnSubmit" style="display:none; margin-left: 0.5rem;">Submit Test</button>
 				</div>
 				<div id="nav-error" class="muted" style="color:#dc2626 !important; font-weight:600;"></div>
 			</div>
 		</section>
 		<section class="card" id="test-success-message" style="display:none; margin-top: 1.5rem; border-left: 4px solid #10b981;">
-			<h3>✅ Test Submitted Successfully</h3>
+			<h3>Test Submitted Successfully</h3>
 			<p id="test-success-text" style="margin: 1rem 0;">Thank you. Your test responses have been recorded and submitted for evaluation.</p>
 			<div id="test-success-violations" style="display:none; margin: 1rem 0; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">
-				<strong style="color: #92400e;">⚠️ Anti-cheat notices captured</strong>
+				<strong style="color: #92400e;">Anti-cheat notices captured</strong>
 				<p style="margin: 0.5rem 0 0 0; color: #92400e;">Warnings triggered: <span id="test-success-violation-count">0</span>. An administrator will review these events.</p>
 			</div>
 			<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
@@ -3693,12 +3693,12 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% if error %}
 				<section class="container narrow">
 					<div class="card" style="border-left: 4px solid #dc2626;">
-						<h2>⚠️ Test Error</h2>
+						<h2>Test Error</h2>
 						<p style="font-size: 1.1rem; margin: 1.5rem 0;">{{ error }}</p>
 						
 						{% if already_completed %}
 						<div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border: 2px solid #fbbf24;">
-							<h3 style="color: #92400e; margin: 0 0 0.5rem 0;">📋 Test Details</h3>
+							<h3 style="color: #92400e; margin: 0 0 0.5rem 0;">Test Details</h3>
 							{% if test %}
 							<p style="color: #000000; margin: 0.5rem 0;"><strong>Test:</strong> {{ test.subject }}</p>
 							{% endif %}
@@ -3706,7 +3706,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<p style="color: #000000; margin: 0.5rem 0;"><strong>Completed At:</strong> {{ completion_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
 							{% endif %}
 							<p style="color: #fbbf24; margin-top: 1rem;">
-								⚠️ <strong>Once submitted, tests cannot be retaken.</strong>
+								<strong>Once submitted, tests cannot be retaken.</strong>
 							</p>
 						</div>
 						
@@ -3726,7 +3726,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			{% elif test %}
 				<div class="flex-between">
 					<h2>{{ test.subject }}</h2>
-					<a class="btn secondary" href="/compiler">🐍 Python Compiler</a>
+					<a class="btn secondary" href="/compiler">Python Compiler</a>
 				</div>
 				<div class="card">
 					<p class="muted">Test ID: {{ test.test_id }}</p>
@@ -3746,7 +3746,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{# Test status display #}
 					{% if test_status == 'open' %}
 						<div class="alert success">
-							<strong>✅ Test is now open!</strong><br>
+							<strong>Test is now open!</strong><br>
 							You can now begin the test.
 							{% if start_time and end_time %}
 							<div id="test-timer" class="mt">
@@ -3774,7 +3774,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</button>
 					{% elif test_status == 'expired' %}
 						<div class="alert" style="background: #7f1d1d; border-color: #dc2626; color: #fca5a5;">
-							<strong>❌ Test has expired</strong><br>
+							<strong>Test has expired</strong><br>
 							The test window has closed. You can no longer attempt this test.
 						</div>
 						<button class="btn disabled" id="attempt-btn" disabled onclick="showExpiredMessage()">
@@ -3782,7 +3782,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</button>
 					{% else %}
 						<div class="alert">
-							<strong>⚠️ No test scheduled</strong><br>
+							<strong>No test scheduled</strong><br>
 							No test has been scheduled for you.
 						</div>
 					{% endif %}
@@ -3794,7 +3794,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'admin_question_generator' %}
 			<section class="card">
 				<div class="flex-between">
-					<h2>🧩 Question Generator</h2>
+					<h2>Question Generator</h2>
 					<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 					</div>
 				<p class="muted">Create subjects with modules and questions. All data stored in MongoDB.</p>
@@ -3810,11 +3810,11 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					</label>
 					<div id="qgModulesContainer" style="margin-top: 1rem;"></div>
 					<div style="margin-top: 1rem;">
-						<button class="btn" id="qgAddModuleBtn" type="button">➕ Add Module</button>
-						<button class="btn secondary" id="qgClearAllBtn" type="button">🗑️ Clear Form</button>
+						<button class="btn" id="qgAddModuleBtn" type="button">Add Module</button>
+						<button class="btn secondary" id="qgClearAllBtn" type="button">Clear Form</button>
 						</div>
 						<div style="margin-top: 1rem;">
-						<button class="btn" id="qgSubmitBankBtn" type="button">💾 Save to Question Bank</button>
+						<button class="btn" id="qgSubmitBankBtn" type="button">Save to Question Bank</button>
 						</div>
 				</form>
 			</section>
@@ -3824,7 +3824,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'admin_questionnaire_management' %}
 			<section class="card">
 				<div class="flex-between">
-					<h2>🗂️ Questionnaire Management</h2>
+					<h2>Questionnaire Management</h2>
 					<a href="/admin/dashboard" class="btn secondary">Back to Dashboard</a>
 				</div>
 				<p class="muted">View, edit, and manage all question banks stored in MongoDB.</p>
@@ -3946,7 +3946,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'test_result' %}
 			<section class="container narrow">
 				<div class="card" style="text-align: center;">
-					<div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+					<div style="font-size: 4rem; margin-bottom: 1rem;"></div>
 					<h2>Test Submitted Successfully!</h2>
 					<p class="muted" style="font-size: 1.1rem; margin: 1.5rem 0;">
 						Thank you for completing the test.
@@ -3963,7 +3963,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 					<div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid #bfdbfe;">
 						<p style="color: #000000;">
-							<strong>📊 Results</strong><br>
+							<strong>Results</strong><br>
 							Your responses have been recorded and will be evaluated by your instructor.<br>
 							Results will be shared by your instructor at a later time.
 						</p>
@@ -3985,7 +3985,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		{% if view == 'compiler' %}
 			<section class="container">
 				<div class="card">
-					<h2>🐍 Python Compiler</h2>
+					<h2>Python Compiler</h2>
 					<p class="muted">Write and run Python code directly in your browser</p>
 					
 					<div class="compiler-container">
@@ -3997,8 +3997,8 @@ x = 5
 y = 10
 print(f'Sum: {x + y}')"></textarea>
 							<div class="compiler-controls">
-								<button id="run-code" class="btn">▶️ Run Code</button>
-								<button id="clear-code" class="btn secondary">🗑️ Clear</button>
+								<button id="run-code" class="btn">Run Code</button>
+								<button id="clear-code" class="btn secondary">Clear</button>
 							</div>
 						</div>
 						
@@ -4013,10 +4013,10 @@ print(f'Sum: {x + y}')"></textarea>
 					<div class="compiler-info">
 						<h3>Features:</h3>
 						<ul>
-							<li>✅ Safe code execution with timeout protection</li>
-							<li>✅ Standard Python libraries available</li>
-							<li>✅ Real-time output display</li>
-							<li>✅ Error handling and debugging</li>
+							<li>Safe code execution with timeout protection</li>
+							<li>Standard Python libraries available</li>
+							<li>Real-time output display</li>
+							<li>Error handling and debugging</li>
 						</ul>
 					</div>
 				</div>
@@ -4038,13 +4038,13 @@ print(f'Sum: {x + y}')"></textarea>
 			if (passwordSpan.textContent.trim() === '••••••••') {
 				passwordSpan.textContent = plainPassword || 'N/A';
 				if (button) {
-					button.textContent = '🙈';
+					button.textContent = 'Hide';
 					button.title = 'Click to hide password';
 				}
 			} else {
 				passwordSpan.textContent = '••••••••';
 				if (button) {
-					button.textContent = '👁️';
+					button.textContent = 'Show';
 					button.title = 'Click to show password';
 				}
 			}
@@ -4179,13 +4179,13 @@ print(f'Sum: {x + y}')"></textarea>
 		
 		// Warn if any answers are missing
 		if (missingAnswers.length > 0) {
-			if (!confirm(`⚠️ The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) {
+			if (!confirm(`The following questions have no answers:\n\n${missingAnswers.join('\n')}\n\nDo you want to submit anyway?`)) {
 				return;
 			}
 		}
 		
 		// Final confirmation
-		if (!confirm(`📝 Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) {
+		if (!confirm(`Submit all ${answers.length} answers?\n\nYou cannot change your answers after submitting.`)) {
 			return;
 		}
 		
@@ -4193,7 +4193,7 @@ print(f'Sum: {x + y}')"></textarea>
 			// Show loading state
 			const resultDiv = document.getElementById('final-result');
 			resultDiv.style.display = 'block';
-			resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">⏳ Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
+			resultDiv.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #3b82f6; font-size: 1.2rem;">Evaluating your answers...</p><p class="muted">This may take a moment...</p></div>';
 			
 			// Disable all inputs
 			document.querySelectorAll('.mcq-option-classroom, textarea, button, input[type=file]').forEach(el => {
@@ -4232,12 +4232,12 @@ print(f'Sum: {x + y}')"></textarea>
 				// Display final score
 				displayFinalResult(result);
 			} else {
-				resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">❌ Error: ${result.error}</p></div>`;
+				resultDiv.innerHTML = `<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626; font-size: 1.2rem;">Error: ${result.error}</p></div>`;
 			}
 		} catch (error) {
 			console.error('Submission error:', error);
 			const resultDiv = document.getElementById('final-result');
-			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">❌ Failed to submit answers. Please try again.</p></div>';
+			resultDiv.innerHTML = '<div style="padding: 2rem; background: #fee2e2; border-radius: 12px; border: 2px solid #dc2626;"><p style="color: #dc2626;">Failed to submit answers. Please try again.</p></div>';
 		}
 	};
 
@@ -4249,11 +4249,11 @@ print(f'Sum: {x + y}')"></textarea>
 		if (isTestView) {
 			const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
 			let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px; color: #ffffff; text-align: center;">';
-			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">✅ Test Submitted</h2>';
+			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">Test Submitted</h2>';
 			html += '<p style="margin: 0 0 1rem 0; font-size: 1.1rem;">Your responses have been recorded. An administrator will review them shortly.</p>';
 			if (violationCount > 0) {
 				html += `<div style="margin: 1.5rem auto 0 auto; max-width: 420px; background: rgba(254, 243, 199, 0.25); border: 1px solid rgba(234, 179, 8, 0.5); border-radius: 10px; padding: 1rem; color: #fef3c7;">`;
-				html += `<strong style="display:block; margin-bottom:0.35rem;">⚠️ Anti-cheat notices recorded</strong>`;
+				html += `<strong style="display:block; margin-bottom:0.35rem;">Anti-cheat notices recorded</strong>`;
 				html += `<span>Warnings captured: ${violationCount}</span>`;
 				html += '</div>';
 			}
@@ -4274,7 +4274,7 @@ print(f'Sum: {x + y}')"></textarea>
 		html += '</div>';
 		if (result.details && result.details.length > 0) {
 			html += '<div style="margin-top: 2rem;">';
-			html += '<h3>📊 Detailed Breakdown</h3>';
+			html += '<h3>Detailed Breakdown</h3>';
 		result.details.forEach((detail) => {
 				html += '<div style="padding: 1rem; margin: 1rem 0; background: #f9fafb; border-radius: 8px; border-left: 4px solid ';
 				html += detail.is_correct ? '#10b981' : '#dc2626';
@@ -4282,7 +4282,7 @@ print(f'Sum: {x + y}')"></textarea>
 				html += `<h4 style="margin: 0 0 0.5rem 0; color: #000000;">Question ${detail.question_index}</h4>`;
 			html += `<p style="margin: 0; color: #666;">Type: ${detail.question_type === 'mcq' ? 'Multiple Choice' : detail.question_type === 'coding' ? 'Coding' : 'Hands-on'}</p>`;
 				html += `<p style="margin: 0.5rem 0 0 0; font-weight: 600; color: ${detail.is_correct ? '#10b981' : '#dc2626'};">`;
-				html += detail.is_correct ? '✅ Correct' : '❌ Incorrect';
+				html += detail.is_correct ? 'Correct' : 'Incorrect';
 				html += '</p>';
 				html += '</div>';
 			});
@@ -4311,7 +4311,7 @@ print(f'Sum: {x + y}')"></textarea>
 				
 				// Show loading state
 				this.disabled = true;
-				this.textContent = '⏳ Running...';
+				this.textContent = 'Running...';
 				outputDiv.innerHTML = '<p class="muted">Executing code and validating...</p>';
 				
 				try {
@@ -4353,7 +4353,7 @@ print(f'Sum: {x + y}')"></textarea>
 				} finally {
 					// Reset button state
 					this.disabled = false;
-					this.textContent = '▶️ Run Code';
+					this.textContent = 'Run Code';
 				}
 			});
 		});
@@ -4491,7 +4491,7 @@ print(f'Sum: {x + y}')"></textarea>
 				}
 				
 				this.disabled = true;
-				this.textContent = '⏳ Running...';
+				this.textContent = 'Running...';
 				outputDiv.innerHTML = '<p class="muted">Executing code and validating...</p>';
 				
 				try {
@@ -4531,7 +4531,7 @@ print(f'Sum: {x + y}')"></textarea>
 					outputDiv.textContent = `Network error: ${error.message}`;
 				} finally {
 					this.disabled = false;
-					this.textContent = '▶️ Run Code';
+					this.textContent = 'Run Code';
 				}
 			});
 		});
@@ -4621,8 +4621,8 @@ print(f'Sum: {x + y}')"></textarea>
 					document.getElementById('dashboardUploadBtnLoading')?.style?.setProperty('display','none');
 					if (resultsDiv) {
 						resultsDiv.innerHTML = data.ok
-							? `<div style="background:#d1fae5;padding:1rem;border-radius:8px;border:2px solid #10b981;">✅ Created ${data.created} user(s). Errors: ${data.errors}</div>`
-							: `<div style="background:#fecaca;padding:1rem;border-radius:8px;border:2px solid #dc2626;">❌ ${data.error || 'Upload failed'}</div>`;
+							? `<div style="background:#d1fae5;padding:1rem;border-radius:8px;border:2px solid #10b981;">Created ${data.created} user(s). Errors: ${data.errors}</div>`
+							: `<div style="background:#fecaca;padding:1rem;border-radius:8px;border:2px solid #dc2626;">${data.error || 'Upload failed'}</div>`;
 						resultsDiv.style.display = 'block';
 					}
 					fileInput.value = '';
@@ -4650,7 +4650,7 @@ print(f'Sum: {x + y}')"></textarea>
 					return;
 				}
 				runButton.disabled = true;
-				runButton.textContent = '⏳ Running...';
+				runButton.textContent = 'Running...';
 				outputDiv.innerHTML = '<p class="muted">Executing code...</p>';
 				try {
 					const formData = new FormData();
@@ -4675,7 +4675,7 @@ print(f'Sum: {x + y}')"></textarea>
 					outputDiv.textContent = `Network error: ${error.message}`;
 				} finally {
 					runButton.disabled = false;
-					runButton.textContent = '▶️ Run Code';
+					runButton.textContent = 'Run Code';
 				}
 			}
 			function clearCode() {
@@ -5094,8 +5094,8 @@ print(f'Sum: {x + y}')"></textarea>
 						</label>
 						<div style="margin-top: 0.75rem;">
 							<div style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 0.5rem;">
-								<button type="button" class="qgTabBtn active" data-tab="plain" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; border-bottom: 2px solid #667eea; margin-bottom: -2px;">📝 Plain Text</button>
-								<button type="button" class="qgTabBtn" data-tab="json" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;">🔧 JSON</button>
+								<button type="button" class="qgTabBtn active" data-tab="plain" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; border-bottom: 2px solid #667eea; margin-bottom: -2px;">Plain Text</button>
+								<button type="button" class="qgTabBtn" data-tab="json" data-module="${moduleId}" style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;">JSON</button>
 							</div>
 							<div id="${moduleId}_plain" class="qgTabContent" style="display: block;">
 								<label style="display: block; margin-bottom: 0.5rem;"><strong>Paste Questions in Plain Text Format</strong>
@@ -5121,7 +5121,7 @@ Answer: function reverseString(s){return s.split("").reverse().join("")}
 ---
 You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.' style="margin-top: 0.25rem;"></textarea>
 								</label>
-								<button type="button" class="btn secondary qgConvertBtn" data-module="${moduleId}" style="margin-top: 0.5rem;">🔄 Convert to JSON</button>
+								<button type="button" class="btn secondary qgConvertBtn" data-module="${moduleId}" style="margin-top: 0.5rem;">Convert to JSON</button>
 								<div class="qgConvertStatus" data-module="${moduleId}" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
 							</div>
 							<div id="${moduleId}_json" class="qgTabContent" style="display: none;">
@@ -5129,10 +5129,10 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 									<textarea class="qgModuleQuestions" rows="12" placeholder='Paste JSON array of questions' required style="margin-top: 0.25rem;"></textarea>
 								</label>
 								<div class="qgHandsOnFiles" data-module="${moduleId}" style="margin-top: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
-									<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>📎 File Uploads for Hands-on Questions</strong></p>
+									<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>File Uploads for Hands-on Questions</strong></p>
 									<p class="muted" style="margin: 0 0 0.75rem 0; font-size: 0.9rem;">Upload files that will be available for download when users take tests with hands-on questions. Files are matched by question ID or title.</p>
 									<div class="qgHandsOnFilesList" data-module="${moduleId}" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-									<button type="button" class="btn secondary qgAddHandsOnFile" data-module="${moduleId}" style="margin-top: 0.5rem;">➕ Add File for Hands-on Question</button>
+									<button type="button" class="btn secondary qgAddHandsOnFile" data-module="${moduleId}" style="margin-top: 0.5rem;">Add File for Hands-on Question</button>
 								</div>
 							</div>
 						</div>
@@ -5163,11 +5163,11 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							try {
 								const parsed = parsePlainTextQuestions(plainText);
 								if (parsed.length === 0) {
-									statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No questions found. Check the format.</span>';
+									statusDiv.innerHTML = '<span style="color: #dc2626;">No questions found. Check the format.</span>';
 									return;
 								}
 								jsonTextarea.value = JSON.stringify(parsed, null, 2);
-								statusDiv.innerHTML = `<span style="color: #10b981;">✅ Converted ${parsed.length} question(s) successfully!</span>`;
+								statusDiv.innerHTML = `<span style="color: #10b981;">Converted ${parsed.length} question(s) successfully!</span>`;
 								// Switch to JSON tab to show result
 								wrap.querySelector('.qgTabBtn[data-tab="json"]').click();
 								// Wait a bit for tab to switch, then update hands-on file uploads list
@@ -5175,7 +5175,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 									updateHandsOnFilesList(module);
 								}, 100);
 							} catch(err) {
-								statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
+								statusDiv.innerHTML = `<span style="color: #dc2626;">Error: ${err.message}</span>`;
 							}
 						});
 					}
@@ -5222,7 +5222,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							<label style="display: block; margin-bottom: 0.25rem; font-size: 0.9rem; font-weight: 600;">File:</label>
 							<input type="file" class="qgHandsOnFileInput" data-file-id="${fileId}" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
 						</div>
-						<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">🗑️</button>
+						<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">Remove</button>
 					`;
 					
 					const removeBtn = fileDiv.querySelector('.qgRemoveHandsOnFile');
@@ -5271,7 +5271,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						summary.style.border = '1px solid #86efac';
 						summary.style.borderRadius = '6px';
 						summary.style.fontSize = '0.85rem';
-						summary.innerHTML = `<strong>📋 Available Hands-on Questions:</strong><ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">${handsOnQuestions.map((q, idx) => {
+							summary.innerHTML = `<strong>Available Hands-on Questions:</strong><ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">${handsOnQuestions.map((q, idx) => {
 							const qId = q.id || `(no ID - use: ${q.title || `Question ${idx+1}`})`;
 							const qTitle = q.title || 'Untitled';
 							return `<li><strong>ID: ${qId}</strong> - ${qTitle}</li>`;
@@ -5616,16 +5616,16 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						});
 						const result = await response.json();
 						if (result.ok) {
-						alert('✅ Saved to Question Bank (MongoDB)');
+						alert('Saved to Question Bank (MongoDB)');
 						// Keep admin on the same page; refresh subject/module selects
 						try { renderSubjectModuleOptions(); } catch(_) {}
 						// Optionally clear the form so admin can add another subject quickly
 						try { clearQGForm(); addModuleField(); } catch(_) {}
 						} else {
-							alert(`❌ Error: ${result.error}`);
+							alert(`Error: ${result.error}`);
 						}
 					} catch(err) {
-						alert(`❌ Failed to save: ${err.message}`);
+						alert(`Failed to save: ${err.message}`);
 					}
 				}
 
@@ -5689,7 +5689,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						});
 						const result = await response.json();
 						if (result.ok) {
-							alert(`✅ Classroom Activity created!\nActivity ID: ${result.activity_id}\nClassroom ID: ${classroomId}\nQuestions: ${result.total}`);
+							alert(`Classroom Activity created!\nActivity ID: ${result.activity_id}\nClassroom ID: ${classroomId}\nQuestions: ${result.total}`);
 							document.getElementById('createClassroomForm').reset();
 							renderSubjectModuleOptions();
 						} else {
@@ -5728,7 +5728,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						});
 						const result = await response.json();
 						if (result.ok) {
-							alert(`✅ Test created!\nTest ID: ${testId}\nQuestions: ${result.total}`);
+							alert(`Test created!\nTest ID: ${testId}\nQuestions: ${result.total}`);
 							document.getElementById('createTestForm').reset();
 							renderSubjectModuleOptions();
 						} else {
@@ -5923,7 +5923,7 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 												<input type="file" class="qgHandsOnFileInput" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;">
 												<p class="muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Leave empty to keep existing file, or upload new to replace.</p>
 											</div>
-											<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">🗑️</button>
+											<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">Remove</button>
 										`;
 										const removeBtn = fileDiv.querySelector('.qgRemoveHandsOnFile');
 										removeBtn.addEventListener('click', function(){
@@ -5956,15 +5956,15 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						});
 						const result = await response.json();
 						if (result.ok) {
-							alert('✅ Question bank deleted successfully');
+							alert('Question bank deleted successfully');
 							renderSubjectModuleOptions();
 							renderQMGroups();
 							document.getElementById('qmDetailContainer').style.display='none';
 						} else {
-							alert(`❌ Error: ${result.error}`);
+							alert(`Error: ${result.error}`);
 						}
 					} catch(err) {
-						alert(`❌ Failed to delete: ${err.message}`);
+						alert(`Failed to delete: ${err.message}`);
 					}
 				}
 
