@@ -1765,17 +1765,7 @@ button.secondary, .btn.secondary, a.btn.secondary {
 			? 'Time is up! Your test was submitted automatically. Your instructor will review your responses.'
 			: 'Test successfully submitted! Your instructor will review your responses.';
 	}
-	const violationContainer = document.getElementById('test-success-violations');
-	const violationCountEl = document.getElementById('test-success-violation-count');
-	const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
-	if (violationContainer && violationCountEl) {
-		if (violationCount > 0) {
-			violationContainer.style.display = '';
-			violationCountEl.textContent = violationCount;
-		} else {
-			violationContainer.style.display = 'none';
-		}
-	}
+	// Violation warnings are not shown to users - only logged for admin review
 	successCard.style.display = 'block';
 	const returnBtn = document.getElementById('btnReturnHome');
 	if (returnBtn && !returnBtn.dataset.bound) {
@@ -3408,34 +3398,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<a class="btn" href="/compiler">Open Compiler</a>
 					</div>
 				</div>
-			{% if submission and submission.violation_count %}
-			<div style="margin-top: 2rem;">
-				<h4>Anti-cheat Summary</h4>
-				<p class="muted">Total warnings captured: <strong>{{ submission.violation_count }}</strong></p>
-				{% if submission and submission.violations %}
-				<div class="table-container" style="margin-top: 1rem;">
-					<table>
-						<thead>
-							<tr>
-								<th>#</th>
-								<th>Violation</th>
-								<th>When</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for v in submission.violations %}
-							<tr>
-								<td>{{ loop.index }}</td>
-								<td>{{ v.type|default('unknown') }}</td>
-								<td>{{ v.timestamp|default('N/A') }}</td>
-							</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-				{% endif %}
-			</div>
-			{% endif %}
+			{# Violation warnings are not shown to users - only logged for admin review #}
 		</section>
 		{% endif %}
 
@@ -3667,10 +3630,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 		<section class="card" id="test-success-message" style="display:none; margin-top: 1.5rem; border-left: 4px solid #10b981;">
 			<h3>Test Submitted Successfully</h3>
 			<p id="test-success-text" style="margin: 1rem 0;">Thank you. Your test responses have been recorded and submitted for evaluation.</p>
-			<div id="test-success-violations" style="display:none; margin: 1rem 0; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">
-				<strong style="color: #92400e;">Anti-cheat notices captured</strong>
-				<p style="margin: 0.5rem 0 0 0; color: #92400e;">Warnings triggered: <span id="test-success-violation-count">0</span>. An administrator will review these events.</p>
-			</div>
 			<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top: 1.5rem;">
 				<button class="btn" onclick="window.location.href='/test'">Return to Test Page</button>
 				<button class="btn secondary" onclick="window.location.href='/user/logout'">Logout</button>
@@ -4247,16 +4206,10 @@ print(f'Sum: {x + y}')"></textarea>
 		if (!resultDiv) return;
 		const isTestView = (window.APP_CONTEXT && window.APP_CONTEXT.view === 'test_interface');
 		if (isTestView) {
-			const violationCount = Number((result && (result.violation_count ?? result.warning_count ?? 0)) || 0);
+			// Violation warnings are not shown to users - only logged for admin review
 			let html = '<div style="padding: 2rem; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px; color: #ffffff; text-align: center;">';
 			html += '<h2 style="margin: 0 0 1rem 0; font-size: 2rem;">Test Submitted</h2>';
 			html += '<p style="margin: 0 0 1rem 0; font-size: 1.1rem;">Your responses have been recorded. An administrator will review them shortly.</p>';
-			if (violationCount > 0) {
-				html += `<div style="margin: 1.5rem auto 0 auto; max-width: 420px; background: rgba(254, 243, 199, 0.25); border: 1px solid rgba(234, 179, 8, 0.5); border-radius: 10px; padding: 1rem; color: #fef3c7;">`;
-				html += `<strong style="display:block; margin-bottom:0.35rem;">Anti-cheat notices recorded</strong>`;
-				html += `<span>Warnings captured: ${violationCount}</span>`;
-				html += '</div>';
-			}
 			html += '<div style="margin-top: 1.75rem; display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">';
 			html += '<button class="btn" onclick="window.location.href=\'/home\'">Return to Home</button>';
 			html += '<button class="btn secondary" onclick="window.location.href=\'/user/logout\'">Logout</button>';
