@@ -3153,14 +3153,20 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% if submission.details %}
 				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
 					{% for detail in submission.details %}
-					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.question_type == 'hands_on' %}#f59e0b{% elif detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
 						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
 							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
+							{% if detail.question_type == 'hands_on' %}
+							<span style="font-weight: 600; color: #f59e0b;">
+								⏳ ADMIN WILL REVIEW
+							</span>
+							{% else %}
 							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
 								{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}
 							</span>
+							{% endif %}
 						</div>
-						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else 'Coding' }}</p>
+						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else ('Hands-on' if detail.question_type == 'hands_on' else 'Coding') }}</p>
 						
 						{% if detail.question_type == 'mcq' %}
 						<div style="margin-top: 1rem;">
@@ -3186,6 +3192,19 @@ student2,unique003,Stanford,both,act002,test002</pre>
 								<pre style="white-space: pre-wrap; margin: 0.5rem 0 0 0; color: #000000;">{{ detail.ai_feedback }}</pre>
 							</div>
 							{% endif %}
+						</div>
+						{% elif detail.question_type == 'hands_on' %}
+						<div style="margin-top: 1rem;">
+							{% if detail.hands_on_file and detail.hands_on_file.saved %}
+							<p style="margin: 0.25rem 0; color: #000000;"><strong>Uploaded File:</strong> 
+								<a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a>
+							</p>
+							{% else %}
+							<p style="margin: 0.25rem 0; color: #dc2626;"><strong>No file uploaded.</strong></p>
+							{% endif %}
+							<div style="margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border-radius: 4px; border: 1px solid #fbbf24;">
+								<p style="margin: 0; color: #92400e; font-weight: 600;">⏳ This submission will be reviewed by an administrator.</p>
+							</div>
 						</div>
 						{% endif %}
 					</div>
@@ -3221,12 +3240,20 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% if submission.details %}
 				<div style="display: grid; gap: 1rem; margin-top: 1rem;">
 					{% for detail in submission.details %}
-					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+					<div style="padding: 1rem; background: #f9fafb; border-radius: 8px; border-left: 4px solid {% if detail.question_type == 'hands_on' %}#f59e0b{% elif detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
 						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
 							<h5 style="margin: 0; color: #000000;">Question {{ detail.question_index }}: {{ detail.question_title }}</h5>
-							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}</span>
+							{% if detail.question_type == 'hands_on' %}
+							<span style="font-weight: 600; color: #f59e0b;">
+								⏳ ADMIN WILL REVIEW
+							</span>
+							{% else %}
+							<span style="font-weight: 600; color: {% if detail.is_correct %}#10b981{% else %}#dc2626{% endif %};">
+								{% if detail.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}
+							</span>
+							{% endif %}
 						</div>
-						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else (detail.question_type|title) }}</p>
+						<p style="margin: 0.5rem 0; color: #666;"><strong>Type:</strong> {{ 'Multiple Choice' if detail.question_type == 'mcq' else ('Hands-on' if detail.question_type == 'hands_on' else 'Coding') }}</p>
 						{% if detail.question_type == 'mcq' %}
 							<p style="margin: 0.25rem 0; color: #000000;"><strong>Student's Answer:</strong> {{ detail.selected_answer or 'No answer' }}</p>
 							<p style="margin: 0.25rem 0; color: #10b981;"><strong>Correct Answer:</strong> {{ detail.correct_answer }}</p>
@@ -3265,11 +3292,18 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							</div>
 							{% endif %}
 						{% elif detail.question_type == 'hands_on' %}
-							{% if detail.hands_on_file and detail.hands_on_file.saved %}
-							<p><a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a></p>
-							{% else %}
-							<p class="muted">No file uploaded.</p>
-							{% endif %}
+							<div style="margin-top: 1rem;">
+								{% if detail.hands_on_file and detail.hands_on_file.saved %}
+								<p style="margin: 0.25rem 0; color: #000000;"><strong>Uploaded File:</strong> 
+									<a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a>
+								</p>
+								{% else %}
+								<p style="margin: 0.25rem 0; color: #dc2626;"><strong>No file uploaded.</strong></p>
+								{% endif %}
+								<div style="margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border-radius: 4px; border: 1px solid #fbbf24;">
+									<p style="margin: 0; color: #92400e; font-weight: 600;">⏳ This submission will be reviewed by an administrator.</p>
+								</div>
+							</div>
 						{% endif %}
 					</div>
 					{% endfor %}

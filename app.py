@@ -2693,7 +2693,8 @@ def classroom_submit_all():
 
 	results = []
 	correct_count = 0
-	total_questions = len(answers)
+	# Count only MCQ and coding questions for scoring (exclude hands-on)
+	total_questions = sum(1 for a in answers if a.get("question_type") in ("mcq", "coding"))
 	
 	for answer in answers:
 		question_index = answer.get("question_index")
@@ -2861,12 +2862,16 @@ Return a JSON with:
 						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
 				except Exception as exc:
 					upload_info = {"saved": False, "error": str(exc)}
+			# Hands-on questions: no validation, marked for admin review (not counted in scoring)
 			results.append({
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
+				"hands_on_file": upload_info,
+				"is_correct": None,  # Neutral - no validation
+				"status": "pending_review"  # Mark for admin review
 			})
+			# Note: hands-on questions are NOT counted in correct_count or total_questions
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
 	
@@ -3318,7 +3323,8 @@ def test_submit_all():
 
 	results = []
 	correct_count = 0
-	total_questions = len(answers)
+	# Count only MCQ and coding questions for scoring (exclude hands-on)
+	total_questions = sum(1 for a in answers if a.get("question_type") in ("mcq", "coding"))
 
 	for answer in answers:
 		question_index = answer.get("question_index")
@@ -3493,12 +3499,16 @@ def test_submit_all():
 						upload_info = {"saved": True, "file_name": fname, "file_path": save_path}
 				except Exception as exc:
 					upload_info = {"saved": False, "error": str(exc)}
+			# Hands-on questions: no validation, marked for admin review (not counted in scoring)
 			results.append({
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
+				"hands_on_file": upload_info,
+				"is_correct": None,  # Neutral - no validation
+				"status": "pending_review"  # Mark for admin review
 			})
+			# Note: hands-on questions are NOT counted in correct_count or total_questions
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
 	violation_log = session.get("test_violations", [])
