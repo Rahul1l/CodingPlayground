@@ -3613,11 +3613,10 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{# Hands-on Questions #}
 					{% if question.question_type == 'hands_on' %}
 					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem; text-align: left;">
-						{% set csv_file_path = question.get('csv_file') %}
-						{% if csv_file_path %}
+						{% if question.csv_file %}
 						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; text-align: left;">
 							<p style="margin: 0 0 0.5rem 0; text-align: left;"><strong>📄 CSV File Available:</strong></p>
-							<a href="/question/csv/{{ csv_file_path }}" class="btn secondary small" download style="text-align: left;">Download {{ question.get('csv_file_name') or csv_file_path }}</a>
+							<a href="/question/csv/{{ question.csv_file }}" class="btn secondary small" download style="text-align: left;">Download {{ question.csv_file_name or question.csv_file }}</a>
 							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem; text-align: left;">Download the CSV file before submitting your solution.</p>
 						</div>
 						{% endif %}
@@ -3690,7 +3689,6 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				<button class="btn secondary" type="submit">Complete Activity</button>
 			</form>
 		</section>
-		{% endif %}
 		{% endif %}
 
 		{# Test View #}
