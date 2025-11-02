@@ -3449,7 +3449,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 				{% set question_num = loop.index %}
 				<section class="card question-card{% if view == 'test_interface' %} test-question{% endif %}" data-index="{{ question_num }}" data-type="{{ question.question_type }}" {% if view == 'test_interface' and question_num > 1 %}style="display:none;"{% endif %}>
 					<div class="question-header">
-						<h3>Question {{ question_num }}: {{ question.title }}</h3>
+						<h3>Question {{ question_num }}{% if question.question_type == 'hands_on' %}: Hands-on Question{% else %}: {{ question.title }}{% endif %}</h3>
 						<!-- DEBUG: question_num = {{ question_num }}, loop.index = {{ loop.index }} -->
 						<div style="display: flex; gap: 0.5rem; align-items: center;">
 							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
@@ -3581,6 +3581,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Please download this file before submitting your solution.</p>
 						</div>
 						{% endif %}
+						<div style="margin-bottom: 1rem; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+							<div style="white-space: pre-wrap; line-height: 1.8; font-family: inherit; color: #000000;">{{ question.title }}</div>
+						</div>
 						<p><strong>Hands-on Upload:</strong></p>
 						<input type="file" id="handson-file-{{ question_num }}" />
 						<p class="muted" style="margin-top: 0.5rem;">Upload any file type as your solution.</p>
@@ -5326,11 +5329,13 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						if (isQuestionStart(line)){
 							// finalize previous
 							if (currentQ){
-								// For hands-on questions, merge description into title; for others, keep description separate but won't be used
+								// For hands-on questions, merge description into title with preserved line breaks
 								if (currentQ.isHandsOn) {
-									const descText = softTrim(descriptionLines.join(' '));
-									currentQ.title = (currentQ.title || '') + (descText ? (currentQ.title ? ' ' : '') + descText : '');
+									// Preserve original line breaks for hands-on questions (join with newlines, not spaces)
+									const descText = descriptionLines.join('\n').trim();
+									currentQ.title = (currentQ.title || '') + (descText ? (currentQ.title ? '\n\n' : '') + descText : '');
 									currentQ.description = ''; // Clear description for hands-on
+									currentQ.isHandsOn = true; // Mark as hands-on for formatting
 								} else {
 									currentQ.description = softTrim(descriptionLines.join(' ')) || currentQ.title;
 								}
@@ -5411,11 +5416,13 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 			
 			// finalize trailing question
 					if (currentQ){
-						// For hands-on questions, merge description into title; for others, keep description separate but won't be used in final output
+						// For hands-on questions, merge description into title with preserved line breaks
 						if (currentQ.isHandsOn) {
-							const descText = softTrim(descriptionLines.join(' '));
-							currentQ.title = (currentQ.title || '') + (descText ? (currentQ.title ? ' ' : '') + descText : '');
+							// Preserve original line breaks for hands-on questions (join with newlines, not spaces)
+							const descText = descriptionLines.join('\n').trim();
+							currentQ.title = (currentQ.title || '') + (descText ? (currentQ.title ? '\n\n' : '') + descText : '');
 							currentQ.description = ''; // Clear description for hands-on
+							currentQ.isHandsOn = true; // Mark as hands-on for formatting
 						} else {
 							currentQ.description = softTrim(descriptionLines.join(' ')) || currentQ.title;
 						}
@@ -5443,11 +5450,12 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					finalType = 'coding';
 				}
 				
-				// For hands-on questions: merge title and description into title only, no description
+				// For hands-on questions: merge title and description into title only, preserving line breaks
 				let finalTitle = q.title || 'Untitled';
-				if (finalType === 'hands_on' && q.description) {
-					// Combine title and description into title for hands-on questions
-					finalTitle = (q.title || '') + (q.title && q.description ? ' ' : '') + (q.description || '');
+				if (finalType === 'hands_on') {
+					// For hands-on, title already contains all content with preserved line breaks from parsing
+					// Just ensure it's properly formatted
+					finalTitle = finalTitle.trim();
 				}
 				
 				const normalized = {
