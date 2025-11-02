@@ -2308,7 +2308,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 				<div class="question-content">
 					<p><strong>Description:</strong></p>
-					<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+					<div style="white-space: pre-wrap; line-height: 1.6;">
+						{% if question.question_type == 'hands_on' %}
+							{{ question.description | format_handson_description }}
+						{% else %}
+							{{ question.description }}
+						{% endif %}
+					</div>
 					
 					{# MCQ Questions for Admin #}
 					{% if question.question_type == 'mcq' and question.options %}
@@ -3265,11 +3271,20 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							</div>
 							{% endif %}
 						{% elif detail.question_type == 'hands_on' %}
-							{% if detail.hands_on_file and detail.hands_on_file.saved %}
-							<p><a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a></p>
-							{% else %}
-							<p class="muted">No file uploaded.</p>
+							{% if detail.csv_file %}
+							<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+								<p style="margin: 0 0 0.5rem 0; color: #000000;"><strong>📄 CSV File (Part of Question):</strong></p>
+								<p><a class="btn secondary small" href="/question/csv/{{ detail.csv_file }}" download>{{ detail.csv_file_name or detail.csv_file }}</a></p>
+							</div>
 							{% endif %}
+							<div style="margin-top: 1rem;">
+								<p style="margin: 0 0 0.5rem 0; color: #000000;"><strong>📎 Student's Answer File:</strong></p>
+								{% if detail.hands_on_file and detail.hands_on_file.saved %}
+								<p><a class="btn secondary small" href="/admin/submissions/file?sub_id={{ submission._id }}&idx={{ loop.index0 }}">Download {{ detail.hands_on_file.file_name }}</a></p>
+								{% else %}
+								<p class="muted">No file uploaded by student.</p>
+								{% endif %}
+							</div>
 						{% endif %}
 					</div>
 					{% endfor %}
@@ -3469,7 +3484,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					
 					<div class="question-content">
 						<p><strong>Description:</strong></p>
-						<div style="white-space: pre-wrap; line-height: 1.6;">{{ question.description }}</div>
+						<div style="white-space: pre-wrap; line-height: 1.6;">
+							{% if question.question_type == 'hands_on' %}
+								{{ question.description | format_handson_description }}
+							{% else %}
+								{{ question.description }}
+							{% endif %}
+						</div>
 						
 						{# MCQ Questions #}
 						{% if question.question_type == 'mcq' and question.options %}
@@ -3570,6 +3591,13 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{# Hands-on Questions #}
 					{% if question.question_type == 'hands_on' %}
 					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem;">
+						{% if question.csv_file %}
+						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+							<p style="margin: 0 0 0.5rem 0;"><strong>📄 CSV File Available:</strong></p>
+							<a href="/question/csv/{{ question.csv_file }}" class="btn secondary small" download>Download {{ question.csv_file_name or question.csv_file }}</a>
+							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Download the CSV file before submitting your solution.</p>
+						</div>
+						{% endif %}
 						<p><strong>Hands-on Upload:</strong></p>
 						<input type="file" id="handson-file-{{ question_num }}" />
 						<p class="muted" style="margin-top: 0.5rem;">Upload any file type as your solution.</p>
@@ -5078,8 +5106,17 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							</div>
 							<div id="${moduleId}_json" class="qgTabContent" style="display: none;">
 								<label style="display: block; margin-bottom: 0.5rem;"><strong>Questions JSON for this module</strong>
-									<textarea class="qgModuleQuestions" rows="12" placeholder='Paste JSON array of questions' required style="margin-top: 0.25rem;"></textarea>
+									<textarea class="qgModuleQuestions" rows="12" placeholder='Paste JSON array of questions
+
+Note: For hands-on questions, you can optionally add a "csv_file" field with a file path, or upload a CSV file below.' required style="margin-top: 0.25rem;"></textarea>
 								</label>
+								<div style="margin-top: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+									<label style="display: block; margin-bottom: 0.5rem;"><strong>📄 CSV File for Hands-on Questions (Optional)</strong>
+										<p class="muted" style="font-size: 0.9rem; margin: 0.25rem 0;">Upload a CSV file that will be available for students when they attempt hands-on questions in this module. If there are multiple hands-on questions, this CSV will be associated with all of them.</p>
+										<input type="file" class="qgModuleCSV" accept=".csv" data-module="${moduleId}" style="margin-top: 0.5rem;">
+										<small class="muted" style="display: block; margin-top: 0.25rem;">Only CSV files are accepted</small>
+									</label>
+								</div>
 							</div>
 						</div>
 					`;
@@ -5339,8 +5376,31 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const moduleNames = Array.from(document.querySelectorAll('.qgModuleName')).map(i=>i.value.trim());
 					const moduleJsons = Array.from(document.querySelectorAll('.qgModuleQuestions')).map(t=>t.value.trim());
 					const modulePlainTexts = Array.from(document.querySelectorAll('.qgModulePlainText')).map(t=>t.value.trim());
+					const moduleCSVFiles = Array.from(document.querySelectorAll('.qgModuleCSV'));
 					if (moduleNames.length === 0){ alert('Add at least one module'); return; }
 					const modules = {};
+					const csvFiles = {}; // Store CSV files by module index
+					
+					// Collect CSV files
+					for (let i=0; i<moduleCSVFiles.length; i++){
+						const csvInput = moduleCSVFiles[i];
+						if (csvInput && csvInput.files && csvInput.files[0]){
+							const moduleId = csvInput.dataset.module;
+							// Find module index by matching module container
+							const moduleContainer = csvInput.closest('[style*="border"]');
+							if (moduleContainer){
+								const allModules = Array.from(document.querySelectorAll('.qgModuleName'));
+								const moduleIndex = Array.from(document.querySelectorAll('.qgModuleName')).findIndex(name => {
+									const container = name.closest('[style*="border"]');
+									return container === moduleContainer;
+								});
+								if (moduleIndex >= 0){
+									csvFiles[moduleIndex] = csvInput.files[0];
+								}
+							}
+						}
+					}
+					
 					for (let i=0;i<moduleNames.length;i++){
 						const name = moduleNames[i];
 						if (!name){ alert(`Module #${i+1} name is required`); return; }
@@ -5369,18 +5429,28 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							options: Array.isArray(q.options) ? q.options : undefined,
 							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
 							answer: typeof q.answer === 'string' ? q.answer : undefined,
-							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined
+							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined,
+							csv_file: q.csv_file || undefined // Preserve existing csv_file if in JSON
 						};
 					});
 						modules[name] = normalized;
 					}
 					
-					// Save to MongoDB
+					// Save to MongoDB (with CSV files if any)
 					try {
+						const formData = new FormData();
+						formData.append('university', university);
+						formData.append('subject', subject);
+						formData.append('modules', JSON.stringify(modules));
+						
+						// Add CSV files to FormData
+						for (const [moduleIndex, csvFile] of Object.entries(csvFiles)){
+							formData.append(`csv_${moduleIndex}`, csvFile);
+						}
+						
 						const response = await fetch('/api/question-bank/save', {
 							method: 'POST',
-							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({ university, subject, modules })
+							body: formData
 						});
 						const result = await response.json();
 						if (result.ok) {

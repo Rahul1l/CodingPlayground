@@ -36,6 +36,92 @@ app.secret_key = os.getenv("SECRET_KEY", Config.SECRET_KEY)
 # Enable CORS for all routes (allow credentials for session cookies)
 CORS(app, supports_credentials=True)
 
+# Template filter to format hands-on question descriptions
+@app.template_filter('format_handson_description')
+def format_handson_description(text):
+	"""Format hands-on question descriptions with proper line breaks for keywords."""
+	if not text or not isinstance(text, str):
+		return text
+	
+	import re
+	
+	# Keywords to detect (case-insensitive)
+	keywords = ['Case Study', 'Tasks', 'Expected outcome', 'Expected Outcome']
+	
+	# Check if any keyword exists in the text (case-insensitive)
+	text_lower = text.lower()
+	has_keywords = any(kw.lower() in text_lower for kw in keywords)
+	
+	if not has_keywords:
+		return text
+	
+	# Process each keyword section
+	result = text
+	
+	for keyword in keywords:
+		# Pattern to match keyword with or without colon, case-insensitive
+		# Match: keyword (possibly with colon) followed by content until next keyword or end
+		keyword_escaped = re.escape(keyword)
+		other_keywords = [re.escape(k) for k in keywords if k != keyword]
+		other_keywords_pattern = '|'.join(other_keywords) if other_keywords else 'THIS_NEVER_MATCHES'
+		
+		# Pattern: keyword (with optional colon) followed by content until next keyword
+		pattern = r'(' + keyword_escaped + r')\s*:?\s*(.+?)(?=\s*(?:' + other_keywords_pattern + r')\s*:|$)'
+		
+		def format_keyword_section(match):
+			kw_found = match.group(1)  # Original keyword (preserves case)
+			content = match.group(2).strip()
+			
+			# Put keyword on its own line with colon
+			formatted = f"\n{kw_found}:"
+			
+			if content:
+				# Check if content has numbered items (1. 2. etc.) or bullets (-, *, •)
+				# First check if there are already newlines with numbered items
+				if '\n' in content:
+					# Process line by line
+					lines = content.split('\n')
+					for line in lines:
+						line = line.strip()
+						if line:
+							if re.match(r'^\d+[.)]\s+', line) or re.match(r'^[-*•]\s+', line):
+								# Already formatted line with number/bullet
+								formatted += f"\n  {line}"
+							else:
+								# Regular content line
+								formatted += f"\n  {line}"
+				else:
+					# No newlines - check if content has inline numbered/bulleted items
+					# Pattern to find: "1. text 2. text" or "- text - text"
+					if re.search(r'\d+[.)]\s+', content) or re.search(r'[-*•]\s+', content):
+						# Split by numbered items or bullets
+						parts = re.split(r'(\d+[.)]\s+|[-*•]\s+)', content)
+						current_item = ""
+						for part in parts:
+							if re.match(r'^\d+[.)]\s+$', part) or re.match(r'^[-*•]\s+$', part):
+								# This is a numbered prefix or bullet - start new line
+								if current_item.strip():
+									formatted += f"\n  {current_item.strip()}"
+								current_item = part
+							else:
+								current_item += part
+						# Add the last item
+						if current_item.strip():
+							formatted += f"\n  {current_item.strip()}"
+					else:
+						# Just regular content - put on new line
+						formatted += f"\n  {content}"
+			
+			return formatted
+		
+		# Apply formatting (case-insensitive, dot-all mode to handle multi-line content)
+		result = re.sub(pattern, format_keyword_section, result, flags=re.IGNORECASE | re.DOTALL)
+	
+	# Clean up multiple consecutive newlines (max 2)
+	result = re.sub(r'\n{3,}', '\n\n', result)
+	
+	return result.strip()
+
 # MongoDB Setup - Following working Feedback-App-V2 pattern
 try:
     print("Connecting to MongoDB...")
@@ -1125,6 +1211,28 @@ def admin_download_submission_file():
 	return send_file(path, as_attachment=True, download_name=name)
 
 
+@app.route("/question/csv/<csv_file>")
+def download_question_csv(csv_file):
+	"""Download CSV file for hands-on questions"""
+	redir = require_user()
+	if redir:
+		return redir
+	
+	import os
+	from werkzeug.utils import secure_filename
+	
+	# Validate filename to prevent path traversal
+	csv_file = secure_filename(csv_file)
+	csv_files_dir = os.path.join(os.getcwd(), 'question_csvs')
+	file_path = os.path.join(csv_files_dir, csv_file)
+	
+	# Check if file exists and is within the allowed directory
+	if not os.path.exists(file_path) or not file_path.startswith(csv_files_dir):
+		return abort(404)
+	
+	return send_file(file_path, as_attachment=True, download_name=csv_file)
+
+
 @app.route("/admin/submissions/delete/<submission_id>", methods=["POST"])
 def admin_delete_submission(submission_id):
 	redir = require_admin()
@@ -1650,10 +1758,29 @@ def api_save_question_bank():
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-		data = request.json
-		university = data.get("university", "").strip()
-		subject = data.get("subject", "").strip()
-		modules = data.get("modules", {})
+		# Handle both JSON and FormData (for CSV uploads)
+		if request.is_json:
+			data = request.json
+			university = data.get("university", "").strip()
+			subject = data.get("subject", "").strip()
+			modules = data.get("modules", {})
+			csv_files = {}
+		else:
+			# FormData
+			university = request.form.get("university", "").strip()
+			subject = request.form.get("subject", "").strip()
+			modules_json = request.form.get("modules", "{}")
+			try:
+				modules = json.loads(modules_json)
+			except json.JSONDecodeError:
+				return jsonify({"ok": False, "error": "Invalid modules JSON"}), 400
+			
+			# Collect CSV files from request
+			csv_files = {}
+			for key in request.files:
+				if key.startswith("csv_"):
+					module_index = key.replace("csv_", "")
+					csv_files[module_index] = request.files[key]
 		
 		if not university or not subject:
 			return jsonify({"ok": False, "error": "University and subject are required"}), 400
@@ -1661,12 +1788,51 @@ def api_save_question_bank():
 		if not modules or not isinstance(modules, dict):
 			return jsonify({"ok": False, "error": "Modules must be a non-empty object"}), 400
 		
-		# Normalize modules (ensure proper structure)
+		# Process CSV files and associate them with hands-on questions
+		import os
+		from werkzeug.utils import secure_filename
+		
+		csv_files_dir = os.path.join(os.getcwd(), 'question_csvs')
+		os.makedirs(csv_files_dir, exist_ok=True)
+		
+		# Normalize modules and associate CSV files with hands-on questions
 		normalized_modules = {}
-		for module_name, questions in modules.items():
+		module_names_list = list(modules.keys())
+		
+		for module_idx, (module_name, questions) in enumerate(modules.items()):
 			if not isinstance(questions, list):
 				return jsonify({"ok": False, "error": f"Module '{module_name}' must contain an array of questions"}), 400
-			normalized_modules[module_name] = questions
+			
+			# Check if there's a CSV file for this module
+			csv_file = csv_files.get(str(module_idx))
+			csv_file_path = None
+			csv_file_name = None
+			
+			if csv_file and csv_file.filename:
+				# Validate CSV file
+				if not csv_file.filename.lower().endswith('.csv'):
+					return jsonify({"ok": False, "error": f"CSV file for module '{module_name}' must be a .csv file"}), 400
+				
+				# Save CSV file
+				fname = secure_filename(csv_file.filename)
+				# Create unique filename: university_subject_module_timestamp_filename
+				unique_name = f"{university}_{subject}_{module_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{fname}"
+				save_path = os.path.join(csv_files_dir, unique_name)
+				csv_file.save(save_path)
+				csv_file_path = unique_name  # Store relative path
+				csv_file_name = fname
+			
+			# Update hands-on questions with CSV file info
+			updated_questions = []
+			for q in questions:
+				updated_q = q.copy()
+				# If this is a hands-on question and we have a CSV file, add CSV info
+				if updated_q.get("type") == "hands_on" and csv_file_path:
+					updated_q["csv_file"] = csv_file_path
+					updated_q["csv_file_name"] = csv_file_name
+				updated_questions.append(updated_q)
+			
+			normalized_modules[module_name] = updated_questions
 		
 		# Upsert question bank document
 		# Create a new question bank document every time (no merging/overwriting)
@@ -1680,6 +1846,9 @@ def api_save_question_bank():
 		
 		return jsonify({"ok": True, "message": "Question bank saved successfully"})
 	except Exception as e:
+		logger.error(f"Error saving question bank: {e}")
+		import traceback
+		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -1842,7 +2011,9 @@ def api_generate_activity_from_bank():
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
-					"difficulty": "medium"
+					"difficulty": "medium",
+					"csv_file": q.get("csv_file"),  # Include CSV file path if available
+					"csv_file_name": q.get("csv_file_name")  # Include CSV file name if available
 				})
 		
 		# Create activity
@@ -1991,7 +2162,9 @@ def api_generate_test_from_bank():
 					"question_type": "hands_on",
 					"title": q.get("title", "Untitled"),
 					"description": q.get("description", ""),
-					"difficulty": "medium"
+					"difficulty": "medium",
+					"csv_file": q.get("csv_file"),  # Include CSV file path if available
+					"csv_file_name": q.get("csv_file_name")  # Include CSV file name if available
 				})
 		
 		# Create or update test
@@ -2745,7 +2918,9 @@ Return a JSON with:
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
+				"hands_on_file": upload_info,
+				"csv_file": question_data.get("csv_file"),  # Include CSV file info from question
+				"csv_file_name": question_data.get("csv_file_name")
 			})
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
@@ -3372,7 +3547,9 @@ def test_submit_all():
 				"question_index": question_index,
 				"question_type": "hands_on",
 				"question_title": question_data.get("title", ""),
-				"hands_on_file": upload_info
+				"hands_on_file": upload_info,
+				"csv_file": question_data.get("csv_file"),  # Include CSV file info from question
+				"csv_file_name": question_data.get("csv_file_name")
 			})
 
 	percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0
