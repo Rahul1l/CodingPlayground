@@ -3570,6 +3570,15 @@ student2,unique003,Stanford,both,act002,test002</pre>
 					{# Hands-on Questions #}
 					{% if question.question_type == 'hands_on' %}
 					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem;">
+						{% if question.admin_file and question.admin_file.saved %}
+						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+							<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>📎 Download Required File:</strong></p>
+							<a href="/api/question-file/{{ question.admin_file.unique_name }}" class="btn secondary" download style="display: inline-flex; align-items: center; gap: 0.5rem;">
+								⬇️ Download {{ question.admin_file.file_name }}
+							</a>
+							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Please download this file before submitting your solution.</p>
+						</div>
+						{% endif %}
 						<p><strong>Hands-on Upload:</strong></p>
 						<input type="file" id="handson-file-{{ question_num }}" />
 						<p class="muted" style="margin-top: 0.5rem;">Upload any file type as your solution.</p>
@@ -5080,6 +5089,12 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 								<label style="display: block; margin-bottom: 0.5rem;"><strong>Questions JSON for this module</strong>
 									<textarea class="qgModuleQuestions" rows="12" placeholder='Paste JSON array of questions' required style="margin-top: 0.25rem;"></textarea>
 								</label>
+								<div class="qgHandsOnFiles" data-module="${moduleId}" style="margin-top: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+									<p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e40af;"><strong>📎 File Uploads for Hands-on Questions</strong></p>
+									<p class="muted" style="margin: 0 0 0.75rem 0; font-size: 0.9rem;">Upload files that will be available for download when users take tests with hands-on questions. Files are matched by question ID or title.</p>
+									<div class="qgHandsOnFilesList" data-module="${moduleId}" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+									<button type="button" class="btn secondary qgAddHandsOnFile" data-module="${moduleId}" style="margin-top: 0.5rem;">➕ Add File for Hands-on Question</button>
+								</div>
 							</div>
 						</div>
 					`;
@@ -5116,11 +5131,104 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 								statusDiv.innerHTML = `<span style="color: #10b981;">✅ Converted ${parsed.length} question(s) successfully!</span>`;
 								// Switch to JSON tab to show result
 								wrap.querySelector('.qgTabBtn[data-tab="json"]').click();
+								// Update hands-on file uploads list
+								updateHandsOnFilesList(module);
 							} catch(err) {
 								statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
 							}
 						});
 					}
+					
+					// Wire up hands-on file upload button
+					const addFileBtn = wrap.querySelector('.qgAddHandsOnFile');
+					if (addFileBtn) {
+						addFileBtn.addEventListener('click', function(){
+							addHandsOnFileField(this.dataset.module);
+						});
+					}
+					
+					// Update hands-on files list when JSON changes
+					const jsonTextarea = wrap.querySelector('.qgModuleQuestions');
+					if (jsonTextarea) {
+						jsonTextarea.addEventListener('input', function(){
+							updateHandsOnFilesList(moduleId);
+						});
+					}
+				}
+				
+				function addHandsOnFileField(moduleId){
+					const filesList = document.querySelector(`.qgHandsOnFilesList[data-module="${moduleId}"]`);
+					if (!filesList) return;
+					
+					const fileIndex = filesList.children.length;
+					const fileId = `handson_${moduleId}_${fileIndex}_${Date.now()}`;
+					
+					const fileDiv = document.createElement('div');
+					fileDiv.className = 'qgHandsOnFileItem';
+					fileDiv.style.display = 'flex';
+					fileDiv.style.gap = '0.5rem';
+					fileDiv.style.alignItems = 'flex-end';
+					fileDiv.style.padding = '0.75rem';
+					fileDiv.style.background = '#ffffff';
+					fileDiv.style.border = '1px solid #cbd5e1';
+					fileDiv.style.borderRadius = '6px';
+					fileDiv.innerHTML = `
+						<div style="flex: 1;">
+							<label style="display: block; margin-bottom: 0.25rem; font-size: 0.9rem; font-weight: 600;">Question ID or Title (to match):</label>
+							<input type="text" class="qgHandsOnQuestionId" placeholder="Question ID or title" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+						</div>
+						<div style="flex: 1;">
+							<label style="display: block; margin-bottom: 0.25rem; font-size: 0.9rem; font-weight: 600;">File:</label>
+							<input type="file" class="qgHandsOnFileInput" data-file-id="${fileId}" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+						</div>
+						<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">🗑️</button>
+					`;
+					
+					const removeBtn = fileDiv.querySelector('.qgRemoveHandsOnFile');
+					removeBtn.addEventListener('click', function(){
+						fileDiv.remove();
+					});
+					
+					filesList.appendChild(fileDiv);
+					updateHandsOnFilesList(moduleId);
+				}
+				
+				function updateHandsOnFilesList(moduleId){
+					const jsonTextarea = document.querySelector(`#qgModulesContainer [data-module="${moduleId}"]`)?.closest('div')?.querySelector('.qgModuleQuestions');
+					if (!jsonTextarea) return;
+					
+					let questions = [];
+					try {
+						const jsonText = jsonTextarea.value.trim();
+						if (jsonText) {
+							questions = JSON.parse(jsonText);
+							if (!Array.isArray(questions)) questions = [];
+						}
+					} catch(e) {
+						// Invalid JSON, ignore
+					}
+					
+					const filesList = document.querySelector(`.qgHandsOnFilesList[data-module="${moduleId}"]`);
+					if (!filesList) return;
+					
+					// Update question ID inputs with suggestions
+					const handsOnQuestions = questions.filter(q => {
+						const qType = (q.type || '').toLowerCase();
+						return qType === 'hands_on' || qType === 'handson';
+					});
+					
+					const fileItems = filesList.querySelectorAll('.qgHandsOnFileItem');
+					fileItems.forEach(item => {
+						const questionIdInput = item.querySelector('.qgHandsOnQuestionId');
+						if (questionIdInput && !questionIdInput.value && handsOnQuestions.length > 0) {
+							// Add placeholder with first hands-on question title
+							const firstQ = handsOnQuestions[0];
+							const suggestedId = firstQ.id || firstQ.title || '';
+							if (suggestedId && !questionIdInput.placeholder.includes('e.g.')) {
+								questionIdInput.placeholder = `e.g., ${suggestedId.substring(0, 30)}...`;
+							}
+						}
+					});
 				}
 				
 				function parsePlainTextQuestions(text){
@@ -5341,6 +5449,8 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 					const modulePlainTexts = Array.from(document.querySelectorAll('.qgModulePlainText')).map(t=>t.value.trim());
 					if (moduleNames.length === 0){ alert('Add at least one module'); return; }
 					const modules = {};
+					const moduleWraps = Array.from(document.querySelectorAll('#qgModulesContainer > div'));
+					
 					for (let i=0;i<moduleNames.length;i++){
 						const name = moduleNames[i];
 						if (!name){ alert(`Module #${i+1} name is required`); return; }
@@ -5369,18 +5479,48 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 							options: Array.isArray(q.options) ? q.options : undefined,
 							correctOption: Number.isInteger(q.correctOption) ? q.correctOption : undefined,
 							answer: typeof q.answer === 'string' ? q.answer : undefined,
-							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined
+							answerRegex: typeof q.answerRegex === 'string' ? q.answerRegex : undefined,
+							admin_file: q.admin_file || undefined  // Preserve existing admin_file if present
 						};
 					});
 						modules[name] = normalized;
 					}
 					
+					// Collect file uploads for hands-on questions
+					const formData = new FormData();
+					formData.append('university', university);
+					formData.append('subject', subject);
+					formData.append('modules', JSON.stringify(modules));
+					
+					// Collect files from all modules
+					let hasFiles = false;
+					moduleWraps.forEach((wrap, moduleIdx) => {
+						const moduleName = moduleNames[moduleIdx];
+						if (!moduleName) return;
+						
+						const filesList = wrap.querySelector('.qgHandsOnFilesList');
+						if (!filesList) return;
+						
+						const fileItems = filesList.querySelectorAll('.qgHandsOnFileItem');
+						fileItems.forEach((item, fileIdx) => {
+							const questionIdInput = item.querySelector('.qgHandsOnQuestionId');
+							const fileInput = item.querySelector('.qgHandsOnFileInput');
+							const questionId = questionIdInput ? questionIdInput.value.trim() : '';
+							const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+							
+							if (file && questionId) {
+								hasFiles = true;
+								formData.append(`file_${moduleIdx}_${fileIdx}_question`, questionId);
+								formData.append(`file_${moduleIdx}_${fileIdx}`, file);
+							}
+						});
+					});
+					
 					// Save to MongoDB
 					try {
 						const response = await fetch('/api/question-bank/save', {
 							method: 'POST',
-							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({ university, subject, modules })
+							body: formData  // FormData automatically sets Content-Type with boundary
 						});
 						const result = await response.json();
 						if (result.ok) {
@@ -5650,6 +5790,58 @@ You can paste multiple questions. Separate them with blank lines or Q1, Q2, etc.
 						const current = wraps[wraps.length-1];
 						current.querySelector('.qgModuleName').value = m;
 						current.querySelector('.qgModuleQuestions').value = JSON.stringify(a.modules[m], null, 2);
+						
+						// Show existing file uploads for hands-on questions
+						const questions = a.modules[m] || [];
+						const handsOnQuestions = questions.filter(q => {
+							const qType = (q.type || '').toLowerCase();
+							return (qType === 'hands_on' || qType === 'handson') && q.admin_file && q.admin_file.saved;
+						});
+						
+						if (handsOnQuestions.length > 0) {
+							// Switch to JSON tab if not already
+							current.querySelector('.qgTabBtn[data-tab="json"]')?.click();
+							
+							// Add file entries for existing admin files
+							const filesList = current.querySelector('.qgHandsOnFilesList');
+							if (filesList) {
+								const moduleIdAttr = filesList.getAttribute('data-module');
+								handsOnQuestions.forEach(q => {
+									if (q.admin_file) {
+										const fileDiv = document.createElement('div');
+										fileDiv.className = 'qgHandsOnFileItem';
+										fileDiv.style.display = 'flex';
+										fileDiv.style.gap = '0.5rem';
+										fileDiv.style.alignItems = 'flex-end';
+										fileDiv.style.padding = '0.75rem';
+										fileDiv.style.background = '#ffffff';
+										fileDiv.style.border = '1px solid #cbd5e1';
+										fileDiv.style.borderRadius = '6px';
+										const qId = q.id || q.title || '';
+										fileDiv.innerHTML = `
+											<div style="flex: 1;">
+												<label style="display: block; margin-bottom: 0.25rem; font-size: 0.9rem; font-weight: 600;">Question ID or Title (to match):</label>
+												<input type="text" class="qgHandsOnQuestionId" value="${qId}" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+											</div>
+											<div style="flex: 1;">
+												<label style="display: block; margin-bottom: 0.25rem; font-size: 0.9rem; font-weight: 600;">File:</label>
+												<div style="padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; background: #f3f4f6;">
+													<span class="muted">Current: ${q.admin_file.file_name || 'N/A'}</span>
+												</div>
+												<input type="file" class="qgHandsOnFileInput" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;">
+												<p class="muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Leave empty to keep existing file, or upload new to replace.</p>
+											</div>
+											<button type="button" class="btn secondary qgRemoveHandsOnFile" style="padding: 0.5rem 1rem;">🗑️</button>
+										`;
+										const removeBtn = fileDiv.querySelector('.qgRemoveHandsOnFile');
+										removeBtn.addEventListener('click', function(){
+											fileDiv.remove();
+										});
+										filesList.appendChild(fileDiv);
+									}
+								});
+							}
+						}
 					});
 					let delBtn = document.getElementById('qgDeleteActivityBtn');
 					if (!delBtn){

@@ -1125,6 +1125,23 @@ def admin_download_submission_file():
 	return send_file(path, as_attachment=True, download_name=name)
 
 
+@app.route("/api/question-file/<path:filename>")
+def download_question_file(filename):
+	"""Serve uploaded question files for download by users"""
+	import os
+	upload_dir = os.path.join(os.getcwd(), 'question_files')
+	file_path = os.path.join(upload_dir, filename)
+	
+	# Security: ensure file is within upload directory (prevent directory traversal)
+	if not os.path.abspath(file_path).startswith(os.path.abspath(upload_dir)):
+		return abort(403)
+	
+	if not os.path.exists(file_path):
+		return abort(404)
+	
+	return send_file(file_path, as_attachment=True)
+
+
 @app.route("/admin/submissions/delete/<submission_id>", methods=["POST"])
 def admin_delete_submission(submission_id):
 	redir = require_admin()
@@ -1644,16 +1661,99 @@ def admin_create_test():
 
 @app.route("/api/question-bank/save", methods=["POST"])
 def api_save_question_bank():
-	"""Save question bank (university, subject, modules, questions) to MongoDB"""
+	"""Save question bank (university, subject, modules, questions) to MongoDB with file uploads for hands-on questions"""
 	redir = require_admin()
 	if redir:
 		return jsonify({"ok": False, "error": "Unauthorized"}), 401
 	
 	try:
-		data = request.json
-		university = data.get("university", "").strip()
-		subject = data.get("subject", "").strip()
-		modules = data.get("modules", {})
+		# Check if request is multipart/form-data (with files) or JSON
+		is_multipart = request.content_type and 'multipart/form-data' in request.content_type
+		
+		if is_multipart:
+			university = request.form.get("university", "").strip()
+			subject = request.form.get("subject", "").strip()
+			modules_json = request.form.get("modules", "{}")
+			try:
+				modules = json.loads(modules_json)
+			except:
+				return jsonify({"ok": False, "error": "Invalid modules JSON"}), 400
+			
+			# Process file uploads for hands-on questions
+			import os
+			from werkzeug.utils import secure_filename
+			upload_dir = os.path.join(os.getcwd(), 'question_files')
+			os.makedirs(upload_dir, exist_ok=True)
+			
+			# Collect file uploads from form data
+			file_mappings = {}  # {question_id: file_info}
+			# Get all question_id fields from form
+			for key in request.form:
+				if key.startswith('file_') and key.endswith('_question'):
+					question_id = request.form.get(key, "").strip()
+					if not question_id:
+						continue
+					
+					# Find corresponding file field (remove '_question' suffix to get file key)
+					file_key = key.replace('_question', '')
+					if file_key in request.files:
+						f = request.files[file_key]
+						if f and f.filename:
+							try:
+								fname = secure_filename(f.filename)
+								# Create unique filename: question_id_timestamp_filename
+								timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+								unique_name = f"{question_id}_{timestamp}_{fname}"
+								save_path = os.path.join(upload_dir, unique_name)
+								f.save(save_path)
+								
+								file_mappings[question_id] = {
+									"file_name": fname,
+									"file_path": save_path,
+									"unique_name": unique_name
+								}
+							except Exception as exc:
+								print(f"Error saving file for question {question_id}: {exc}")
+			
+			# Match files to questions and update question data
+			for module_name, questions in modules.items():
+				if not isinstance(questions, list):
+					continue
+				for q in questions:
+					if q.get("type") == "hands_on":
+						# Try to match by ID first, then by title
+						q_id = str(q.get("id", "")).strip()
+						q_title = str(q.get("title", "")).strip()
+						
+						matched = False
+						# Check for exact ID match
+						if q_id and q_id in file_mappings:
+							file_info = file_mappings[q_id]
+							q["admin_file"] = {
+								"file_name": file_info["file_name"],
+								"unique_name": file_info["unique_name"],
+								"saved": True
+							}
+							matched = True
+						# Check for title match if no ID match
+						elif q_title:
+							for question_id, file_info in file_mappings.items():
+								question_id_str = str(question_id).strip()
+								# Match by exact title or case-insensitive title
+								if question_id_str == q_title or question_id_str.lower() == q_title.lower():
+									q["admin_file"] = {
+										"file_name": file_info["file_name"],
+										"unique_name": file_info["unique_name"],
+										"saved": True
+									}
+									matched = True
+									break
+		else:
+			# JSON request (backward compatibility)
+			data = request.json
+			university = data.get("university", "").strip()
+			subject = data.get("subject", "").strip()
+			modules = data.get("modules", {})
 		
 		if not university or not subject:
 			return jsonify({"ok": False, "error": "University and subject are required"}), 400
@@ -1680,6 +1780,8 @@ def api_save_question_bank():
 		
 		return jsonify({"ok": True, "message": "Question bank saved successfully"})
 	except Exception as e:
+		import traceback
+		traceback.print_exc()
 		return jsonify({"ok": False, "error": str(e)}), 500
 
 
