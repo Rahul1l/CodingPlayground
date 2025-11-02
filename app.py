@@ -3300,7 +3300,7 @@ def test_submit_all():
 {{
   "score": 0.0 to 1.0,
   "is_correct": true if mostly correct, false otherwise,
-  "feedback": "Encouraging feedback with strengths and suggestions"
+  "feedback": "Explain clearly why this answer is correct or incorrect. If correct, highlight what makes it right. If incorrect, explain what's wrong, what the code does vs what it should do, and provide constructive guidance. Be specific about logic errors, syntax issues, or missing functionality."
 }}"""
 
 					response_text = _ai_generate(prompt, trainer_role)
@@ -3309,7 +3309,14 @@ def test_submit_all():
 					if json_match:
 						feedback_data = json.loads(json_match.group())
 						score = float(feedback_data.get("score", 0.5))
-						ai_feedback = feedback_data.get("feedback", "Code submitted successfully.")
+						ai_feedback = feedback_data.get("feedback", "")
+						if not ai_feedback or "submitted successfully" in ai_feedback.lower():
+							# Fallback to a more descriptive message if AI didn't provide proper feedback
+							is_correct_val = feedback_data.get("is_correct", score >= 0.7)
+							if is_correct_val:
+								ai_feedback = f"This code appears to be correct (score: {score:.2f}). The solution addresses the problem requirements."
+							else:
+								ai_feedback = f"This code has issues (score: {score:.2f}). Please review the logic and implementation."
 						if not is_from_bank:
 							is_correct = feedback_data.get("is_correct", score >= 0.7)
 						elif not is_correct:
@@ -3321,12 +3328,12 @@ def test_submit_all():
 							score = 0.7
 				except Exception as exc:
 					print(f"AI feedback error: {exc}")
-					ai_feedback = "Your code has been submitted successfully."
+					ai_feedback = f"⚠️ AI validation failed: {str(exc)}. The code was submitted but could not be automatically evaluated."
 					if not is_from_bank:
 						is_correct = True
 						score = 0.7
 			else:
-				ai_feedback = "Your code has been submitted successfully."
+				ai_feedback = "⚠️ AI validation was not performed (OpenAI API key not configured). The code was submitted but could not be automatically evaluated."
 				if not is_from_bank:
 					is_correct = True
 					score = 0.7

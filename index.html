@@ -3237,15 +3237,31 @@ student2,unique003,Stanford,both,act002,test002</pre>
 							{% endif %}
 						{% elif detail.question_type == 'coding' %}
 							{% if detail.user_code %}
-							<details>
-								<summary style="cursor: pointer; color: #3b82f6; font-weight: 600;">View Student Code</summary>
-								<pre class="scroll" style="max-height: 400px; background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto; margin-top: 0.5rem;">{{ detail.user_code }}</pre>
-							</details>
+							<div style="margin-top: 1rem;">
+								<p class="muted" style="margin-bottom: 0.5rem;"><strong>Student's Code:</strong></p>
+								<pre class="scroll" style="max-height: 400px; background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">{{ detail.user_code }}</pre>
+							</div>
+							{% else %}
+							<p class="muted" style="margin-top: 0.5rem;">No code submitted.</p>
 							{% endif %}
 							{% if detail.ai_feedback %}
-							<div style="margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">
-								<p style="margin: 0; color: #000000;"><strong>AI Evaluation:</strong></p>
-								<pre style="white-space: pre-wrap; margin: 0.5rem 0 0 0; color: #000000;">{{ detail.ai_feedback }}</pre>
+							{% set bg_color = '#d1fae5' if detail.is_correct else '#fee2e2' %}
+							{% set border_color = '#10b981' if detail.is_correct else '#dc2626' %}
+							<div style="margin-top: 1rem; padding: 1rem; background: {{ bg_color }}; border-radius: 8px; border-left: 4px solid {{ border_color }};">
+								<p style="margin: 0 0 0.5rem 0; color: #000000; font-weight: 600;"><strong>AI Validation:</strong></p>
+								{% set feedback_lower = detail.ai_feedback.lower() %}
+								{% if 'submitted successfully' in feedback_lower and feedback_lower.strip() == 'your code has been submitted successfully.' %}
+								<p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ No AI validation was performed. The code was submitted but could not be evaluated.</p>
+								{% else %}
+								<pre style="white-space: pre-wrap; margin: 0; color: #000000; font-size: 0.95rem; line-height: 1.6;">{{ detail.ai_feedback }}</pre>
+								{% endif %}
+								{% if detail.score is defined %}
+								<p style="margin: 0.75rem 0 0 0; color: #000000;"><strong>Score:</strong> {{ "%.1f"|format(detail.score * 100) }}%</p>
+								{% endif %}
+							</div>
+							{% else %}
+							<div style="margin-top: 1rem; padding: 1rem; background: #fee2e2; border-radius: 8px; border-left: 4px solid #dc2626;">
+								<p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ No AI validation available for this submission.</p>
 							</div>
 							{% endif %}
 						{% elif detail.question_type == 'hands_on' %}
@@ -3528,17 +3544,21 @@ student2,unique003,Stanford,both,act002,test002</pre>
 # def solution():
 #     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
 								<div class="compiler-controls">
+									{% if view != 'test_interface' %}
 									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
+									{% endif %}
 									<button class="btn secondary clear-question-code" data-question="{{ question_num }}">🗑️ Clear</button>
 								</div>
 							</div>
 							
+							{% if view != 'test_interface' %}
 							<div class="output-section">
 								<label>Output:</label>
 								<div id="output-{{ question_num }}" class="output-box">
 									<p class="muted">Click "Run Code" to see the output here...</p>
 								</div>
 							</div>
+							{% endif %}
 						</div>
 						
 						<div style="margin-top: 1rem;">
