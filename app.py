@@ -45,7 +45,7 @@ def format_handson_description(text):
 	
 	import re
 	
-	# Keywords to detect (case-insensitive)
+	# Keywords to detect (case-insensitive) - order matters
 	keywords = ['Case Study', 'Tasks', 'Expected outcome', 'Expected Outcome']
 	
 	# Check if any keyword exists in the text (case-insensitive)
@@ -55,72 +55,83 @@ def format_handson_description(text):
 	if not has_keywords:
 		return text
 	
-	# Process each keyword section
-	result = text
+	# Split text by keywords to identify sections
+	result_parts = []
+	text_remaining = text
 	
+	# Find all keyword positions
+	keyword_positions = []
 	for keyword in keywords:
-		# Pattern to match keyword with or without colon, case-insensitive
-		# Match: keyword (possibly with colon) followed by content until next keyword or end
-		keyword_escaped = re.escape(keyword)
-		other_keywords = [re.escape(k) for k in keywords if k != keyword]
-		other_keywords_pattern = '|'.join(other_keywords) if other_keywords else 'THIS_NEVER_MATCHES'
+		# Find all occurrences (case-insensitive)
+		for match in re.finditer(re.escape(keyword), text_remaining, re.IGNORECASE):
+			keyword_positions.append((match.start(), match.end(), match.group()))
+	
+	# Sort by position
+	keyword_positions.sort(key=lambda x: x[0])
+	
+	if not keyword_positions:
+		return text
+	
+	# Process text section by section
+	current_pos = 0
+	for i, (start, end, kw_found) in enumerate(keyword_positions):
+		# Add text before keyword
+		if start > current_pos:
+			before_text = text_remaining[current_pos:start].strip()
+			if before_text:
+				result_parts.append(before_text)
 		
-		# Pattern: keyword (with optional colon) followed by content until next keyword
-		pattern = r'(' + keyword_escaped + r')\s*:?\s*(.+?)(?=\s*(?:' + other_keywords_pattern + r')\s*:|$)'
+		# Extract keyword and content
+		# Look for colon after keyword
+		after_keyword = text_remaining[end:]
+		colon_match = re.match(r'\s*:?\s*', after_keyword)
+		if colon_match:
+			content_start = end + colon_match.end()
+		else:
+			content_start = end
 		
-		def format_keyword_section(match):
-			kw_found = match.group(1)  # Original keyword (preserves case)
-			content = match.group(2).strip()
-			
-			# Put keyword on its own line with colon
-			formatted = f"\n{kw_found}:"
-			
-			if content:
-				# Check if content has numbered items (1. 2. etc.) or bullets (-, *, •)
-				# First check if there are already newlines with numbered items
-				if '\n' in content:
-					# Process line by line
-					lines = content.split('\n')
-					for line in lines:
-						line = line.strip()
-						if line:
-							if re.match(r'^\d+[.)]\s+', line) or re.match(r'^[-*•]\s+', line):
-								# Already formatted line with number/bullet
-								formatted += f"\n  {line}"
-							else:
-								# Regular content line
-								formatted += f"\n  {line}"
-				else:
-					# No newlines - check if content has inline numbered/bulleted items
-					# Pattern to find: "1. text 2. text" or "- text - text"
-					if re.search(r'\d+[.)]\s+', content) or re.search(r'[-*•]\s+', content):
-						# Split by numbered items or bullets
-						parts = re.split(r'(\d+[.)]\s+|[-*•]\s+)', content)
-						current_item = ""
-						for part in parts:
-							if re.match(r'^\d+[.)]\s+$', part) or re.match(r'^[-*•]\s+$', part):
-								# This is a numbered prefix or bullet - start new line
-								if current_item.strip():
-									formatted += f"\n  {current_item.strip()}"
-								current_item = part
-							else:
-								current_item += part
-						# Add the last item
+		# Find where this section ends (next keyword or end of text)
+		next_start = len(text_remaining)
+		if i + 1 < len(keyword_positions):
+			next_start = keyword_positions[i + 1][0]
+		
+		content = text_remaining[content_start:next_start].strip()
+		
+		# Add formatted keyword section
+		result_parts.append(f"{kw_found}:")
+		
+		# Format content
+		if content:
+			# Check if content has numbered items (1. 2. etc.) or bullets
+			if re.search(r'\d+[.)]\s+', content) or re.search(r'[-*•]\s+', content):
+				# Split by numbered items or bullets
+				parts = re.split(r'(\d+[.)]\s+|[-*•]\s+)', content)
+				current_item = ""
+				for part in parts:
+					if re.match(r'^\d+[.)]\s+$', part) or re.match(r'^[-*•]\s+$', part):
 						if current_item.strip():
-							formatted += f"\n  {current_item.strip()}"
+							result_parts.append(f"  {current_item.strip()}")
+						current_item = part
 					else:
-						# Just regular content - put on new line
-						formatted += f"\n  {content}"
-			
-			return formatted
+						current_item += part
+				if current_item.strip():
+					result_parts.append(f"  {current_item.strip()}")
+			else:
+				# Regular content - just indent
+				result_parts.append(f"  {content}")
 		
-		# Apply formatting (case-insensitive, dot-all mode to handle multi-line content)
-		result = re.sub(pattern, format_keyword_section, result, flags=re.IGNORECASE | re.DOTALL)
+		current_pos = next_start
 	
-	# Clean up multiple consecutive newlines (max 2)
-	result = re.sub(r'\n{3,}', '\n\n', result)
+	# Add any remaining text
+	if current_pos < len(text_remaining):
+		remaining = text_remaining[current_pos:].strip()
+		if remaining:
+			result_parts.append(remaining)
 	
-	return result.strip()
+	# Join with newlines
+	result = '\n'.join(result_parts)
+	
+	return result
 
 # MongoDB Setup - Following working Feedback-App-V2 pattern
 try:
@@ -3215,6 +3226,10 @@ def test_start():
 		# Preserve stored order and include hands-on if present
 		valid_types = {"mcq", "coding", "hands_on"}
 		questions = [q for q in all_questions if q.get("question_type") in valid_types]
+		# Debug: Log CSV file info for hands-on questions
+		for q in questions:
+			if q.get("question_type") == "hands_on":
+				logger.info(f"Hands-on question '{q.get('title')}': csv_file={q.get('csv_file')}, csv_file_name={q.get('csv_file_name')}")
 		print(f"Test {test_doc.get('test_id')}: Loaded {len(questions)} questions (MCQ={sum(1 for q in questions if q.get('question_type')=='mcq')}, Coding={sum(1 for q in questions if q.get('question_type')=='coding')}, Hands-on={sum(1 for q in questions if q.get('question_type')=='hands_on')})")
 	except Exception as e:
 		print(f"Error parsing test JSON: {e}")

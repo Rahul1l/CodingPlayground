@@ -407,6 +407,27 @@ footer {
     min-height: 100vh;
 }
 
+/* Override container width for test/activity interface */
+body[data-view="test_interface"] main.container,
+body[data-view="activity"] main.container {
+    max-width: 100% !important;
+    padding: 1rem 2rem;
+    text-align: left !important;
+}
+
+/* Ensure question cards are left-aligned */
+.question-card {
+    text-align: left !important;
+}
+
+.question-content {
+    text-align: left !important;
+}
+
+.question-content * {
+    text-align: left !important;
+}
+
 .test-header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -3443,7 +3464,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 		{# Activity Detail #}
 		{% if view == 'activity' or view == 'test_interface' %}
-			<div class="flex-between">
+			<div class="flex-between" style="margin-bottom: 1.5rem;">
 				{% if view == 'test_interface' %}
 					<h2>{{ test.subject }} - Test</h2>
 					<div style="display:flex; align-items:center; gap:0.75rem;">
@@ -3460,13 +3481,14 @@ student2,unique003,Stanford,both,act002,test002</pre>
 			</div>
 			
 			{% if questions %}
+			<div style="width: 100%; max-width: 100%; margin: 0; text-align: left;">
 				{% for question in questions %}
 				{% set question_num = loop.index %}
-				<section class="card question-card{% if view == 'test_interface' %} test-question{% endif %}" data-index="{{ question_num }}" data-type="{{ question.question_type }}" {% if view == 'test_interface' and question_num > 1 %}style="display:none;"{% endif %}>
-					<div class="question-header">
-						<h3>Question {{ question_num }}: {{ question.title }}</h3>
+				<section class="card question-card{% if view == 'test_interface' %} test-question{% endif %}" data-index="{{ question_num }}" data-type="{{ question.question_type }}" {% if view == 'test_interface' and question_num > 1 %}style="display:none; text-align: left;"{% else %}style="text-align: left;"{% endif %}>
+					<div class="question-header" style="text-align: left;">
+						<h3 style="text-align: left;">Question {{ question_num }}: {{ question.title }}</h3>
 						<!-- DEBUG: question_num = {{ question_num }}, loop.index = {{ loop.index }} -->
-						<div style="display: flex; gap: 0.5rem; align-items: center;">
+						<div style="display: flex; gap: 0.5rem; align-items: center; text-align: left;">
 							<span class="difficulty-badge difficulty-{{ question.difficulty }}">
 								{% if question.difficulty == 'medium_plus' %}
 									Medium+ (Coding)
@@ -3482,9 +3504,9 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						</div>
 					</div>
 					
-					<div class="question-content">
-						<p><strong>Description:</strong></p>
-						<div style="white-space: pre-wrap; line-height: 1.6;">
+					<div class="question-content" style="text-align: left;">
+						<p style="text-align: left;"><strong>Description:</strong></p>
+						<div style="white-space: pre-wrap; line-height: 1.6; text-align: left;">
 							{% if question.question_type == 'hands_on' %}
 								{{ question.description | format_handson_description }}
 							{% else %}
@@ -3494,22 +3516,22 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						
 						{# MCQ Questions #}
 						{% if question.question_type == 'mcq' and question.options %}
-						<div style="margin-top: 1.5rem;" id="mcq-question-{{ question_num }}">
-							<p><strong>Select the correct answer:</strong></p>
+						<div style="margin-top: 1.5rem; text-align: left;" id="mcq-question-{{ question_num }}">
+							<p style="text-align: left;"><strong>Select the correct answer:</strong></p>
 							<!-- DEBUG: Rendering MCQ for question_num={{ question_num }}, Total options={{ question.options|length }} -->
-							<div style="margin: 1rem 0;" id="mcq-options-{{ question_num }}">
+							<div style="margin: 1rem 0; text-align: left;" id="mcq-options-{{ question_num }}">
 								{% for option in question.options %}
-							<div class="mcq-option-classroom" data-option-index="{{ loop.index0 }}" data-option-text="{{ option }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe;">
+							<div class="mcq-option-classroom" data-option-index="{{ loop.index0 }}" data-option-text="{{ option }}" data-question-idx="{{ question_num }}" onclick="selectClassroomMCQ(this, {{ question_num }});" style="padding: 0.75rem; margin: 0.5rem 0; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; cursor: pointer; transition: all 0.2s; color: #000000; border: 1px solid #bfdbfe; text-align: left;">
 									{{ option }}
 								</div>
 								{% endfor %}
 							</div>
 							
-							<div style="margin-top: 1rem;">
-								<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});">
+							<div style="margin-top: 1rem; text-align: left;">
+								<button class="btn secondary" onclick="clearClassroomMCQ({{ question_num }});" style="text-align: left;">
 									Clear Selection
 								</button>
-								<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem;"></span>
+								<span id="mcq-status-{{ question_num }}" class="muted" style="margin-left: 1rem; text-align: left;"></span>
 							</div>
 							
 							{% if question.hints %}
@@ -3528,43 +3550,43 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						{# Coding Questions #}
 						{% if question.question_type == 'coding' or not question.question_type %}
 						{% if question.input_format %}
-						<p><strong>Input Format:</strong></p>
-						<pre class="format-box">{{ question.input_format }}</pre>
+						<p style="text-align: left;"><strong>Input Format:</strong></p>
+						<pre class="format-box" style="text-align: left;">{{ question.input_format }}</pre>
 						{% endif %}
 						
 						{% if question.output_format %}
-						<p><strong>Output Format:</strong></p>
-						<pre class="format-box">{{ question.output_format }}</pre>
+						<p style="text-align: left;"><strong>Output Format:</strong></p>
+						<pre class="format-box" style="text-align: left;">{{ question.output_format }}</pre>
 						{% endif %}
 						
 						{% if question.sample_input %}
-						<p><strong>Sample Input:</strong></p>
-						<pre class="sample-box">{{ question.sample_input }}</pre>
+						<p style="text-align: left;"><strong>Sample Input:</strong></p>
+						<pre class="sample-box" style="text-align: left;">{{ question.sample_input }}</pre>
 						{% endif %}
 						
 						{% if question.sample_output %}
-						<p><strong>Sample Output:</strong></p>
-						<pre class="sample-box">{{ question.sample_output }}</pre>
+						<p style="text-align: left;"><strong>Sample Output:</strong></p>
+						<pre class="sample-box" style="text-align: left;">{{ question.sample_output }}</pre>
 						{% endif %}
 						
 						{% if question.constraints %}
-						<p><strong>Constraints:</strong></p>
-						<p style="color: #f59e0b;">{{ question.constraints }}</p>
+						<p style="text-align: left;"><strong>Constraints:</strong></p>
+						<p style="color: #f59e0b; text-align: left;">{{ question.constraints }}</p>
 						{% endif %}
 						{% endif %}
 					</div>
 					
 					{# Only show code editor for coding questions #}
 					{% if question.question_type == 'coding' or not question.question_type %}
-					<div class="compiler-section" id="coding-question-{{ question_num }}">
-						<h4>🐍 Code Editor</h4>
-						<div class="compiler-container">
-							<div class="code-section">
+					<div class="compiler-section" id="coding-question-{{ question_num }}" style="text-align: left;">
+						<h4 style="text-align: left;">🐍 Code Editor</h4>
+						<div class="compiler-container" style="text-align: left;">
+							<div class="code-section" style="text-align: left;">
 								<textarea id="code-{{ question_num }}" class="question-code" rows="8" placeholder="# Write your solution here
 # Example:
 # def solution():
-#     return 'Hello World'">{{ question.sample_code or '' }}</textarea>
-								<div class="compiler-controls">
+#     return 'Hello World'" style="text-align: left;">{{ question.sample_code or '' }}</textarea>
+								<div class="compiler-controls" style="text-align: left;">
 									{% if view != 'test_interface' %}
 									<button class="btn run-question-code" data-question="{{ question_num }}" data-question-text="{{ question.description|e }}">▶️ Run Code</button>
 									{% endif %}
@@ -3590,21 +3612,23 @@ student2,unique003,Stanford,both,act002,test002</pre>
 
 					{# Hands-on Questions #}
 					{% if question.question_type == 'hands_on' %}
-					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem;">
-						{% if question.csv_file %}
-						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
-							<p style="margin: 0 0 0.5rem 0;"><strong>📄 CSV File Available:</strong></p>
-							<a href="/question/csv/{{ question.csv_file }}" class="btn secondary small" download>Download {{ question.csv_file_name or question.csv_file }}</a>
-							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Download the CSV file before submitting your solution.</p>
+					<div class="handson-section" id="handson-question-{{ question_num }}" style="margin-top: 1rem; text-align: left;">
+						{% set csv_file_path = question.get('csv_file') %}
+						{% if csv_file_path %}
+						<div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; text-align: left;">
+							<p style="margin: 0 0 0.5rem 0; text-align: left;"><strong>📄 CSV File Available:</strong></p>
+							<a href="/question/csv/{{ csv_file_path }}" class="btn secondary small" download style="text-align: left;">Download {{ question.get('csv_file_name') or csv_file_path }}</a>
+							<p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem; text-align: left;">Download the CSV file before submitting your solution.</p>
 						</div>
 						{% endif %}
-						<p><strong>Hands-on Upload:</strong></p>
-						<input type="file" id="handson-file-{{ question_num }}" />
-						<p class="muted" style="margin-top: 0.5rem;">Upload any file type as your solution.</p>
+						<p style="text-align: left;"><strong>Hands-on Upload:</strong></p>
+						<input type="file" id="handson-file-{{ question_num }}" style="text-align: left;" />
+						<p class="muted" style="margin-top: 0.5rem; text-align: left;">Upload any file type as your solution.</p>
 					</div>
 					{% endif %}
 				</section>
 				{% endfor %}
+			</div>
 			{% else %}
 				<section class="card">
 					<h2>Activity Content</h2>
@@ -3613,6 +3637,7 @@ student2,unique003,Stanford,both,act002,test002</pre>
 						<pre class="scroll">{{ activity.generated }}</pre>
 					</details>
 				</section>
+			{% endif %}
 		{% endif %}
 		
 		{# Classroom Activity Submission Buttons #}
